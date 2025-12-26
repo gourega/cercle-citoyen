@@ -1,238 +1,56 @@
 
-import React, { useState, createContext, useContext, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { 
-  Home, 
-  MessageSquare, 
-  Map as MapIcon, 
-  Sparkles, 
-  User as UserIcon, 
-  Menu,
-  X,
-  Gavel,
-  Target,
-  CheckCircle,
-  Zap,
-  ShoppingBag,
-  Info,
-  Crown,
-  ShieldAlert
-} from 'lucide-react';
+import { User, Role, UserCategory, Post, CircleType, Contribution, EntityApplication, Edict } from '../types';
 
-// Pages
-import FeedPage from './pages/FeedPage.tsx';
-import ChatPage from './pages/ChatPage.tsx';
-import ActionMap from './pages/ActionMap.tsx';
-import ProfilePage from './pages/ProfilePage.tsx';
-import LandingPage from './pages/LandingPage.tsx';
-import GriotStudio from './pages/GriotStudio.tsx';
-import AuthPage from './pages/AuthPage.tsx';
-import ManifestoPage from './pages/ManifestoPage.tsx';
-import WelcomePage from './pages/WelcomePage.tsx';
-import GovernancePage from './pages/GovernancePage.tsx';
-import QuestsPage from './pages/QuestsPage.tsx';
-import LegalPage from './pages/LegalPage.tsx';
-import ImpactStudio from './pages/ImpactStudio.tsx';
-import CirclePage from './pages/CirclePage.tsx';
-import ResourceExchange from './pages/ResourceExchange.tsx';
-import AdminDashboard from './pages/AdminDashboard.tsx';
+export { Role, UserCategory, CircleType };
+export type { User, Post, Contribution, EntityApplication, Edict };
 
-// Components
-import Logo from './Logo.tsx';
-import Footer from './components/Footer.tsx';
-import GuardianAssistant from './components/GuardianAssistant.tsx';
-import { User, Role } from './types.ts';
-import { ADMIN_ID } from './lib/mocks.ts';
+// Identifiant réel de Kouassi GOBLE Ouréga
+export const ADMIN_ID = 'cdde4873-dd75-4c09-bcb2-6eb1aa960c12';
 
-interface ToastContextType {
-  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error("useToast must be used within ToastProvider");
-  return context;
+export const MOCK_USERS: Record<string, User> = {
+  u1: {
+    id: 'u1',
+    name: 'Amadou Koné',
+    email: 'amadou.kone@citoyen.ci',
+    pseudonym: 'AmadouK',
+    bio: 'Passionné par le développement local et l\'éducation citoyenne en Côte d\'Ivoire.',
+    role: Role.MEMBER,
+    category: UserCategory.CITIZEN,
+    interests: ['Éducation', 'Environnement'],
+    avatar: 'https://picsum.photos/seed/amadou/150/150',
+    impactScore: 120,
+    impact_score: 120,
+    civicStats: { thought: 65, link: 20, action: 15 }
+  },
+  [ADMIN_ID]: {
+    id: ADMIN_ID,
+    name: 'Kouassi GOBLE Ouréga',
+    email: 'cerclecitoyenci@gmail.com',
+    pseudonym: 'GardienSuprême',
+    bio: 'Fondateur et Gardien du Cercle. Citoyen engagé pour la souveraineté numérique et sociale.',
+    role: Role.SUPER_ADMIN,
+    category: UserCategory.CITIZEN,
+    interests: ['Gouvernance', 'Éthique', 'Éducation'],
+    avatar: 'https://picsum.photos/seed/goble/300/300',
+    impactScore: 19740,
+    impact_score: 19740,
+    civicStats: { thought: 40, link: 30, action: 30 }
+  }
 };
 
-const Navbar = ({ user }: { user: User | null }) => {
-  const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+export const MOCK_POSTS: Post[] = [
+  {
+    id: 'majestic-1',
+    author_id: ADMIN_ID,
+    circle_type: CircleType.GARDEN,
+    isMajestic: true,
+    content: "L'éveil citoyen n'est pas une destination, c'est une pratique quotidienne. Chaque dialogue responsable est une pierre à l'édifice de notre souveraineté.",
+    created_at: new Date().toISOString(),
+    reactions: { useful: 245, relevant: 110, inspiring: 420 },
+    comments: []
+  }
+];
 
-  // Cacher la navbar sur certaines pages
-  if (!user || ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
-
-  // Correction: Vérification du rôle pour afficher l'accès Admin
-  const isGuardian = user.role === Role.SUPER_ADMIN;
-
-  const navItems = [
-    { to: "/feed", icon: <Home size={16} />, label: "Fil" },
-    { to: "/chat", icon: <MessageSquare size={16} />, label: "Palabre" },
-    { to: "/map", icon: <MapIcon size={16} />, label: "Carte" },
-    { to: "/governance", icon: <Gavel size={16} />, label: "Édits" },
-    { to: "/quests", icon: <Target size={16} />, label: "Sentiers" },
-    { to: "/griot", icon: <Sparkles size={16} />, label: "Griot" },
-    { to: "/impact", icon: <Zap size={16} />, label: "Studio" },
-    { to: "/exchange", icon: <ShoppingBag size={16} />, label: "Marché" },
-  ];
-
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6">
-      <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
-        {/* Logo cliquable ramenant au flux */}
-        <Link to="/feed" className="flex items-center group">
-          <Logo size={32} showText={true} />
-        </Link>
-
-        {/* Desktop Nav */}
-        <div className="hidden lg:flex items-center gap-2">
-          {navItems.map((item) => (
-            <Link 
-              key={item.to} 
-              to={item.to} 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                location.pathname === item.to ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              {item.icon} {item.label}
-            </Link>
-          ))}
-          
-          {isGuardian && (
-            <Link 
-              to="/admin" 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                location.pathname === '/admin' ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
-              }`}
-            >
-              <Crown size={16} /> Conseil
-            </Link>
-          )}
-          
-          <div className="h-6 w-px bg-gray-100 mx-4"></div>
-          
-          {/* Avatar cliquable pour le profil */}
-          <Link to="/profile" className="flex items-center group ml-2">
-             <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-200 transition-all">
-               <img src={user.avatar} className="w-full h-full object-cover" alt="Mon Profil" />
-             </div>
-          </Link>
-        </div>
-
-        {/* Mobile Toggle */}
-        <button className="lg:hidden p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
-          {navItems.map((item) => (
-            <Link 
-              key={item.to} 
-              to={item.to} 
-              onClick={() => setIsOpen(false)} 
-              className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 font-black text-[10px] uppercase tracking-widest text-gray-600 hover:bg-blue-50 hover:text-blue-600"
-            >
-              {item.icon} {item.label}
-            </Link>
-          ))}
-          {isGuardian && (
-            <Link 
-              to="/admin" 
-              onClick={() => setIsOpen(false)} 
-              className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 font-black text-[10px] uppercase tracking-widest text-amber-600 hover:bg-amber-100"
-            >
-              <Crown size={16} /> Conseil du Gardien
-            </Link>
-          )}
-          <Link 
-            to="/profile" 
-            onClick={() => setIsOpen(false)} 
-            className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white shadow-lg mt-4"
-          >
-            <UserIcon size={20} /> <span className="text-[10px] font-black uppercase tracking-widest">Mon Profil</span>
-          </Link>
-        </div>
-      )}
-    </nav>
-  );
-};
-
-const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [toasts, setToasts] = useState<{id: string, message: string, type: string}[]>([]);
-
-  const addToast = (message: string, type: 'success' | 'error' | 'info') => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
-  };
-
-  return (
-    <ToastContext.Provider value={{ addToast }}>
-      {children}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-w-sm px-4">
-        {toasts.map(t => (
-          <div key={t.id} className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-2 ${t.type === 'success' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
-             <CheckCircle size={18} />
-             <span className="text-sm font-bold">{t.message}</span>
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
-};
-
-const App = () => {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('cercle_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const handleLogin = (u: User) => {
-    setUser(u);
-    localStorage.setItem('cercle_user', JSON.stringify(u));
-  };
-
-  const handleLogout = async () => {
-    setUser(null);
-    localStorage.removeItem('cercle_user');
-  };
-
-  return (
-    <ToastProvider>
-      <Router>
-        <div className="min-h-screen flex flex-col">
-          <Navbar user={user} />
-          <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
-            <Routes>
-              <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
-              <Route path="/manifesto" element={<ManifestoPage />} />
-              <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
-              <Route path="/legal" element={<LegalPage />} />
-              <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
-              <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
-              <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
-              <Route path="/map" element={user ? <ActionMap /> : <Navigate to="/" />} />
-              <Route path="/governance" element={user ? <GovernancePage user={user} /> : <Navigate to="/" />} />
-              <Route path="/quests" element={user ? <QuestsPage /> : <Navigate to="/" />} />
-              <Route path="/griot" element={user ? <GriotStudio /> : <Navigate to="/" />} />
-              <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
-              <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
-              <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
-              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
-              <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-            <Footer />
-          </main>
-          <GuardianAssistant />
-        </div>
-      </Router>
-    </ToastProvider>
-  );
-};
-
-export default App;
+export const MOCK_CONTRIBUTIONS: Contribution[] = [];
+export const MOCK_EDICTS: Edict[] = [];
+export const MOCK_APPLICATIONS: EntityApplication[] = [];

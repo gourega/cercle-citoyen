@@ -204,7 +204,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isOwnProfile = profile.id === currentUser.id;
   const isGuardian = profile.role === Role.SUPER_ADMIN || profile.role === 'Gardien';
   
-  // Correction: Mapping du score d'impact pour supporter les deux formats
+  // Correction: Mapping robuste du score d'impact pour les mocks et la DB
   const impactScore = profile.impact_score !== undefined ? profile.impact_score : (profile.impactScore || 0);
 
   return (
@@ -249,8 +249,8 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             </div>
             <aside className="p-10 bg-gray-900 text-white rounded-[3rem] text-center shadow-2xl">
               <h3 className="font-black text-[10px] uppercase tracking-widest mb-8 text-gray-400">IMPACT</h3>
-              <div className="text-6xl font-serif font-bold mb-2">{impactScore}</div>
-              <p className="text-[10px] font-black uppercase text-blue-400">Points Citoyens</p>
+              <div className="text-6xl font-serif font-bold mb-2">{impactScore.toLocaleString()}</div>
+              <p className="text-[10px] font-black uppercase text-blue-400">POINTS CITOYENS</p>
             </aside>
           </div>
         </div>

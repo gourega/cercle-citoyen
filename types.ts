@@ -93,6 +93,7 @@ export interface User {
   avatar: string;
   coverUrl?: string;
   impactScore?: number;
+  impact_score?: number;
   civicStats?: { thought: number; link: number; action: number };
 }
 
