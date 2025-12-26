@@ -43,7 +43,7 @@ import AdminDashboard from './pages/AdminDashboard.tsx';
 import Logo from './Logo.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import { User } from './types.ts';
-import { ADMIN_ID } from './lib/mocks.ts';
+import { ADMIN_ID, MOCK_USERS } from './lib/mocks.ts';
 
 // Toast Context
 interface Toast {
@@ -232,7 +232,7 @@ const App = () => {
           <Navbar user={user} />
           <main className={`flex-1 w-full mx-auto ${isAuth ? 'pt-20' : ''}`}>
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
               <Route path="/legal" element={<LegalPage />} />

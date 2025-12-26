@@ -1,12 +1,18 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 /**
  * CONFIGURATION SUPABASE
- * Support des noms standards et des noms injectés par l'environnement
  */
-const supabaseUrl = process.env.VITE_SUPABASE_URL || (process.env as any)["Url Supabase"];
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || (process.env as any)["Clé public Supabase"];
+const getEnv = (key: string) => {
+  try {
+    return (window as any).process?.env?.[key] || (import.meta as any).env?.[key] || (window as any)[key];
+  } catch {
+    return null;
+  }
+};
+
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('Url Supabase');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('Clé public Supabase');
 
 // Détection de la connexion réelle
 export const isRealSupabase = 
