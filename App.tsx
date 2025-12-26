@@ -14,7 +14,9 @@ import {
   CheckCircle,
   Zap,
   ShoppingBag,
-  Info
+  Info,
+  Crown,
+  ShieldAlert
 } from 'lucide-react';
 
 // Pages
@@ -33,12 +35,13 @@ import LegalPage from './pages/LegalPage.tsx';
 import ImpactStudio from './pages/ImpactStudio.tsx';
 import CirclePage from './pages/CirclePage.tsx';
 import ResourceExchange from './pages/ResourceExchange.tsx';
+import AdminDashboard from './pages/AdminDashboard.tsx';
 
 // Components
 import Logo from './Logo.tsx';
 import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
-import { User } from './types.ts';
+import { User, Role } from './types.ts';
 import { ADMIN_ID } from './lib/mocks.ts';
 
 interface ToastContextType {
@@ -59,6 +62,9 @@ const Navbar = ({ user }: { user: User | null }) => {
 
   // Cacher la navbar sur certaines pages
   if (!user || ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
+
+  // Fix: Removed redundant string comparison that caused type narrowing error
+  const isGuardian = user.role === Role.SUPER_ADMIN;
 
   const navItems = [
     { to: "/feed", icon: <Home size={16} />, label: "Fil" },
@@ -93,6 +99,17 @@ const Navbar = ({ user }: { user: User | null }) => {
             </Link>
           ))}
           
+          {isGuardian && (
+            <Link 
+              to="/admin" 
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                location.pathname === '/admin' ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
+              }`}
+            >
+              <Crown size={16} /> Conseil
+            </Link>
+          )}
+          
           <div className="h-6 w-px bg-gray-100 mx-4"></div>
           
           {/* Avatar cliquable pour le profil */}
@@ -122,6 +139,15 @@ const Navbar = ({ user }: { user: User | null }) => {
               {item.icon} {item.label}
             </Link>
           ))}
+          {isGuardian && (
+            <Link 
+              to="/admin" 
+              onClick={() => setIsOpen(false)} 
+              className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 font-black text-[10px] uppercase tracking-widest text-amber-600 hover:bg-amber-100"
+            >
+              <Crown size={16} /> Conseil du Gardien
+            </Link>
+          )}
           <Link 
             to="/profile" 
             onClick={() => setIsOpen(false)} 
@@ -196,6 +222,7 @@ const App = () => {
               <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
               <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
+              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
