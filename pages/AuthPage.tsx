@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -60,8 +59,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
       category: formData.category,
       bio: "Nouveau citoyen du Cercle.",
       avatar_url: avatarUrl,
-      impact_score: 0,
-      created_at: new Date().toISOString()
+      impact_score: 0
     };
 
     try {
@@ -72,10 +70,9 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
 
         if (insertError) throw insertError;
         
-        addToast("Inscription réussie dans la base souveraine !", "success");
+        addToast("Inscription réussie !", "success");
       } else {
-        // Mode démo si Supabase n'est pas lié
-        console.warn("Mode Démo : Insertion simulée.");
+        console.warn("Mode Démo : Inscription simulée localement.");
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
@@ -96,7 +93,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
       navigate('/welcome');
     } catch (err: any) {
       console.error("Erreur d'inscription:", err);
-      setError(err.message || "Une erreur est survenue lors de l'enregistrement.");
+      setError(err.message || "Une erreur est survenue.");
       addToast("Échec de l'inscription", "error");
     } finally {
       setLoading(false);

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
@@ -14,7 +13,9 @@ import {
   User as UserIcon,
   AtSign,
   FileText,
-  Camera
+  Camera,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -46,7 +47,23 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (u
     avatar_url: profile.avatar_url || profile.avatar || ''
   });
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { addToast } = useToast();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        addToast("Photo trop lourde (max 2Mo)", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, avatar_url: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -64,7 +81,7 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (u
       if (error) throw error;
       
       onSave(formData);
-      addToast("Profil mis à jour !", "success");
+      addToast("Identité mise à jour !", "success");
       onClose();
     } catch (e: any) {
       addToast(e.message || "Erreur de mise à jour", "error");
@@ -77,28 +94,59 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (u
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
       <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in">
         <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-blue-50/30">
-          <h3 className="text-2xl font-serif font-bold text-gray-900">Modifier mon identité</h3>
+          <div>
+            <h3 className="text-2xl font-serif font-bold text-gray-900">Modifier mon identité</h3>
+            <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mt-1">Édition de l'ADN Citoyen</p>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
         </div>
-        <div className="p-8 space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><UserIcon size={12} /> Nom Complet</label>
-            <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-200 transition-all" />
+        
+        <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh] no-scrollbar">
+          <div className="flex flex-col items-center gap-4">
+             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gray-100 ring-2 ring-blue-100">
+                 {formData.avatar_url ? (
+                   <img src={formData.avatar_url} className="w-full h-full object-cover" alt="Aperçu" />
+                 ) : (
+                   <div className="w-full h-full flex items-center justify-center text-gray-300">
+                     <ImageIcon size={40} />
+                   </div>
+                 )}
+               </div>
+               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white" size={24} />
+               </div>
+               <div className="absolute -bottom-1 -right-1 w-10 h-10 bg-blue-600 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                  <Upload className="text-white" size={16} />
+               </div>
+             </div>
+             <input 
+               type="file" 
+               ref={fileInputRef} 
+               onChange={handleFileChange} 
+               className="hidden" 
+               accept="image/*" 
+             />
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Cliquez pour changer de photo</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><AtSign size={12} /> Pseudonyme</label>
-            <input value={formData.pseudonym} onChange={e => setFormData({...formData, pseudonym: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-200 transition-all" />
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><UserIcon size={12} /> Nom Complet</label>
+              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-200 transition-all" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><AtSign size={12} /> Pseudonyme</label>
+              <input value={formData.pseudonym} onChange={e => setFormData({...formData, pseudonym: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-200 transition-all" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><FileText size={12} /> Biographie</label>
+              <textarea value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="w-full h-32 bg-gray-50 p-4 rounded-2xl outline-none border border-transparent focus:border-blue-200 transition-all resize-none" />
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><Camera size={12} /> URL Avatar</label>
-            <input value={formData.avatar_url} onChange={e => setFormData({...formData, avatar_url: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none border border-transparent focus:border-blue-200 transition-all" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><FileText size={12} /> Biographie</label>
-            <textarea value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="w-full h-32 bg-gray-50 p-4 rounded-2xl outline-none border border-transparent focus:border-blue-200 transition-all resize-none" />
-          </div>
-          <button onClick={handleSave} disabled={loading} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-3">
-            {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />} Enregistrer
+          
+          <button onClick={handleSave} disabled={loading} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl shadow-gray-100">
+            {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />} Mettre à jour mon profil
           </button>
         </div>
       </div>
