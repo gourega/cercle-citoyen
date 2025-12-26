@@ -16,7 +16,13 @@ import {
   FileText,
   Camera,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ShieldCheck,
+  Scale,
+  TreeDeciduous,
+  DraftingCompass,
+  // Added missing Sparkles icon
+  Sparkles
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -39,6 +45,18 @@ const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; class
     </div>
   );
 };
+
+const GuardianSeal: React.FC<{ icon: React.ReactNode; label: string; sub: string }> = ({ icon, label, sub }) => (
+  <div className="flex flex-col items-center gap-3 p-6 bg-gradient-to-b from-amber-50 to-white rounded-[2.5rem] border border-amber-100/50 shadow-sm group hover:shadow-xl hover:-translate-y-1 transition-all">
+    <div className="w-14 h-14 bg-amber-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-amber-200 group-hover:scale-110 transition-transform">
+      {icon}
+    </div>
+    <div className="text-center">
+      <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">{label}</p>
+      <p className="text-[8px] font-bold text-amber-500 uppercase mt-1">{sub}</p>
+    </div>
+  </div>
+);
 
 const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (updated: any) => void }> = ({ profile, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -204,7 +222,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isOwnProfile = profile.id === currentUser.id;
   const isGuardian = profile.role === Role.SUPER_ADMIN || profile.role === 'Gardien';
   
-  // Correction: Mapping robuste du score d'impact pour les mocks et la DB
   const impactScore = profile.impact_score !== undefined ? profile.impact_score : (profile.impactScore || 0);
 
   return (
@@ -243,11 +260,28 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             )}
           </div>
           <div className="mt-16 pt-12 border-t border-gray-50 grid grid-cols-1 md:grid-cols-3 gap-16">
-            <div className="md:col-span-2">
-              <h3 className="font-black text-[11px] uppercase tracking-widest text-gray-400 mb-6">Présentation</h3>
-              <p className="text-lg leading-relaxed font-medium text-gray-700 whitespace-pre-wrap">{profile.bio || "Pas de présentation."}</p>
+            <div className="md:col-span-2 space-y-12">
+              <div>
+                <h3 className="font-black text-[11px] uppercase tracking-widest text-gray-400 mb-6">Présentation</h3>
+                <p className="text-lg leading-relaxed font-medium text-gray-700 whitespace-pre-wrap">{profile.bio || "Pas de présentation."}</p>
+              </div>
+              
+              {isGuardian && (
+                <div>
+                  <h3 className="font-black text-[11px] uppercase tracking-widest text-gray-400 mb-8 flex items-center gap-2">
+                    <Sparkles className="w-3 h-3 text-amber-500" /> Sceaux de Souveraineté
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <GuardianSeal icon={<TreeDeciduous size={24} />} label="Fondateur" sub="Origine du Cercle" />
+                    <GuardianSeal icon={<Scale size={24} />} label="Médiateur" sub="Sagesse Suprême" />
+                    <GuardianSeal icon={<ShieldCheck size={24} />} label="Protecteur" sub="Souveraineté Data" />
+                    <GuardianSeal icon={<DraftingCompass size={24} />} label="Architecte" sub="Vision Long Terme" />
+                  </div>
+                </div>
+              )}
             </div>
-            <aside className="p-10 bg-gray-900 text-white rounded-[3rem] text-center shadow-2xl">
+            
+            <aside className="p-10 bg-gray-900 text-white rounded-[3rem] text-center shadow-2xl h-fit">
               <h3 className="font-black text-[10px] uppercase tracking-widest mb-8 text-gray-400">IMPACT</h3>
               <div className="text-6xl font-serif font-bold mb-2">{impactScore.toLocaleString()}</div>
               <p className="text-[10px] font-black uppercase text-blue-400">POINTS CITOYENS</p>
