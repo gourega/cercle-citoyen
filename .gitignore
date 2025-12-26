@@ -1,0 +1,17 @@
+
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.logs
+.cache
+.project
+.vscode
+.DS_Store
