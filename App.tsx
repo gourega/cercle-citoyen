@@ -12,13 +12,9 @@ import {
   Gavel,
   Target,
   CheckCircle,
-  AlertCircle,
-  Info,
-  Mic,
-  BarChart3,
-  Mail,
-  Phone,
-  Crown
+  Zap,
+  ShoppingBag,
+  Info
 } from 'lucide-react';
 
 // Pages
@@ -33,11 +29,10 @@ import ManifestoPage from './pages/ManifestoPage.tsx';
 import WelcomePage from './pages/WelcomePage.tsx';
 import GovernancePage from './pages/GovernancePage.tsx';
 import QuestsPage from './pages/QuestsPage.tsx';
-import TransparencyLedger from './pages/TransparencyLedger.tsx';
 import LegalPage from './pages/LegalPage.tsx';
 import ImpactStudio from './pages/ImpactStudio.tsx';
 import CirclePage from './pages/CirclePage.tsx';
-import AdminDashboard from './pages/AdminDashboard.tsx';
+import ResourceExchange from './pages/ResourceExchange.tsx';
 
 // Components
 import Logo from './Logo.tsx';
@@ -61,60 +56,76 @@ const Navbar = ({ user }: { user: User | null }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Cacher la navbar sur certaines pages
   if (!user || ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
 
   const navItems = [
-    { to: "/feed", icon: <Home size={18} />, label: "Fil" },
-    { to: "/chat", icon: <MessageSquare size={18} />, label: "Palabre" },
-    { to: "/map", icon: <MapIcon size={18} />, label: "Carte" },
-    { to: "/governance", icon: <Gavel size={18} />, label: "Édits" },
-    { to: "/quests", icon: <Target size={18} />, label: "Sentiers" },
-    { to: "/griot", icon: <Sparkles size={18} />, label: "Griot" },
+    { to: "/feed", icon: <Home size={16} />, label: "Fil" },
+    { to: "/chat", icon: <MessageSquare size={16} />, label: "Palabre" },
+    { to: "/map", icon: <MapIcon size={16} />, label: "Carte" },
+    { to: "/governance", icon: <Gavel size={16} />, label: "Édits" },
+    { to: "/quests", icon: <Target size={16} />, label: "Sentiers" },
+    { to: "/griot", icon: <Sparkles size={16} />, label: "Griot" },
+    { to: "/impact", icon: <Zap size={16} />, label: "Studio" },
+    { to: "/exchange", icon: <ShoppingBag size={16} />, label: "Marché" },
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 h-20">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
-        <Link to="/feed" className="flex items-center gap-2">
-          <Logo size={32} showText={false} />
-          <span className="font-serif font-bold uppercase tracking-tighter text-xl">Cercle</span>
+        {/* Logo cliquable ramenant au flux */}
+        <Link to="/feed" className="flex items-center group">
+          <Logo size={32} showText={true} />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-4">
+        {/* Desktop Nav */}
+        <div className="hidden lg:flex items-center gap-2">
           {navItems.map((item) => (
             <Link 
               key={item.to} 
               to={item.to} 
-              className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl transition-all ${
-                location.pathname === item.to ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900'
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                location.pathname === item.to ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
               {item.icon} {item.label}
             </Link>
           ))}
           
-          <div className="h-6 w-px bg-gray-100 mx-2"></div>
+          <div className="h-6 w-px bg-gray-100 mx-4"></div>
           
-          <Link to="/profile" className="flex items-center gap-3 pl-2 group">
-             <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-200 transition-all shadow-sm">
-               <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+          {/* Avatar cliquable pour le profil */}
+          <Link to="/profile" className="flex items-center group ml-2">
+             <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-200 transition-all">
+               <img src={user.avatar} className="w-full h-full object-cover" alt="Mon Profil" />
              </div>
           </Link>
         </div>
 
+        {/* Mobile Toggle */}
         <button className="lg:hidden p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
+      {/* Mobile Menu */}
       {isOpen && (
-        <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-4 shadow-2xl animate-in slide-in-from-top">
+        <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
           {navItems.map((item) => (
-            <Link key={item.to} to={item.to} onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 font-black text-[10px] uppercase tracking-widest text-gray-600">
+            <Link 
+              key={item.to} 
+              to={item.to} 
+              onClick={() => setIsOpen(false)} 
+              className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 font-black text-[10px] uppercase tracking-widest text-gray-600 hover:bg-blue-50 hover:text-blue-600"
+            >
               {item.icon} {item.label}
             </Link>
           ))}
-          <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white shadow-lg">
+          <Link 
+            to="/profile" 
+            onClick={() => setIsOpen(false)} 
+            className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white shadow-lg mt-4"
+          >
             <UserIcon size={20} /> <span className="text-[10px] font-black uppercase tracking-widest">Mon Profil</span>
           </Link>
         </div>
@@ -177,6 +188,12 @@ const App = () => {
               <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
               <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
               <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
+              <Route path="/map" element={user ? <ActionMap /> : <Navigate to="/" />} />
+              <Route path="/governance" element={user ? <GovernancePage user={user} /> : <Navigate to="/" />} />
+              <Route path="/quests" element={user ? <QuestsPage /> : <Navigate to="/" />} />
+              <Route path="/griot" element={user ? <GriotStudio /> : <Navigate to="/" />} />
+              <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
+              <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
               <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
