@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Download, Loader2, Image as ImageIcon, ArrowRight, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, ExternalLink, QrCode, Copy } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Sparkles, Download, Loader2, Image as ImageIcon, ArrowRight, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, ExternalLink, QrCode, Copy, ChevronLeft } from 'lucide-react';
 import { generateImpactVisual } from '../lib/gemini';
 import { supabase } from '../lib/supabase';
 import { User } from '../types';
@@ -120,6 +121,9 @@ const ImpactStudio: React.FC<{ user: User }> = ({ user }) => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
+        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
+      </Link>
       {showContrib && <ContributionModal onClose={() => setShowContrib(false)} user={user} />}
       <div className="text-center mb-16">
         <h1 className="text-5xl font-serif font-bold text-gray-900 mb-4">Studio d'Impact</h1>

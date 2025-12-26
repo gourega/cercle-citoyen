@@ -308,32 +308,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
            </div>
         </section>
       </main>
-
-      {/* Footer Addition */}
-      <footer className="w-full py-16 border-t border-gray-100 bg-white relative z-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex flex-col items-center md:items-start gap-4">
-             <Logo size={32} showText />
-             <p className="text-gray-400 text-xs font-medium max-w-xs text-center md:text-left">
-               Bâtir la Côte d'Ivoire par le dialogue mature et l'action souveraine.
-             </p>
-          </div>
-          
-          <div className="flex flex-wrap justify-center gap-8 text-[10px] font-black uppercase tracking-widest text-gray-400">
-            <Link to="/manifesto" className="hover:text-blue-600 transition-colors">Le Manifeste</Link>
-            <Link to="/legal" className="hover:text-blue-600 transition-colors">Mentions Légales</Link>
-            <Link to="/auth" className="hover:text-blue-600 transition-colors">Rejoindre</Link>
-            <a href="mailto:cerclecitoyenci@gmail.com" className="hover:text-blue-600 transition-colors">Contact</a>
-          </div>
-
-          <div className="flex items-center gap-2 text-gray-300 italic font-serif text-sm">
-            <Heart size={14} className="text-blue-600" /> Penser. Relier. Agir.
-          </div>
-        </div>
-        <div className="text-center mt-12 text-[9px] font-black uppercase tracking-[0.3em] text-gray-200">
-          © 2024 CERCLE CITOYEN • SOUVERAINETÉ NUMÉRIQUE
-        </div>
-      </footer>
     </div>
   );
 };

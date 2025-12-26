@@ -36,6 +36,7 @@ import ResourceExchange from './pages/ResourceExchange.tsx';
 
 // Components
 import Logo from './Logo.tsx';
+import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import { User } from './types.ts';
 import { ADMIN_ID } from './lib/mocks.ts';
@@ -198,6 +199,7 @@ const App = () => {
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
+            <Footer />
           </main>
           <GuardianAssistant />
         </div>

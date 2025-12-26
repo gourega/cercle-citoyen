@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Video, Loader2, Download, Play, HelpCircle, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, Sparkles, Send, Smartphone as PhoneIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Video, Loader2, Download, Play, HelpCircle, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, Sparkles, Send, Smartphone as PhoneIcon, ChevronLeft } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { useToast } from '../App';
 
@@ -146,6 +147,9 @@ const GriotStudio: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
+        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
+      </Link>
       {showContrib && <ContributionModal onClose={() => setShowContrib(false)} />}
 
       <div className="text-center mb-16">

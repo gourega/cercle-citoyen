@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { Handshake, Plus, Search, Loader2, Package, Sparkles, Heart, ArrowRight, X, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Handshake, Plus, Search, Loader2, Package, Sparkles, Heart, ArrowRight, X, CheckCircle2, ShoppingBag, ChevronLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { User, ResourceGift } from '../types';
 import { useToast } from '../App';
@@ -81,6 +83,10 @@ const ResourceExchange: React.FC<{ user: User }> = ({ user }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
+        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
+      </Link>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16 text-center md:text-left">
         <div>
           <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Le Marché de Solidarité</h1>

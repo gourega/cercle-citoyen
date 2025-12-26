@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lightbulb, Sparkles, Handshake, Loader2, Plus, Zap, ShieldCheck, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Lightbulb, Sparkles, Handshake, Loader2, Plus, Zap, ShieldCheck, X, ChevronLeft } from 'lucide-react';
 import { Idea, CircleType, User } from '../types';
 import { supabase } from '../lib/supabase';
 import { analyzeIdeaImpact } from '../lib/gemini';
@@ -66,7 +67,11 @@ const IdeaBankPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
+    <div className="max-w-7xl mx-auto px-4 py-8 lg:py-20 animate-in fade-in duration-700">
+      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
+        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
+      </Link>
+
       <div className="flex justify-between items-center mb-16">
         <h1 className="text-5xl font-serif font-bold text-gray-900">Banque des <span className="text-yellow-500 italic">Idées</span></h1>
         <button 

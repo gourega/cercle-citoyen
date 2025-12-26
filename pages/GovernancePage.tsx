@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Gavel, 
   ShieldCheck, 
@@ -13,7 +14,8 @@ import {
   CheckCircle2,
   X,
   Users,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Edict, User, Vote } from '../types';
@@ -165,7 +167,11 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 lg:py-24 animate-in fade-in duration-1000">
+    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-1000">
+      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
+        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
+      </Link>
+      
       {isModalOpen && <EdictModal onClose={() => setIsModalOpen(false)} user={user} onSuccess={fetchEdicts} />}
 
       <div className="text-center mb-24">
