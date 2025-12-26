@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+// Configuration de l'environnement
 const getEnv = (key: string) => {
   try {
     return (window as any).process?.env?.[key] || (import.meta as any).env?.[key] || (window as any)[key];
@@ -18,7 +19,10 @@ export const isRealSupabase =
   typeof supabaseUrl === 'string' &&
   supabaseUrl.includes('.supabase.co');
 
-// Si Supabase est configuré, on utilise le client réel avec Realtime activé
+/**
+ * CLIENT SUPABASE SOUVERAIN
+ * Utilisé pour la synchronisation en temps réel de la Cité.
+ */
 export const supabase = isRealSupabase
   ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
       realtime: {
@@ -29,16 +33,12 @@ export const supabase = isRealSupabase
     })
   : null;
 
-// Mécanisme de secours (Fallback) uniquement si les clés sont manquantes
-if (!supabase) {
-  console.warn("⚠️ ALERTE ARCHITECTURE : Clés Supabase manquantes. L'architecture est en mode dégradé (LocalStorage). Pour une robustesse totale, configurez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.");
-}
-
 /**
- * Fonctions utilitaires pour la Robustesse
+ * MOTEUR DE PERSISTANCE (SÉCURITÉ & ROBUSTESSE)
+ * Gère le basculement entre la base réelle et la mémoire locale si nécessaire.
  */
 export const db = {
-  // Récupérer le profil complet d'un citoyen
+  // Profils Citoyens
   async getProfile(id: string) {
     if (!supabase) return JSON.parse(localStorage.getItem('cercle_user') || 'null');
     const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
@@ -46,16 +46,35 @@ export const db = {
     return data;
   },
 
-  // Publier dans la mémoire du Cercle
+  // Publications du Fil
   async createPost(post: { author_id: string, content: string, circle_type: string }) {
     if (!supabase) {
       const posts = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
-      const newPost = { ...post, id: crypto.randomUUID(), created_at: new Date().toISOString(), reactions: { useful: 0, relevant: 0, inspiring: 0 } };
+      const newPost = { 
+        ...post, 
+        id: crypto.randomUUID(), 
+        created_at: new Date().toISOString(), 
+        reactions: { useful: 0, relevant: 0, inspiring: 0 } 
+      };
       localStorage.setItem('cercle_db_posts', JSON.stringify([newPost, ...posts]));
       return newPost;
     }
     const { data, error } = await supabase.from('posts').insert([post]).select().single();
     if (error) throw error;
     return data;
+  },
+
+  // Système de Vote (Édits)
+  async voteForEdict(userId: string, edictId: string) {
+    if (!supabase) return { success: true };
+    const { error: voteError } = await supabase.from('votes').insert([{ user_id: userId, edict_id: edictId }]);
+    if (voteError) throw voteError;
+    const { error: rpcError } = await supabase.rpc('increment_edict_votes', { row_id: edictId });
+    if (rpcError) throw rpcError;
+    return { success: true };
   }
 };
+
+if (!supabase) {
+  console.warn("⚠️ ARCHITECTURE EN MODE DÉGRADÉ : Connectez Supabase pour activer le temps réel.");
+}
