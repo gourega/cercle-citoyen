@@ -47,17 +47,17 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
+    // On utilise un UUID compatible avec PostgreSQL
     const tempId = crypto.randomUUID();
     const avatarUrl = `https://picsum.photos/seed/${formData.pseudonym || tempId}/300/300`;
 
+    // Structure des données correspondant exactement aux colonnes de votre table Supabase
     const profileData = {
       id: tempId,
       name: formData.name,
       pseudonym: formData.pseudonym,
-      email: formData.email,
-      role: Role.MEMBER,
-      category: formData.category,
       bio: "Nouveau citoyen du Cercle.",
+      role: Role.MEMBER,
       avatar_url: avatarUrl,
       impact_score: 0
     };
@@ -68,22 +68,25 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
           .from('profiles')
           .insert([profileData]);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error("Supabase Insert Error:", insertError);
+          throw new Error(insertError.message);
+        }
         
-        addToast("Inscription réussie !", "success");
+        addToast("Inscription enregistrée en base !", "success");
       } else {
-        console.warn("Mode Démo : Inscription simulée localement.");
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.warn("Mode Démo : Supabase non détecté, simulation locale.");
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       const newUser: User = {
         id: profileData.id,
         name: profileData.name,
         pseudonym: profileData.pseudonym,
-        email: profileData.email,
+        email: formData.email,
         bio: profileData.bio,
         role: profileData.role,
-        category: profileData.category as UserCategory,
+        category: formData.category as UserCategory,
         interests: [],
         avatar: avatarUrl,
         impactScore: 0
@@ -92,9 +95,9 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
       onLogin(newUser);
       navigate('/welcome');
     } catch (err: any) {
-      console.error("Erreur d'inscription:", err);
-      setError(err.message || "Une erreur est survenue.");
-      addToast("Échec de l'inscription", "error");
+      console.error("Échec de l'inscription:", err);
+      setError(err.message || "Une erreur est survenue lors de l'enregistrement.");
+      addToast("Erreur d'enregistrement base", "error");
     } finally {
       setLoading(false);
     }
