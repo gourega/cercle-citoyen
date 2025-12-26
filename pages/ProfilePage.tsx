@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Role } from '../types';
@@ -202,6 +203,9 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   const isOwnProfile = profile.id === currentUser.id;
   const isGuardian = profile.role === Role.SUPER_ADMIN || profile.role === 'Gardien';
+  
+  // Correction: Mapping du score d'impact pour supporter les deux formats
+  const impactScore = profile.impact_score !== undefined ? profile.impact_score : (profile.impactScore || 0);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 lg:py-16">
@@ -245,7 +249,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             </div>
             <aside className="p-10 bg-gray-900 text-white rounded-[3rem] text-center shadow-2xl">
               <h3 className="font-black text-[10px] uppercase tracking-widest mb-8 text-gray-400">IMPACT</h3>
-              <div className="text-6xl font-serif font-bold mb-2">{profile.impact_score || 0}</div>
+              <div className="text-6xl font-serif font-bold mb-2">{impactScore}</div>
               <p className="text-[10px] font-black uppercase text-blue-400">Points Citoyens</p>
             </aside>
           </div>

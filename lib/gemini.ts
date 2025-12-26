@@ -1,15 +1,16 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 const getAI = () => {
   const key = process.env.API_KEY;
   if (!key) {
-    throw new Error("API_KEY manquante");
+    throw new Error("API_KEY manquante dans l'environnement");
   }
   return new GoogleGenAI({ apiKey: key });
 };
 
 /**
- * AUDIO UTILS
+ * AUDIO UTILS - Pure TypeScript
  */
 export function decodeBase64Audio(base64: string): Uint8Array {
   const binaryString = atob(base64);
@@ -22,23 +23,24 @@ export function decodeBase64Audio(base64: string): Uint8Array {
 
 export async function decodeAudioBuffer(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
-  const buffer = ctx.createBuffer(1, dataInt16.length, 24000);
+  const frameCount = dataInt16.length / 1; // Assuming numChannels is 1
+  const buffer = ctx.createBuffer(1, frameCount, 24000);
   const channelData = buffer.getChannelData(0);
-  for (let i = 0; i < dataInt16.length; i++) {
+  for (let i = 0; i < frameCount; i++) {
     channelData[i] = dataInt16[i] / 32768.0;
   }
   return buffer;
 }
 
 /**
- * GRIOT (TTS)
+ * GRIOT (TTS) - Transformation de texte en parole de sage
  */
 export async function getGriotReading(content: string) {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Lis ceci avec une voix de sage ivoirien, posée et inspirante : ${content}` }] }],
+      contents: [{ parts: [{ text: `Lis ceci avec une voix de sage africain, posée et inspirante : ${content}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -54,7 +56,31 @@ export async function getGriotReading(content: string) {
 }
 
 /**
- * SUMMARIZER
+ * WISDOM ECHO - TTS pour les synthèses de cercle
+ */
+// Fix: Added generateWisdomEcho for CirclePage to support audio summaries
+export async function generateWisdomEcho(circleType: string, summary: string) {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: `En tant qu'esprit du cercle ${circleType}, récite cette synthèse avec sagesse : ${summary}` }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+        },
+      },
+    });
+    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  } catch (e) {
+    console.error("Wisdom Echo Error:", e);
+    return null;
+  }
+}
+
+/**
+ * SUMMARIZER - Synthèse des discussions de cercle
  */
 export async function summarizeCircleDiscussions(circleType: string, posts: string[]) {
   try {
@@ -70,28 +96,222 @@ export async function summarizeCircleDiscussions(circleType: string, posts: stri
   }
 }
 
-export async function generateWisdomEcho(circleType: string, summary: string) {
+/**
+ * ANCRAGE TERRITORIAL - Recherche avec Google Maps Grounding
+ */
+// Fix: Updated model to gemini-2.5-flash for maps grounding tasks
+export async function findInitiatives(query: string, lat?: number, lng?: number) {
   try {
     const ai = getAI();
+    const config: any = {
+      tools: [{ googleMaps: {} }],
+    };
+    if (lat && lng) {
+      config.toolConfig = {
+        retrievalConfig: {
+          latLng: { latitude: lat, longitude: lng }
+        }
+      };
+    }
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Donne un écho de sagesse solennel sur ce résumé du cercle ${circleType} : ${summary}` }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
-        },
-      },
+      // Fix: Use gemini-2.5-flash for maps grounding as per task requirements
+      model: "gemini-2.5-flash",
+      contents: `Localise des initiatives, organisations ou lieux physiques en Côte d'Ivoire liés à cette recherche citoyenne : "${query}".`,
+      config,
     });
-    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+    const places = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    return {
+      text: response.text || "Voici ce que j'ai trouvé sur le terrain.",
+      places: places
+    };
   } catch (e) {
-    console.error("Wisdom Echo Error:", e);
-    return null;
+    console.error("Maps Grounding Error:", e);
+    return { text: "Erreur lors de la recherche territoriale.", places: [] };
   }
 }
 
 /**
- * VISUAL STUDIO
+ * BOUSSOLE DES LOIS - Simplification de textes juridiques
+ */
+// Fix: Added simplifyLegalText for LegislativeCompass with structured JSON output
+export async function simplifyLegalText(text: string) {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Décrypte et simplifie ce texte juridique ou administratif pour un citoyen ivoirien :\n\n${text}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING, description: "Résumé simple de l'esprit du texte." },
+            impacts: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "Points concrets changeant la vie du citoyen."
+            },
+            alerts: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "Vigilances ou obligations à noter."
+            }
+          },
+          propertyOrdering: ["summary", "impacts", "alerts"]
+        }
+      }
+    });
+    return JSON.parse(response.text || '{"summary": "Erreur d\'analyse", "impacts": [], "alerts": []}');
+  } catch (e) {
+    console.error("Legal Analysis Error:", e);
+    return { summary: "Le Gardien n'a pas pu décrypter ce texte.", impacts: [], alerts: [] };
+  }
+}
+
+/**
+ * RÉPUTATION COMMUNAUTAIRE - Analyse de sentiment et traits
+ */
+// Fix: Added analyzeCommunityReputation for BusinessPortal with structured JSON output
+export async function analyzeCommunityReputation(userName: string, vouches: string[]) {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analyse la réputation citoyenne de ${userName} basée sur ces témoignages :\n\n${vouches.join('\n')}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            score: { type: Type.NUMBER, description: "Score de confiance global (0-100)." },
+            analysis: { type: Type.STRING, description: "Synthèse de la réputation." },
+            keyTraits: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "Qualités citoyennes identifiées." 
+            }
+          },
+          propertyOrdering: ["score", "analysis", "keyTraits"]
+        }
+      }
+    });
+    return JSON.parse(response.text || '{"score": 0, "analysis": "Indisponible", "keyTraits": []}');
+  } catch (e) {
+    console.error("Reputation Error:", e);
+    return { score: 0, analysis: "Erreur lors de l'audit de réputation.", keyTraits: [] };
+  }
+}
+
+/**
+ * MÉDIATION DE PALABRE - Intervient dans le chat
+ */
+// Fix: Added mediateChat for ChatPage to provide AI mediation in discussions
+export async function mediateChat(messages: {sender: string, text: string}[]) {
+  try {
+    const ai = getAI();
+    const chatStr = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Agis en médiateur sage pour ce dialogue citoyen. Apporte une perspective de cohésion ou une question de réflexion :\n\n${chatStr}`,
+    });
+    return response.text;
+  } catch (e) {
+    console.error("Mediation Error:", e);
+    return "La sagesse du Gardien veille sur vous.";
+  }
+}
+
+/**
+ * CONSENSUS - Résumé de discussion
+ */
+// Fix: Added getConsensusSummary for ChatPage to summarize discussion points
+export async function getConsensusSummary(messages: {sender: string, text: string}[]) {
+  try {
+    const ai = getAI();
+    const chatStr = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Identifie le consensus ou les points d'accord majeurs de cette palabre :\n\n${chatStr}`,
+    });
+    return response.text;
+  } catch (e) {
+    console.error("Consensus Error:", e);
+    return "L'unité se cherche encore.";
+  }
+}
+
+/**
+ * VÉRIFICATION DE QUÊTE - Analyse d'image multi-modale
+ */
+// Fix: Added verifyQuestAction for QuestsPage using multimodal analysis with JSON output
+export async function verifyQuestAction(base64Image: string, questDescription: string) {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: {
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: base64Image } },
+          { text: `Analyse si cette image prouve la réalisation de la mission citoyenne suivante : "${questDescription}". Sois rigoureux.` }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isValid: { type: Type.BOOLEAN, description: "Vrai si l'action est prouvée." },
+            explanation: { type: Type.STRING, description: "Commentaire court du Gardien." }
+          },
+          propertyOrdering: ["isValid", "explanation"]
+        }
+      }
+    });
+    return JSON.parse(response.text || '{"isValid": false, "explanation": "Analyse impossible."}');
+  } catch (e) {
+    console.error("Quest Verification Error:", e);
+    return { isValid: false, explanation: "Le Gardien n'a pas pu valider la preuve visuelle." };
+  }
+}
+
+/**
+ * ANALYSE D'IMPACT D'IDÉE - Analyse de vision
+ */
+// Fix: Added analyzeIdeaImpact for IdeaBankPage with structured response schema
+export async function analyzeIdeaImpact(title: string, description: string) {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Évalue le potentiel de cette idée citoyenne :\nTitre : ${title}\nDescription : ${description}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            impactScore: { type: Type.NUMBER, description: "Score de 0 à 100." },
+            neededExpertises: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "Expertises à mobiliser."
+            },
+            advice: { type: Type.STRING, description: "Un conseil pour passer à l'action." }
+          },
+          propertyOrdering: ["impactScore", "neededExpertises", "advice"]
+        }
+      }
+    });
+    return JSON.parse(response.text || '{"impactScore": 0, "neededExpertises": [], "advice": "Erreur d\'analyse."}');
+  } catch (e) {
+    console.error("Idea Analysis Error:", e);
+    return { impactScore: 0, neededExpertises: [], advice: "Une erreur est survenue lors de l'analyse." };
+  }
+}
+
+/**
+ * VISUAL STUDIO - Génération d'images d'impact
  */
 export async function generateImpactVisual(prompt: string) {
   const ai = getAI();
@@ -101,127 +321,7 @@ export async function generateImpactVisual(prompt: string) {
     config: { imageConfig: { aspectRatio: "16:9" } },
   });
   
-  const part = response.candidates[0].content.parts.find(p => p.inlineData);
+  const part = response.candidates?.[0].content.parts.find(p => p.inlineData);
   if (!part) throw new Error("Image non générée");
   return `data:image/png;base64,${part.inlineData.data}`;
-}
-
-/**
- * ANALYTICS & TOOLS
- */
-export async function findInitiatives(query: string, lat?: number, lng?: number) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: `Trouve les initiatives citoyennes réelles pour : "${query}" en Côte d'Ivoire.`,
-    config: {
-      tools: [{ googleMaps: {} }],
-      toolConfig: { retrievalConfig: { latLng: { latitude: lat || 5.34, longitude: lng || -4.03 } } }
-    },
-  });
-  return { text: response.text, places: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] };
-}
-
-export async function mediateChat(messages: { sender: string; text: string }[]) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Interviens avec sagesse dans ce dialogue :\n\n${messages.map(m => `${m.sender}: ${m.text}`).join('\n')}`,
-    config: { thinkingConfig: { thinkingBudget: 1000 } }
-  });
-  return response.text;
-}
-
-export async function getConsensusSummary(messages: { sender: string; text: string }[]) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Résume le consensus de cette discussion :\n\n${messages.map(m => `${m.sender}: ${m.text}`).join('\n')}`,
-  });
-  return response.text;
-}
-
-export async function verifyQuestAction(base64Image: string, questDescription: string) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: {
-      parts: [
-        { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-        { text: `Vérifie si cette image valide la quête : "${questDescription}". Réponds en JSON avec isValid (bool) et explanation (string).` }
-      ]
-    },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: { isValid: { type: Type.BOOLEAN }, explanation: { type: Type.STRING } },
-        required: ["isValid", "explanation"]
-      }
-    }
-  });
-  return JSON.parse(response.text || '{}');
-}
-
-export async function simplifyLegalText(text: string) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Explique simplement ce texte juridique :\n\n${text}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          impacts: { type: Type.ARRAY, items: { type: Type.STRING } },
-          alerts: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["summary", "impacts", "alerts"]
-      }
-    }
-  });
-  return JSON.parse(response.text || '{}');
-}
-
-export async function analyzeIdeaImpact(title: string, description: string) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Analyse l'impact de l'idée : "${title} - ${description}"`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          impactScore: { type: Type.NUMBER },
-          neededExpertises: { type: Type.ARRAY, items: { type: Type.STRING } },
-          strategicAdvice: { type: Type.STRING }
-        },
-        required: ["impactScore", "neededExpertises", "strategicAdvice"]
-      }
-    }
-  });
-  return JSON.parse(response.text || '{}');
-}
-
-export async function analyzeCommunityReputation(userName: string, vouches: string[]) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Analyse la réputation de ${userName} basée sur ces témoignages :\n\n${vouches.join('\n')}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.NUMBER },
-          summary: { type: Type.STRING },
-          strengths: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["score", "summary", "strengths"]
-      }
-    }
-  });
-  return JSON.parse(response.text || '{}');
 }

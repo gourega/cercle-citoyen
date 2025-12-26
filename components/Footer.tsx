@@ -1,12 +1,12 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, Crown } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import Logo from '../Logo';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="w-full pt-20 pb-16 bg-[#fcfcfc] relative z-10">
+    <footer className="w-full pt-20 pb-16 bg-[#fcfcfc] relative z-10 border-t border-gray-50">
       <div className="max-w-4xl mx-auto px-6 flex flex-col items-center text-center">
         
         {/* Logo Section */}
@@ -55,13 +55,6 @@ const Footer: React.FC = () => {
             © 2025 CERCLE CITOYEN • SOUVERAINETÉ NUMÉRIQUE
           </p>
         </div>
-      </div>
-
-      {/* Floating Action Button (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 z-[200]">
-        <button className="w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] shadow-2xl shadow-blue-200 flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-4 border-white animate-in slide-in-from-bottom-10 duration-1000">
-          <Crown size={28} />
-        </button>
       </div>
     </footer>
   );
