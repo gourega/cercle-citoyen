@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, LayoutGrid, Sparkles, ArrowRight, Heart, Quote, ShieldCheck, CheckCircle, Award } from 'lucide-react';
+// Fix: Alias User as UserIcon from lucide-react to match usage in the component
+import { User as UserIcon, LayoutGrid, Sparkles, ArrowRight, Heart, Quote, ShieldCheck, CheckCircle, Award } from 'lucide-react';
 import Logo from '../Logo';
 
 const WelcomePage: React.FC = () => {
@@ -109,10 +110,10 @@ const WelcomePage: React.FC = () => {
             className="group p-8 bg-white border border-gray-100 rounded-[2.5rem] hover:border-blue-200 transition-all flex flex-col items-center text-center relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform text-blue-600">
-              <User className="w-12 h-12" />
+              <UserIcon className="w-12 h-12" />
             </div>
             <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-              <User className="w-6 h-6 text-blue-600 group-hover:text-white" />
+              <UserIcon className="w-6 h-6 text-blue-600 group-hover:text-white" />
             </div>
             <h3 className="font-bold text-lg text-gray-900 mb-2">Mon Profil</h3>
             <p className="text-xs text-gray-500 max-w-[180px]">Complétez votre identité pour mieux rayonner.</p>
@@ -128,9 +129,10 @@ const WelcomePage: React.FC = () => {
             <Heart className="w-4 h-4 text-blue-600" />
             <span>"Penser. Relier. Agir."</span>
           </div>
-          <Link to="/" className="text-[10px] font-black uppercase tracking-[0.2em] not-italic text-gray-300 hover:text-blue-600 transition-colors">
-            © 2024 CERCLE CITOYEN
-          </Link>
+          <div className="flex gap-6 text-[10px] font-black uppercase tracking-[0.2em] not-italic text-gray-300">
+            <Link to="/legal" className="hover:text-blue-600 transition-colors">Mentions Légales</Link>
+            <span>© 2024 CERCLE CITOYEN</span>
+          </div>
         </div>
       </div>
     </div>
