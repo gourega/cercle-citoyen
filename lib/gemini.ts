@@ -1,9 +1,12 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
+// L'instance doit être créée avec l'API KEY du process
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Fix for missing decodeBase64Audio
+/**
+ * Décodage Audio PCM
+ */
 export function decodeBase64Audio(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -13,7 +16,6 @@ export function decodeBase64Audio(base64: string): Uint8Array {
   return bytes;
 }
 
-// Fix for missing decodeAudioBuffer
 export async function decodeAudioBuffer(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length;
@@ -25,16 +27,19 @@ export async function decodeAudioBuffer(data: Uint8Array, ctx: AudioContext): Pr
   return buffer;
 }
 
+/**
+ * GRIOT : Synthèse vocale inspirante
+ */
 export async function getGriotReading(content: string) {
   const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: `Lis ceci avec une voix posée et inspirante : ${content}` }] }],
+    contents: [{ parts: [{ text: `Lis ceci avec une voix posée, masculine et inspirante de vieux sage ivoirien : ${content}` }] }],
     config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Zephyr' },
+          prebuiltVoiceConfig: { voiceName: 'Zephyr' }, // Zephyr est parfait pour le Gardien
         },
       },
     },
@@ -42,24 +47,29 @@ export async function getGriotReading(content: string) {
   return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 }
 
-// Fix for missing summarizeCircleDiscussions
+// Fix: Add summarizeCircleDiscussions to satisfy CirclePage.tsx
+/**
+ * CERCLE : Synthèse des discussions
+ */
 export async function summarizeCircleDiscussions(circleType: string, posts: string[]) {
   const ai = getAI();
-  const context = posts.join('\n---\n');
+  const content = posts.join('\n');
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `En tant qu'IA du Cercle, résume les discussions récentes du cercle "${circleType}". Souligne les points clés et les initiatives suggérées :\n\n${context}`,
+    contents: `Synthétise les discussions suivantes du cercle "${circleType}" pour en extraire les points clés et les initiatives émergentes. Sois bref et inspirant :\n\n${content}`,
   });
   return response.text;
 }
 
-// Fix for missing generateWisdomEcho
+// Fix: Add generateWisdomEcho to satisfy CirclePage.tsx
+/**
+ * CERCLE : Écho de Sagesse (TTS)
+ */
 export async function generateWisdomEcho(circleType: string, summary: string) {
   const ai = getAI();
-  const prompt = `Voici une synthèse des discussions du cercle ${circleType}. Récite-la avec une sagesse ancestrale et encourageante : ${summary}`;
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts: [{ text: `En tant qu'Esprit du Gardien, donne un écho de sagesse à cette synthèse du cercle ${circleType} : ${summary}` }] }],
     config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
@@ -72,57 +82,19 @@ export async function generateWisdomEcho(circleType: string, summary: string) {
   return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 }
 
-export async function analyzeDiscussion(messages: { sender: string; text: string }[]) {
-  const ai = getAI();
-  const context = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `En tant qu'Esprit du Gardien, synthétise cette palabre citoyenne et propose une voie de consensus : \n${context}`,
-    config: {
-      thinkingConfig: { thinkingBudget: 1000 }
-    }
-  });
-  return response.text;
-}
-
-// Fix for missing generateImpactVisual
-export async function generateImpactVisual(prompt: string) {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [
-        {
-          text: `A professional, inspiring, and cinematic high-quality visualization of this citizen project impact: ${prompt}`,
-        },
-      ],
-    },
-    config: {
-      imageConfig: {
-        aspectRatio: "16:9",
-      },
-    },
-  });
-  
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
-  }
-  return null;
-}
-
+/**
+ * STUDIO : Vidéo de Mobilisation
+ */
 export async function generateMobilizationVideo(prompt: string) {
-  // Check for API key and open selection dialog if not present
-  const hasKey = await window.aistudio.hasSelectedApiKey();
-  if (!hasKey) await window.aistudio.openSelectKey();
+  // Vérification de la clé via l'interface du studio (nécessaire pour Veo)
+  if (!(await window.aistudio.hasSelectedApiKey())) {
+    await window.aistudio.openSelectKey();
+  }
 
-  // Create a new instance right before the call to ensure the latest API key is used
   const ai = getAI();
-
   let operation = await ai.models.generateVideos({
     model: 'veo-3.1-fast-generate-preview',
-    prompt: `A cinematic mobilization video about ${prompt}, high quality, realistic, inspiring lighting.`,
+    prompt: `Cinematic mobilization video for a citizen project in Ivory Coast: ${prompt}. High quality, realistic, inspiring lighting, 720p.`,
     config: {
       numberOfVideos: 1,
       resolution: '720p',
@@ -139,42 +111,135 @@ export async function generateMobilizationVideo(prompt: string) {
   return `${downloadLink}&key=${process.env.API_KEY}`;
 }
 
+// Fix: Add generateImpactVisual to satisfy ImpactStudio.tsx
+/**
+ * STUDIO : Génération visuelle d'impact
+ */
+export async function generateImpactVisual(prompt: string) {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        {
+          text: `A cinematic, high-quality image showing social impact and citizen engagement in Ivory Coast: ${prompt}`,
+        },
+      ],
+    },
+    config: {
+      imageConfig: {
+        aspectRatio: "16:9"
+      },
+    },
+  });
+  
+  for (const part of response.candidates[0].content.parts) {
+    if (part.inlineData) {
+      const base64EncodeString: string = part.inlineData.data;
+      return `data:image/png;base64,${base64EncodeString}`;
+    }
+  }
+  throw new Error("No image generated");
+}
+
+/**
+ * CARTOGRAPHIE : Grounding Google Maps
+ */
 export async function findInitiatives(query: string, lat?: number, lng?: number) {
   const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: `Quelles sont les initiatives citoyennes ou ONGs locales liées à "${query}" ?`,
+    contents: `Identifie les initiatives citoyennes, ONGs ou infrastructures locales liées à : "${query}" en Côte d'Ivoire.`,
     config: {
       tools: [{ googleMaps: {} }],
       toolConfig: {
         retrievalConfig: {
           latLng: {
-            latitude: lat || 5.3484,
+            latitude: lat || 5.3484, // Abidjan par défaut
             longitude: lng || -4.0305
           }
         }
       }
     },
   });
+
   return {
     text: response.text,
     places: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
   };
 }
 
-// Fix for missing simplifyLegalText
+// Fix: Add analyzeCommunityReputation to satisfy BusinessPortal.tsx
+/**
+ * RÉPUTATION : Analyse des témoignages communautaires
+ */
+export async function analyzeCommunityReputation(userName: string, vouches: string[]) {
+  const ai = getAI();
+  const content = vouches.join('\n');
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Analyse la réputation communautaire de "${userName}" basée sur ces témoignages :\n\n${content}`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          score: { type: Type.NUMBER },
+          summary: { type: Type.STRING },
+          strengths: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["score", "summary", "strengths"]
+      }
+    }
+  });
+  return JSON.parse(response.text || '{}');
+}
+
+/**
+ * MÉDIATION : Analyse des Palabres
+ */
+export async function mediateChat(messages: { sender: string; text: string }[]) {
+  const ai = getAI();
+  const conversation = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `En tant que "L'Esprit du Gardien", intervient avec sagesse dans cette conversation citoyenne pour maintenir le respect, la paix et l'objectif de progrès commun :\n\n${conversation}`,
+    config: {
+      thinkingConfig: { thinkingBudget: 1000 }
+    }
+  });
+  return response.text;
+}
+
+// Fix: Add getConsensusSummary to satisfy ChatPage.tsx
+/**
+ * CONSENSUS : Résumé des échanges
+ */
+export async function getConsensusSummary(messages: { sender: string; text: string }[]) {
+  const ai = getAI();
+  const conversation = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Détermine s'il y a un consensus ou une direction commune dans cette discussion et résume-le en une phrase inspirante :\n\n${conversation}`,
+  });
+  return response.text;
+}
+
+/**
+ * ANALYSE : Simplification Légale (Boussole)
+ */
 export async function simplifyLegalText(text: string) {
   const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Analyse et simplifie ce texte législatif ou document complexe :\n\n${text}`,
+    contents: `Analyse et vulgarise ce texte législatif ivoirien pour un citoyen ordinaire :\n\n${text}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           summary: { type: Type.STRING, description: "Résumé simple en 2 phrases" },
-          impacts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Liste d'impacts concrets pour le citoyen" },
+          impacts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 impacts concrets" },
           alerts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Points de vigilance" }
         },
         required: ["summary", "impacts", "alerts"]
@@ -184,60 +249,25 @@ export async function simplifyLegalText(text: string) {
   return JSON.parse(response.text || '{}');
 }
 
-// Fix for missing analyzeCommunityReputation
-export async function analyzeCommunityReputation(name: string, vouches: string[]) {
-  const ai = getAI();
-  const context = vouches.join('\n');
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Analyse la réputation communautaire de "${name}" basée sur ces témoignages :\n\n${context}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.NUMBER },
-          summary: { type: Type.STRING },
-          highlights: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["score", "summary", "highlights"]
-      }
-    }
-  });
-  return JSON.parse(response.text || '{}');
-}
-
-// Fix for missing mediateChat
-export async function mediateChat(context: { sender: string; text: string }[]) {
-  const ai = getAI();
-  const conversation = context.map(m => `${m.sender}: ${m.text}`).join('\n');
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `En tant que médiateur du Cercle, intervient avec sagesse dans cette conversation pour maintenir le respect et l'objectif commun :\n\n${conversation}`,
-  });
-  return response.text;
-}
-
-// Fix for missing getConsensusSummary
-export async function getConsensusSummary(context: { sender: string; text: string }[]) {
-  const ai = getAI();
-  const conversation = context.map(m => `${m.sender}: ${m.text}`).join('\n');
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Synthétise les points d'accord de cette palabre et propose une conclusion consensuelle :\n\n${conversation}`,
-  });
-  return response.text;
-}
-
-// Fix for missing verifyQuestAction
+// Fix: Add verifyQuestAction to satisfy QuestsPage.tsx
+/**
+ * QUÊTES : Vérification d'action par image
+ */
 export async function verifyQuestAction(base64Image: string, questDescription: string) {
   const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: {
       parts: [
-        { inlineData: { mimeType: "image/jpeg", data: base64Image } },
-        { text: `Analyse si cette image prouve la réalisation de la quête suivante : "${questDescription}".` }
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: base64Image,
+          },
+        },
+        {
+          text: `Vérifie si cette image prouve la réalisation de la quête citoyenne suivante : "${questDescription}". Réponds en JSON avec un booléen 'isValid' et une explication courte et encourageante.`,
+        },
       ]
     },
     config: {
@@ -255,12 +285,15 @@ export async function verifyQuestAction(base64Image: string, questDescription: s
   return JSON.parse(response.text || '{}');
 }
 
-// Fix for missing analyzeIdeaImpact
+// Fix: Add analyzeIdeaImpact to satisfy IdeaBankPage.tsx
+/**
+ * IDÉES : Analyse d'impact d'une idée
+ */
 export async function analyzeIdeaImpact(title: string, description: string) {
   const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Analyse l'impact potentiel de cette idée citoyenne :\n\nTitre: ${title}\nDescription: ${description}`,
+    contents: `Analyse l'impact potentiel de cette idée citoyenne : "${title} - ${description}". Identifie les expertises nécessaires pour la réaliser.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
