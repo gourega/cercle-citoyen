@@ -1,313 +1,260 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { User, Role } from '../types';
 import { 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  AlertCircle, 
-  ShieldCheck, 
-  BookOpen, 
-  Target, 
-  Zap, 
-  Globe, 
-  ArrowRight, 
+  LogOut, 
   Loader2, 
-  ChevronRight,
-  CheckCircle2
+  X, 
+  Save,
+  PenLine,
+  Crown,
+  AlertTriangle,
+  RefreshCcw,
+  User as UserIcon,
+  AtSign,
+  FileText,
+  Camera,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
-import Logo from '../Logo.tsx';
-import { CIRCLES_CONFIG } from '../constants.tsx';
-import { User } from '../types.ts';
-import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
+import { supabase } from '../lib/supabase';
+import { useToast } from '../App';
 
-/**
- * Composant pour les points d'action sur la carte
- */
-const PulsePoint = ({ x, y, city, action, color = "bg-blue-400" }: { x: string, y: string, city: string, action: string, color?: string }) => (
-  <div 
-    className="absolute group z-20" 
-    style={{ left: x, top: y }}
-  >
-    <div className={`absolute -inset-2 rounded-full ${color} opacity-20 animate-ping`}></div>
-    <div className={`w-3 h-3 ${color} rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)] cursor-pointer transition-transform group-hover:scale-150`}></div>
-    
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-56 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto translate-y-2 group-hover:translate-y-0">
-      <div className="bg-gray-900 border border-white/10 p-4 rounded-2xl shadow-2xl backdrop-blur-md text-left">
-        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{city}</p>
-        <p className="text-white text-[11px] leading-relaxed font-medium">{action}</p>
-        <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 border-r border-b border-white/10 rotate-45 -mt-1"></div>
+const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string }> = ({ url, name, size = "w-40 h-40", className = "" }) => {
+  const [error, setError] = useState(false);
+  const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : "??";
+
+  if (!url || url.trim() === "" || error) {
+    return (
+      <div className={`${size} aspect-square shrink-0 rounded-[2rem] bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-serif font-bold text-4xl shadow-2xl border-8 border-white ${className}`}>
+        {initials}
       </div>
-    </div>
-  </div>
-);
-
-const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: User | null }) => {
-  const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      navigate('/profile');
-    }
-  }, [user, navigate]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    // Simulation d'authentification robuste
-    setTimeout(() => {
-      if (email === 'cerclecitoyenci@gmail.com') {
-        setSuccess(true);
-        setTimeout(() => {
-          const adminUser = MOCK_USERS[ADMIN_ID];
-          onLogin(adminUser);
-          navigate('/profile');
-        }, 800);
-      } else {
-        setError('Identifiants incorrects ou compte non vérifié.');
-        setLoading(false);
-      }
-    }, 1200);
-  };
-
-  const handleCircleClick = (circleType: string) => {
-    if (user) {
-      navigate(`/circle/${encodeURIComponent(circleType)}`);
-    } else {
-      navigate('/auth');
-    }
-  };
+    );
+  }
 
   return (
-    <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-hidden flex flex-col items-center page-transition">
-      
-      {/* Background Decor */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]">
-        <svg className="w-full h-full" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="400" cy="300" r="300" stroke="currentColor" strokeWidth="0.5" strokeDasharray="5 5" />
-          <path d="M0 300H800M400 0V600" stroke="currentColor" strokeWidth="0.5" />
-        </svg>
-      </div>
-
-      <header className="relative z-20 pt-16 mb-16 flex flex-col items-center gap-8 text-center animate-in fade-in duration-1000">
-        <Logo size={60} showText={true} variant="blue" />
-        <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-5 py-2.5 rounded-full shadow-sm">
-          <ShieldCheck size={16} className="text-emerald-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-            Souveraineté numérique ivoirienne
-          </span>
-        </div>
-      </header>
-
-      <main className="relative z-10 w-full max-w-6xl px-6 flex flex-col items-center text-center">
-        {/* Hero Section */}
-        <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold text-gray-900 leading-[1.1] mb-10">
-            Un espace pour <br />
-            <span className="text-blue-600 italic underline decoration-blue-100 underline-offset-[12px]">penser</span>, relier et <br />
-            agir.
-          </h1>
-
-          <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-16 font-medium">
-            Rejoignez une communauté de citoyens engagés pour un dialogue mature et tourné vers le progrès social de notre nation.
-          </p>
-        </div>
-
-        {/* Login Form Card */}
-        <div className="w-full max-w-[540px] mb-24 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-          <div className="bg-white rounded-[3.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] border border-gray-100 p-10 md:p-14 mb-8">
-            <div className="text-left mb-10">
-              <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Accès au Cercle</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">Saisissez vos identifiants citoyens</p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              {error && (
-                <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake duration-300">
-                  <AlertCircle size={18} /> {error}
-                </div>
-              )}
-
-              <div className="relative group">
-                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                <input 
-                  type="email"
-                  required
-                  disabled={loading || success}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email citoyen"
-                  className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
-                />
-              </div>
-
-              <div className="relative group">
-                <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  required
-                  disabled={loading || success}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mot de passe"
-                  className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-16 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-
-              <div className="flex justify-end px-2">
-                <button type="button" className="text-[10px] font-black uppercase text-gray-300 hover:text-blue-600 transition-colors tracking-widest">Identifiant oublié ?</button>
-              </div>
-
-              <button 
-                type="submit"
-                disabled={loading || success}
-                className={`w-full py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 btn-shine shadow-xl ${
-                  success 
-                    ? 'bg-emerald-500 text-white shadow-emerald-100' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
-                }`}
-              >
-                {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Se connecter"}
-              </button>
-            </form>
-          </div>
-          
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-gray-400 text-xs font-bold tracking-tight">Pas encore membre du Cercle ?</p>
-            <Link 
-              to="/auth" 
-              className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] hover:text-blue-800 hover:underline transition-all underline-offset-4"
-            >
-              DÉBUTER MON ÉVEIL
-            </Link>
-          </div>
-        </div>
-
-        {/* Territory Map Section */}
-        <section className="w-full bg-gray-950 rounded-[4rem] p-12 md:p-24 mb-32 text-left relative overflow-hidden shadow-2xl">
-          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px'}}></div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
-            <div className="animate-in slide-in-from-left-8 duration-1000">
-              <div className="inline-flex items-center gap-3 bg-blue-900/30 border border-blue-800/50 px-5 py-2 rounded-full mb-8">
-                <Globe size={14} className="text-blue-400" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">Impact Territorial</span>
-              </div>
-              
-              <h2 className="text-4xl md:text-6xl font-serif font-bold text-white mb-8 leading-tight">
-                Votre Éveil <br />
-                <span className="text-blue-400 italic">change</span> la Carte.
-              </h2>
-              
-              <p className="text-gray-400 text-lg mb-12 max-w-md leading-relaxed font-medium">
-                Chaque réflexion partagée allume une lumière. Chaque action certifiée éveille un territoire ivoirien.
-              </p>
-              
-              <div className="space-y-6 mb-12">
-                <div className="bg-gray-900/80 border border-white/5 p-6 rounded-3xl flex items-center gap-6 group hover:border-blue-500/30 transition-all">
-                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Zap size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Puissance Citoyenne</p>
-                    <p className="text-xl font-bold text-white tracking-tight">4,280 Points collectés</p>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-900/80 border border-white/5 p-6 rounded-3xl flex items-center gap-6 group hover:border-emerald-500/30 transition-all">
-                  <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Target size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Objectif National</p>
-                    <p className="text-xl font-bold text-white tracking-tight">38% du Territoire éveillé</p>
-                  </div>
-                </div>
-              </div>
-              
-              <Link 
-                to="/auth" 
-                className="inline-flex items-center gap-3 bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-900/40 group active:scale-95"
-              >
-                Commencer ma quête <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-            
-            <div className="relative aspect-square animate-in zoom-in duration-1000">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/10 to-transparent rounded-full blur-3xl opacity-50 animate-pulse"></div>
-              <div className="w-full h-full bg-gray-900/50 rounded-[3rem] border border-white/5 flex items-center justify-center relative overflow-hidden group">
-                <svg viewBox="0 0 100 100" className="w-4/5 h-4/5 text-gray-800 opacity-40 transition-opacity group-hover:opacity-60 duration-500">
-                  <path d="M25 15 L35 12 L45 10 L60 12 L75 10 L85 15 L88 30 L85 45 L80 60 L85 75 L82 85 L75 90 L60 92 L45 95 L30 92 L20 88 L15 75 L12 60 L15 45 L18 30 L20 20 Z" fill="currentColor" />
-                </svg>
-                <PulsePoint x="72%" y="82%" city="Abidjan" action="Nettoyage collectif de la plage d'Anoumabo" />
-                <PulsePoint x="52%" y="62%" city="Yamoussoukro" action="Installation de lampadaires solaires communautaires" color="bg-amber-400" />
-                <PulsePoint x="55%" y="45%" city="Bouaké" action="Inauguration de la bibliothèque citoyenne" color="bg-emerald-400" />
-                <PulsePoint x="28%" y="78%" city="San Pedro" action="Reforestation des abords du port" color="bg-blue-400" />
-                <PulsePoint x="25%" y="22%" city="Odienné" action="Formation à l'agriculture durable" color="bg-emerald-400" />
-                <PulsePoint x="55%" y="20%" city="Korhogo" action="Atelier de transmission culturelle" color="bg-rose-400" />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Wisdom Libraries Section */}
-        <section className="w-full max-w-6xl mb-32 px-4">
-           <header className="mb-20 text-center animate-in fade-in duration-1000">
-              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">Bibliothèques de Sagesse</h2>
-              <p className="text-gray-400 text-lg font-medium">Le savoir partagé est le premier rempart contre l'ignorance.</p>
-           </header>
-
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {CIRCLES_CONFIG.map((circle, index) => (
-                <button 
-                  key={index} 
-                  onClick={() => handleCircleClick(circle.type)}
-                  className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-sm hover:shadow-2xl hover:border-blue-100 transition-all group text-left flex flex-col items-start hover:-translate-y-2 relative overflow-hidden"
-                >
-                   <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-500 ${circle.color}`}></div>
-                   
-                   <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-10 shadow-xl shadow-blue-100 group-hover:rotate-12 transition-transform">
-                      <div className="text-white">
-                        {circle.icon && React.isValidElement(circle.icon) 
-                          ? React.cloneElement(circle.icon as any, { size: 28 }) 
-                          : <BookOpen size={28} />
-                        }
-                      </div>
-                   </div>
-                   
-                   <h3 className="text-2xl font-serif font-bold text-gray-900 mb-6 leading-tight group-hover:text-blue-600 transition-colors">
-                      {circle.type}
-                   </h3>
-                   
-                   <p className="text-gray-500 text-base leading-relaxed font-medium mb-10">
-                      {circle.description}
-                   </p>
-                   
-                   <div className="mt-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                      Entrer dans le cercle <ChevronRight size={14} />
-                   </div>
-                </button>
-              ))}
-           </div>
-        </section>
-      </main>
+    <div className={`${size} aspect-square shrink-0 rounded-[2rem] border-8 border-white shadow-2xl overflow-hidden bg-gray-100 ${className}`}>
+      <img src={url} alt={name} onError={() => setError(true)} className="w-full h-full object-cover" />
     </div>
   );
 };
 
-export default LandingPage;
+const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (updated: any) => void }> = ({ profile, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: profile.name || '',
+    pseudonym: profile.pseudonym || '',
+    bio: profile.bio || '',
+    avatar_url: profile.avatar_url || profile.avatar || ''
+  });
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addToast } = useToast();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // Limite 2MB pour le stockage base64
+        addToast("Photo trop lourde (max 2Mo)", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, avatar_url: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: formData.name,
+          pseudonym: formData.pseudonym,
+          bio: formData.bio,
+          avatar_url: formData.avatar_url
+        })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+      
+      onSave(formData);
+      addToast("Identité mise à jour !", "success");
+      onClose();
+    } catch (e: any) {
+      addToast(e.message || "Erreur de mise à jour", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in">
+        <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-blue-50/30">
+          <div>
+            <h3 className="text-2xl font-serif font-bold text-gray-900">Modifier mon identité</h3>
+            <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mt-1">Édition de l'ADN Citoyen</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
+        </div>
+        
+        <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh] no-scrollbar">
+          {/* Section Photo de Profil */}
+          <div className="flex flex-col items-center gap-4">
+             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gray-100 ring-2 ring-blue-100">
+                 {formData.avatar_url ? (
+                   <img src={formData.avatar_url} className="w-full h-full object-cover" alt="Aperçu" />
+                 ) : (
+                   <div className="w-full h-full flex items-center justify-center text-gray-300">
+                     <ImageIcon size={40} />
+                   </div>
+                 )}
+               </div>
+               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white" size={24} />
+               </div>
+               <div className="absolute -bottom-1 -right-1 w-10 h-10 bg-blue-600 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                  <Upload className="text-white" size={16} />
+               </div>
+             </div>
+             <input 
+               type="file" 
+               ref={fileInputRef} 
+               onChange={handleFileChange} 
+               className="hidden" 
+               accept="image/*" 
+             />
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Cliquez pour changer de photo</p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><UserIcon size={12} /> Nom Complet</label>
+              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-200 transition-all" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><AtSign size={12} /> Pseudonyme</label>
+              <input value={formData.pseudonym} onChange={e => setFormData({...formData, pseudonym: e.target.value})} className="w-full bg-gray-50 p-4 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-200 transition-all" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1 flex items-center gap-2"><FileText size={12} /> Biographie</label>
+              <textarea value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="w-full h-32 bg-gray-50 p-4 rounded-2xl outline-none border border-transparent focus:border-blue-200 transition-all resize-none" />
+            </div>
+          </div>
+          
+          <button onClick={handleSave} disabled={loading} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl shadow-gray-100">
+            {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />} Mettre à jour mon profil
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; onProfileUpdate?: () => void }> = ({ currentUser, onLogout, onProfileUpdate }) => {
+  const { id } = useParams<{ id: string }>();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    setDbError(null);
+    const targetId = id || currentUser.id;
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setProfile({ ...data, avatar: data.avatar_url || data.avatar || `https://picsum.photos/seed/${data.id}/150/150` });
+      } else if (targetId === currentUser.id) {
+        setProfile(currentUser);
+      } else {
+        setDbError("Citoyen non trouvé.");
+      }
+    } catch (e: any) {
+      if (targetId === currentUser.id) setProfile(currentUser);
+      else setDbError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
+
+  if (loading) return (
+    <div className="h-[60vh] flex flex-col items-center justify-center gap-6 text-gray-400">
+      <Loader2 className="animate-spin w-12 h-12 text-blue-600" />
+      <p className="text-[10px] font-black uppercase tracking-widest">Consultation...</p>
+    </div>
+  );
+
+  if (dbError && !profile) return (
+    <div className="max-w-xl mx-auto p-20 text-center">
+      <AlertTriangle className="w-20 h-20 text-blue-600 mx-auto mb-8" />
+      <h2 className="text-2xl font-serif font-bold mb-4">{dbError}</h2>
+      <button onClick={() => fetchProfile()} className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest"><RefreshCcw size={16} /> Réessayer</button>
+    </div>
+  );
+
+  const isOwnProfile = profile.id === currentUser.id;
+  const isGuardian = profile.role === Role.SUPER_ADMIN || profile.role === 'Gardien';
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8 lg:py-16">
+      {isEditModalOpen && (
+        <EditProfileModal 
+          profile={profile} 
+          onClose={() => setIsEditModalOpen(false)} 
+          onSave={(updated) => {
+            setProfile({...profile, ...updated, avatar: updated.avatar_url});
+            if (onProfileUpdate) onProfileUpdate();
+          }} 
+        />
+      )}
+      <div className={`bg-white rounded-[3rem] border ${isGuardian ? 'border-amber-200 shadow-2xl' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
+        <div className={`h-64 relative ${isGuardian ? 'bg-amber-600' : 'bg-blue-600'}`}>
+          {profile.cover_url && <img src={profile.cover_url} className="w-full h-full object-cover opacity-60" />}
+        </div>
+        <div className="px-10 pb-12 -mt-24 relative">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="flex items-end space-x-8">
+              <CitizenAvatar url={profile.avatar} name={profile.name} className="ring-4 ring-white" />
+              <div className="pb-4">
+                <div className="flex items-center gap-3 mb-1">
+                  <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">{profile.name}</h1>
+                  {isGuardian && <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full flex items-center gap-2"><Crown size={14} /><span className="text-[10px] font-black uppercase tracking-widest">Gardien</span></div>}
+                </div>
+                <p className="text-gray-400 font-bold text-sm tracking-wide">@{profile.pseudonym}</p>
+              </div>
+            </div>
+            {isOwnProfile && (
+              <div className="flex gap-3">
+                <button onClick={() => setIsEditModalOpen(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[13px] font-black hover:bg-black transition-all flex items-center gap-2 shadow-sm"><PenLine size={16} /> Modifier</button>
+                <button onClick={onLogout} className="px-6 py-4 bg-blue-50 text-blue-600 rounded-2xl text-[13px] font-black hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><LogOut size={16} /> Déconnexion</button>
+              </div>
+            )}
+          </div>
+          <div className="mt-16 pt-12 border-t border-gray-50 grid grid-cols-1 md:grid-cols-3 gap-16">
+            <div className="md:col-span-2">
+              <h3 className="font-black text-[11px] uppercase tracking-widest text-gray-400 mb-6">Présentation</h3>
+              <p className="text-lg leading-relaxed font-medium text-gray-700 whitespace-pre-wrap">{profile.bio || "Pas de présentation."}</p>
+            </div>
+            <aside className="p-10 bg-gray-900 text-white rounded-[3rem] text-center shadow-2xl">
+              <h3 className="font-black text-[10px] uppercase tracking-widest mb-8 text-gray-400">IMPACT</h3>
+              <div className="text-6xl font-serif font-bold mb-2">{profile.impact_score || 0}</div>
+              <p className="text-[10px] font-black uppercase text-blue-400">Points Citoyens</p>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProfilePage;

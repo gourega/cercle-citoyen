@@ -16,25 +16,23 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { MANIFESTO_TEXT } from '../constants';
-import { supabase } from '../lib/supabase';
+import { supabase, isRealSupabase } from '../lib/supabase';
 import { UserCategory, Role, User } from '../types';
 import Logo from '../Logo';
-import { MOCK_USERS, ADMIN_ID } from '../lib/mocks';
+import { useToast } from '../App';
 
 const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [step, setStep] = useState(1); 
   const [agreed, setAgreed] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     pseudonym: '',
-    bio: '',
     email: '',
-    password: '',
     category: UserCategory.CITIZEN,
   });
 
@@ -50,24 +48,59 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Simulation d'authentification pour la démo
-    setTimeout(() => {
+    const tempId = crypto.randomUUID();
+    const avatarUrl = `https://picsum.photos/seed/${formData.pseudonym || tempId}/300/300`;
+
+    const profileData = {
+      id: tempId,
+      name: formData.name,
+      pseudonym: formData.pseudonym,
+      email: formData.email,
+      role: Role.MEMBER,
+      category: formData.category,
+      bio: "Nouveau citoyen du Cercle.",
+      avatar_url: avatarUrl,
+      impact_score: 0,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      if (isRealSupabase) {
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert([profileData]);
+
+        if (insertError) throw insertError;
+        
+        addToast("Inscription réussie dans la base souveraine !", "success");
+      } else {
+        // Mode démo si Supabase n'est pas lié
+        console.warn("Mode Démo : Insertion simulée.");
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       const newUser: User = {
-        id: 'u-temp-' + Date.now(),
-        name: formData.name || "Citoyen Démo",
-        pseudonym: formData.pseudonym || "citoyen",
-        bio: formData.bio || "Engagé pour la cité.",
-        role: Role.MEMBER,
-        category: formData.category,
+        id: profileData.id,
+        name: profileData.name,
+        pseudonym: profileData.pseudonym,
+        email: profileData.email,
+        bio: profileData.bio,
+        role: profileData.role,
+        category: profileData.category as UserCategory,
         interests: [],
-        avatar: `https://picsum.photos/seed/${formData.pseudonym || 'seed'}/150/150`,
+        avatar: avatarUrl,
         impactScore: 0
       };
       
       onLogin(newUser);
       navigate('/welcome');
+    } catch (err: any) {
+      console.error("Erreur d'inscription:", err);
+      setError(err.message || "Une erreur est survenue lors de l'enregistrement.");
+      addToast("Échec de l'inscription", "error");
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -115,18 +148,18 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
                       value={formData.name}
                       onChange={e => setFormData({...formData, name: e.target.value})}
                       placeholder="Nom complet" 
-                      className="w-full bg-white border border-gray-100 py-5 pl-14 pr-6 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all" 
+                      className="w-full bg-white border border-gray-100 py-5 pl-14 pr-6 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all font-bold" 
                     />
                   </div>
                   <div className="relative">
-                    <Sparkles className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                    <PenLine className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                     <input 
                       required 
                       type="text" 
                       value={formData.pseudonym}
                       onChange={e => setFormData({...formData, pseudonym: e.target.value})}
                       placeholder="Pseudonyme unique" 
-                      className="w-full bg-white border border-gray-100 py-5 pl-14 pr-6 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all" 
+                      className="w-full bg-white border border-gray-100 py-5 pl-14 pr-6 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all font-bold" 
                     />
                   </div>
                   <div className="relative">
@@ -137,7 +170,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
                       value={formData.email}
                       onChange={e => setFormData({...formData, email: e.target.value})}
                       placeholder="Email citoyen" 
-                      className="w-full bg-white border border-gray-100 py-5 pl-14 pr-6 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all" 
+                      className="w-full bg-white border border-gray-100 py-5 pl-14 pr-6 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all font-bold" 
                     />
                   </div>
                 </div>
@@ -167,6 +200,11 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
               </div>
 
               <form onSubmit={handleRegister} className="space-y-6">
+                {error && (
+                  <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake">
+                    <AlertCircle size={18} /> {error}
+                  </div>
+                )}
                 <label className="flex items-start gap-4 cursor-pointer group text-left">
                   <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="h-5 w-5 mt-0.5 cursor-pointer accent-blue-600" />
                   <span className="text-xs font-bold text-gray-500 group-hover:text-gray-900 transition-colors leading-relaxed">
