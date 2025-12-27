@@ -23,9 +23,6 @@ import { CIRCLES_CONFIG } from '../constants.tsx';
 import { User } from '../types.ts';
 import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
 
-/**
- * Composant pour les points d'action sur la carte
- */
 const PulsePoint = ({ x, y, city, action, color = "bg-blue-400" }: { x: string, y: string, city: string, action: string, color?: string }) => (
   <div 
     className="absolute group z-20" 

@@ -207,7 +207,7 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-w-sm px-4">
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-sm px-4">
         {toasts.map(t => (
           <div key={t.id} className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-2 ${t.type === 'success' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
              <CheckCircle size={18} />
@@ -226,8 +226,15 @@ const App = () => {
   });
 
   const handleLogin = (u: User) => {
-    setUser(u);
-    localStorage.setItem('cercle_user', JSON.stringify(u));
+    // SYSTÈME DE PERSISTANCE LOCALE :
+    // Avant de connecter l'utilisateur, on vérifie si une version modifiée de son profil existe dans le "Registre Local"
+    const localRegistry = JSON.parse(localStorage.getItem('cercle_registry') || '{}');
+    const existingProfile = localRegistry[u.id];
+    
+    const finalUser = existingProfile ? { ...u, ...existingProfile } : u;
+    
+    setUser(finalUser);
+    localStorage.setItem('cercle_user', JSON.stringify(finalUser));
   };
 
   const handleLogout = async () => {
@@ -239,7 +246,17 @@ const App = () => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
+      
+      // Mettre à jour la session actuelle
       localStorage.setItem('cercle_user', JSON.stringify(updatedUser));
+      
+      // Mettre à jour le Registre Local permanent (indexé par ID)
+      const localRegistry = JSON.parse(localStorage.getItem('cercle_registry') || '{}');
+      localRegistry[user.id] = { 
+        ...localRegistry[user.id], 
+        ...updates 
+      };
+      localStorage.setItem('cercle_registry', JSON.stringify(localRegistry));
     }
   };
 
