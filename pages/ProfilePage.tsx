@@ -21,10 +21,9 @@ import {
   Scale,
   TreeDeciduous,
   DraftingCompass,
-  // Added missing Sparkles icon
   Sparkles
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
 
 const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string }> = ({ url, name, size = "w-40 h-40", className = "" }) => {
@@ -87,23 +86,30 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (u
   const handleSave = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: formData.name,
-          pseudonym: formData.pseudonym,
-          bio: formData.bio,
-          avatar_url: formData.avatar_url
-        })
-        .eq('id', profile.id);
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: formData.name,
+            pseudonym: formData.pseudonym,
+            bio: formData.bio,
+            avatar_url: formData.avatar_url
+          })
+          .eq('id', profile.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Fallback local pour le mode démo
+        console.warn("Mode Démo : Mise à jour locale uniquement.");
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
       
       onSave(formData);
       addToast("Identité mise à jour !", "success");
       onClose();
     } catch (e: any) {
-      addToast(e.message || "Erreur de mise à jour", "error");
+      console.error("Erreur mise à jour:", e);
+      addToast("Erreur lors de la sauvegarde.", "error");
     } finally {
       setLoading(false);
     }
@@ -173,7 +179,7 @@ const EditProfileModal: React.FC<{ profile: any, onClose: () => void, onSave: (u
   );
 };
 
-const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; onProfileUpdate?: () => void }> = ({ currentUser, onLogout, onProfileUpdate }) => {
+const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; onProfileUpdate?: (updates: Partial<User>) => void }> = ({ currentUser, onLogout, onProfileUpdate }) => {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -184,19 +190,28 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     setLoading(true);
     setDbError(null);
     const targetId = id || currentUser.id;
+    
+    // On commence toujours par les données locales pour éviter le chargement infini
+    if (targetId === currentUser.id) {
+      setProfile({
+        ...currentUser,
+        avatar_url: currentUser.avatar,
+        impact_score: currentUser.impact_score || currentUser.impactScore
+      });
+    }
+
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
-      if (error) throw error;
-      if (data) {
-        setProfile({ ...data, avatar: data.avatar_url || data.avatar || `https://picsum.photos/seed/${data.id}/150/150` });
-      } else if (targetId === currentUser.id) {
-        setProfile(currentUser);
-      } else {
-        setDbError("Citoyen non trouvé.");
+      if (isRealSupabase && supabase) {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
+        if (error) throw error;
+        if (data) {
+          setProfile({ ...data, avatar: data.avatar_url || data.avatar || `https://picsum.photos/seed/${data.id}/150/150` });
+        } else if (targetId !== currentUser.id) {
+          setDbError("Citoyen non trouvé.");
+        }
       }
     } catch (e: any) {
-      if (targetId === currentUser.id) setProfile(currentUser);
-      else setDbError(e.message);
+      console.warn("Échec de récupération base, conservation des données locales.", e);
     } finally {
       setLoading(false);
     }
@@ -204,25 +219,19 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
 
-  if (loading) return (
+  if (loading && !profile) return (
     <div className="h-[60vh] flex flex-col items-center justify-center gap-6 text-gray-400">
       <Loader2 className="animate-spin w-12 h-12 text-blue-600" />
       <p className="text-[10px] font-black uppercase tracking-widest">Consultation...</p>
     </div>
   );
 
-  if (dbError && !profile) return (
-    <div className="max-w-xl mx-auto p-20 text-center">
-      <AlertTriangle className="w-20 h-20 text-blue-600 mx-auto mb-8" />
-      <h2 className="text-2xl font-serif font-bold mb-4">{dbError}</h2>
-      <button onClick={() => fetchProfile()} className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest"><RefreshCcw size={16} /> Réessayer</button>
-    </div>
-  );
-
-  const isOwnProfile = profile.id === currentUser.id;
-  const isGuardian = profile.role === Role.SUPER_ADMIN || profile.role === 'Gardien';
+  const isOwnProfile = profile?.id === currentUser.id;
+  const isGuardian = profile?.role === Role.SUPER_ADMIN || profile?.role === 'Gardien';
   
-  const impactScore = profile.impact_score !== undefined ? profile.impact_score : (profile.impactScore || 0);
+  const impactScore = profile?.impact_score !== undefined ? profile.impact_score : (profile?.impactScore || 0);
+
+  if (!profile) return null;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 lg:py-16">
@@ -230,9 +239,18 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         <EditProfileModal 
           profile={profile} 
           onClose={() => setIsEditModalOpen(false)} 
-          onSave={(updated) => {
-            setProfile({...profile, ...updated, avatar: updated.avatar_url});
-            if (onProfileUpdate) onProfileUpdate();
+          onSave={(formData) => {
+            const updates = {
+              name: formData.name,
+              pseudonym: formData.pseudonym,
+              bio: formData.bio,
+              avatar: formData.avatar_url,
+              avatar_url: formData.avatar_url
+            };
+            setProfile({...profile, ...updates});
+            if (isOwnProfile && onProfileUpdate) {
+              onProfileUpdate(updates);
+            }
           }} 
         />
       )}
@@ -243,7 +261,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         <div className="px-10 pb-12 -mt-24 relative">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="flex items-end space-x-8">
-              <CitizenAvatar url={profile.avatar} name={profile.name} className="ring-4 ring-white" />
+              <CitizenAvatar url={profile.avatar || profile.avatar_url} name={profile.name} className="ring-4 ring-white" />
               <div className="pb-4">
                 <div className="flex items-center gap-3 mb-1">
                   <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">{profile.name}</h1>
