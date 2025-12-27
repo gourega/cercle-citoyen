@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ThumbsUp, Lightbulb, Loader2, Volume2, Send, Tag, Sparkles, Bell
+  ThumbsUp, Lightbulb, Loader2, Volume2, Send, Tag, Sparkles, Bell, RefreshCw
 } from 'lucide-react';
 import { User, CircleType } from '../types';
 import { getGriotReading, decodeBase64Audio, decodeAudioBuffer } from '../lib/gemini';
@@ -102,12 +102,10 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
   useEffect(() => {
     fetchPosts();
 
-    // REALTIME: Écouter les nouvelles publications dans toute la cité
     if (supabase) {
       const channel = supabase
         .channel('public:posts')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
-          // Si ce n'est pas notre propre post, on notifie
           if (payload.new.author_id !== user.id) {
             setNewIncomingCount(prev => prev + 1);
           } else {
@@ -134,7 +132,6 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         setNewPostText('');
       }
     } else {
-      // Fallback local
       const posts = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
       const newPost = { id: crypto.randomUUID(), author_id: user.id, content: newPostText, circle_type: selectedCircle, created_at: new Date().toISOString() };
       localStorage.setItem('cercle_db_posts', JSON.stringify([newPost, ...posts]));
@@ -151,14 +148,19 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
           <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">L'Éveil de la Cité</h2>
           <p className="text-gray-500 font-medium">La mémoire vive de notre nation.</p>
         </div>
-        {newIncomingCount > 0 && (
-          <button 
-            onClick={fetchPosts}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest animate-bounce shadow-lg"
-          >
-            <Bell size={14} /> {newIncomingCount} Nouvelles étincelles
-          </button>
-        )}
+        <div className="flex gap-4">
+           <button onClick={fetchPosts} className="p-3 bg-gray-50 text-gray-400 rounded-full hover:text-blue-600 transition-all">
+             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+           </button>
+           {newIncomingCount > 0 && (
+            <button 
+              onClick={fetchPosts}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest animate-bounce shadow-lg"
+            >
+              <Bell size={14} /> {newIncomingCount} Nouvelles ondes
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm mb-12">
@@ -174,7 +176,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
             <select 
               value={selectedCircle}
               onChange={e => setSelectedCircle(e.target.value as CircleType)}
-              className="bg-transparent text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none"
+              className="bg-transparent text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none cursor-pointer"
             >
               {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
             </select>
@@ -182,7 +184,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
           <button 
             onClick={handleCreatePost}
             disabled={sending || !newPostText.trim()}
-            className="w-full sm:w-auto px-10 py-3 bg-gray-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50"
+            className="w-full sm:w-auto px-10 py-3 bg-gray-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {sending ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier
           </button>

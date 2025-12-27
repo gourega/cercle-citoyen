@@ -16,7 +16,9 @@ import {
   ShoppingBag,
   Info,
   Crown,
-  ShieldAlert
+  ShieldAlert,
+  Mic,
+  Bell
 } from 'lucide-react';
 
 // Pages
@@ -36,13 +38,16 @@ import ImpactStudio from './pages/ImpactStudio.tsx';
 import CirclePage from './pages/CirclePage.tsx';
 import ResourceExchange from './pages/ResourceExchange.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
+import LiveAssembly from './pages/LiveAssembly.tsx';
 
 // Components
 import Logo from './Logo.tsx';
 import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
-import { User, Role } from './types.ts';
+import NotificationDrawer from './components/NotificationDrawer.tsx';
+import { User, Role, CitizenNotification } from './types.ts';
 import { ADMIN_ID } from './lib/mocks.ts';
+import { supabase, isRealSupabase } from './lib/supabase.ts';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -59,16 +64,17 @@ export const useToast = () => {
 const Navbar = ({ user }: { user: User | null }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<CitizenNotification[]>([]);
 
-  // Cacher la navbar sur certaines pages
   if (!user || ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
 
-  // Fix: Removed redundant string comparison that caused type narrowing error
   const isGuardian = user.role === Role.SUPER_ADMIN;
 
   const navItems = [
     { to: "/feed", icon: <Home size={16} />, label: "Fil" },
     { to: "/chat", icon: <MessageSquare size={16} />, label: "Palabre" },
+    { to: "/live", icon: <Mic size={16} />, label: "Assemblée" },
     { to: "/map", icon: <MapIcon size={16} />, label: "Carte" },
     { to: "/governance", icon: <Gavel size={16} />, label: "Édits" },
     { to: "/quests", icon: <Target size={16} />, label: "Sentiers" },
@@ -80,18 +86,25 @@ const Navbar = ({ user }: { user: User | null }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
-        {/* Logo cliquable ramenant au flux */}
-        <Link to="/feed" className="flex items-center group">
-          <Logo size={32} showText={true} />
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link to="/feed" className="flex items-center group">
+            <Logo size={32} showText={true} />
+          </Link>
+          {isRealSupabase && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
+               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+               <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Réseau Souverain Connecté</span>
+            </div>
+          )}
+        </div>
 
         {/* Desktop Nav */}
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-1">
           {navItems.map((item) => (
             <Link 
               key={item.to} 
               to={item.to} 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
                 location.pathname === item.to ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
@@ -99,10 +112,20 @@ const Navbar = ({ user }: { user: User | null }) => {
             </Link>
           ))}
           
+          <div className="h-6 w-px bg-gray-100 mx-3"></div>
+          
+          <button 
+            onClick={() => setIsNotifOpen(true)}
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative"
+          >
+            <Bell size={20} />
+            {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>}
+          </button>
+
           {isGuardian && (
             <Link 
               to="/admin" 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
                 location.pathname === '/admin' ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
               }`}
             >
@@ -110,9 +133,6 @@ const Navbar = ({ user }: { user: User | null }) => {
             </Link>
           )}
           
-          <div className="h-6 w-px bg-gray-100 mx-4"></div>
-          
-          {/* Avatar cliquable pour le profil */}
           <Link to="/profile" className="flex items-center group ml-2">
              <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-200 transition-all">
                <img src={user.avatar} className="w-full h-full object-cover" alt="Mon Profil" />
@@ -121,10 +141,24 @@ const Navbar = ({ user }: { user: User | null }) => {
         </div>
 
         {/* Mobile Toggle */}
-        <button className="lg:hidden p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-4 lg:hidden">
+           <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative">
+             <Bell size={24} />
+             {notifications.some(n => !n.isRead) && <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></div>}
+           </button>
+           <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
       </div>
+
+      {isNotifOpen && (
+        <NotificationDrawer 
+          notifications={notifications} 
+          onClose={() => setIsNotifOpen(false)} 
+          onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? {...n, isRead: true} : n))} 
+        />
+      )}
 
       {/* Mobile Menu */}
       {isOpen && (
@@ -201,6 +235,14 @@ const App = () => {
     localStorage.removeItem('cercle_user');
   };
 
+  const handleProfileUpdate = (updates: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      localStorage.setItem('cercle_user', JSON.stringify(updatedUser));
+    }
+  };
+
   return (
     <ToastProvider>
       <Router>
@@ -215,13 +257,14 @@ const App = () => {
               <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
               <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
               <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
+              <Route path="/live" element={user ? <LiveAssembly /> : <Navigate to="/" />} />
               <Route path="/map" element={user ? <ActionMap /> : <Navigate to="/" />} />
               <Route path="/governance" element={user ? <GovernancePage user={user} /> : <Navigate to="/" />} />
               <Route path="/quests" element={user ? <QuestsPage /> : <Navigate to="/" />} />
               <Route path="/griot" element={user ? <GriotStudio /> : <Navigate to="/" />} />
               <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
-              <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
+              <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} onProfileUpdate={handleProfileUpdate} /> : <Navigate to="/" />} />
               <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
