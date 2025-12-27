@@ -40,12 +40,22 @@ export const MOCK_USERS: Record<string, User> = {
 
 export const MOCK_POSTS: Post[] = [
   {
+    id: 'announcement-online-tests',
+    author_id: ADMIN_ID,
+    circle_type: CircleType.PEACE,
+    isMajestic: true,
+    content: "📢 APPEL AU GRAND PALABRE NUMÉRIQUE : LE CERCLE EST PRÊT.\n\nCitoyennes, Citoyens, Frères et Sœurs de vision,\n\nL’heure n’est plus à l’attente, mais à l’expérience. Après des nuits de tissage technologique et de réflexion profonde, l'infrastructure de notre souveraineté numérique est debout. \n\nLe Cercle Citoyen ouvre ses portes pour sa phase de tests massifs en ligne.\n\nCe que nous attendons de vous :\n1. Éveillez votre profil citoyen.\n2. Lancez des étincelles sur le Fil d'Éveil.\n3. Invoquez l'Esprit dans l'Assemblée Directe.\n4. Tracez les sentiers d'impact sur le terrain.\n\nRejoignez-nous. Soyez les pionniers de la souveraineté.\n\nKouassi GOBLE Ouréga\nGardien du Cercle",
+    created_at: new Date().toISOString(),
+    reactions: { useful: 520, relevant: 230, inspiring: 890 },
+    comments: []
+  },
+  {
     id: 'majestic-1',
     author_id: ADMIN_ID,
     circle_type: CircleType.GARDEN,
     isMajestic: true,
     content: "L'éveil citoyen n'est pas une destination, c'est une pratique quotidienne. Chaque dialogue responsable est une pierre à l'édifice de notre souveraineté.",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
     reactions: { useful: 245, relevant: 110, inspiring: 420 },
     comments: []
   }
