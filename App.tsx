@@ -47,7 +47,7 @@ import GuardianAssistant from './components/GuardianAssistant.tsx';
 import NotificationDrawer from './components/NotificationDrawer.tsx';
 import { User, Role, CitizenNotification } from './types.ts';
 import { ADMIN_ID } from './lib/mocks.ts';
-import { supabase, isRealSupabase } from './lib/supabase.ts';
+import { supabase, isRealSupabase, db } from './lib/supabase.ts';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -226,13 +226,9 @@ const App = () => {
   });
 
   const handleLogin = (u: User) => {
-    // SYSTÈME DE PERSISTANCE LOCALE :
-    // Avant de connecter l'utilisateur, on vérifie si une version modifiée de son profil existe dans le "Registre Local"
     const localRegistry = JSON.parse(localStorage.getItem('cercle_registry') || '{}');
     const existingProfile = localRegistry[u.id];
-    
     const finalUser = existingProfile ? { ...u, ...existingProfile } : u;
-    
     setUser(finalUser);
     localStorage.setItem('cercle_user', JSON.stringify(finalUser));
   };
@@ -242,21 +238,36 @@ const App = () => {
     localStorage.removeItem('cercle_user');
   };
 
-  const handleProfileUpdate = (updates: Partial<User>) => {
+  const handleProfileUpdate = async (updates: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      
-      // Mettre à jour la session actuelle
       localStorage.setItem('cercle_user', JSON.stringify(updatedUser));
       
-      // Mettre à jour le Registre Local permanent (indexé par ID)
       const localRegistry = JSON.parse(localStorage.getItem('cercle_registry') || '{}');
-      localRegistry[user.id] = { 
-        ...localRegistry[user.id], 
-        ...updates 
-      };
+      localRegistry[user.id] = { ...localRegistry[user.id], ...updates };
       localStorage.setItem('cercle_registry', JSON.stringify(localRegistry));
+
+      // SYNCHRONISATION SUPABASE
+      if (isRealSupabase && supabase) {
+        try {
+          // Mapper les noms de champs si nécessaire (ex: avatar -> avatar_url)
+          const dbUpdates: any = { ...updates };
+          if (dbUpdates.avatar) {
+            dbUpdates.avatar_url = dbUpdates.avatar;
+            delete dbUpdates.avatar;
+          }
+          if (dbUpdates.impactScore) {
+            dbUpdates.impact_score = dbUpdates.impactScore;
+            delete dbUpdates.impactScore;
+          }
+
+          await db.updateProfile(user.id, dbUpdates);
+          console.log("☁️ Supabase : Profil synchronisé avec succès.");
+        } catch (e) {
+          console.error("❌ Erreur de synchronisation Supabase:", e);
+        }
+      }
     }
   };
 

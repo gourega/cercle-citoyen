@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -47,11 +48,9 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // On utilise un UUID compatible avec PostgreSQL
     const tempId = crypto.randomUUID();
     const avatarUrl = `https://picsum.photos/seed/${formData.pseudonym || tempId}/300/300`;
 
-    // Structure des données correspondant exactement aux colonnes de votre table Supabase
     const profileData = {
       id: tempId,
       name: formData.name,
@@ -63,20 +62,21 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     };
 
     try {
-      if (isRealSupabase) {
+      if (isRealSupabase && supabase) {
+        // Tentative d'insertion réelle
         const { error: insertError } = await supabase
           .from('profiles')
           .insert([profileData]);
 
         if (insertError) {
-          console.error("Supabase Insert Error:", insertError);
-          throw new Error(insertError.message);
+          throw new Error(`Erreur Supabase: ${insertError.message}. Vérifiez les politiques RLS de votre table 'profiles'.`);
         }
         
-        addToast("Inscription enregistrée en base !", "success");
+        addToast("Citoyen enregistré avec succès dans la base souveraine !", "success");
       } else {
-        console.warn("Mode Démo : Supabase non détecté, simulation locale.");
+        console.warn("Mode Démo : Supabase non détecté, enregistrement local uniquement.");
         await new Promise(resolve => setTimeout(resolve, 1500));
+        addToast("Enregistrement local (Mode Démo)", "info");
       }
 
       const newUser: User = {
@@ -97,7 +97,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     } catch (err: any) {
       console.error("Échec de l'inscription:", err);
       setError(err.message || "Une erreur est survenue lors de l'enregistrement.");
-      addToast("Erreur d'enregistrement base", "error");
+      addToast("Échec de l'enregistrement", "error");
     } finally {
       setLoading(false);
     }
