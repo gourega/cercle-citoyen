@@ -59,7 +59,7 @@ const QuestsPage: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: "Génère une proposition d'action citoyenne concrète et innovante pour la Côte d'Ivoire. Format JSON: title (court), description (un paragraphe mobilisant), rewardXP (nombre entre 100 et 500), targetGoal (nombre de participants cibles), location (une ville ou région ivoirienne), circleType (un des types de cercles).",
+        contents: "Génère une proposition d'action citoyenne concrète, innovante et impactante pour la Côte d'Ivoire (ex: assainissement, éducation, tech, agriculture). Format JSON: title (court), description (un paragraphe mobilisant), rewardXP (nombre entre 100 et 500), targetGoal (nombre de participants cibles), location (une ville ou région ivoirienne), circleType (un des types de cercles).",
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -90,7 +90,7 @@ const QuestsPage: React.FC = () => {
       addToast("Le Gardien a tracé une vision pour vous.", "success");
     } catch (e) {
       console.error(e);
-      addToast("Échec de l'invocation. Le Gardien est occupé.", "error");
+      addToast("Échec de l'invocation IA.", "error");
     } finally {
       setIsGenerating(false);
     }
@@ -113,15 +113,10 @@ const QuestsPage: React.FC = () => {
       }]);
       
       if (!error) {
-        addToast("Proposition soumise au Conseil du Gardien !", "success");
+        addToast("Proposition soumise pour validation au Conseil.", "success");
         setIsModalOpen(false);
         fetchQuests();
-      } else {
-        addToast("Erreur lors de la proposition.", "error");
       }
-    } else {
-      addToast("Mode démo : Proposition simulée.", "info");
-      setIsModalOpen(false);
     }
   };
 
@@ -136,7 +131,7 @@ const QuestsPage: React.FC = () => {
       .eq('id', questId);
     
     if (!error) {
-      addToast("Action certifiée par votre institution !", "success");
+      addToast("Certification d'ancrage territorial effectuée !", "success");
       fetchQuests();
     }
   };
@@ -186,16 +181,11 @@ const QuestsPage: React.FC = () => {
         <main className="lg:col-span-9">
           {loading ? (
             <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>
-          ) : quests.filter(q => filter === 'all' || q.circle_type === filter).length > 0 ? (
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {quests.filter(q => filter === 'all' || q.circle_type === filter).map(q => (
                 <QuestCard key={q.id} quest={q} currentUser={user} onCertify={() => handleCertify(q.id)} />
               ))}
-            </div>
-          ) : (
-            <div className="text-center py-32 bg-gray-50 rounded-[4rem] border-2 border-dashed border-gray-100">
-               <Target className="w-16 h-16 text-gray-200 mx-auto mb-6" />
-               <p className="text-gray-400 font-bold uppercase tracking-widest">Aucun sentier tracé dans ce cercle.</p>
             </div>
           )}
         </main>

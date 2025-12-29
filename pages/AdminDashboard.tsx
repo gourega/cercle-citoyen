@@ -21,25 +21,36 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const SQL_SCHEMA = `-- INFRASTRUCTURE SOUVERAINE CERCLE CITOYEN (V2.9.1)
--- RÉPARATION CRUCIALE : AUTORISER L'INSCRIPTION ET LES SENTIERS
+  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.0)
+-- A exécuter dans l'éditeur SQL de Supabase
 
--- 1. TABLE PROFILES
+-- 1. PROFILS CITOYENS
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY,
     name TEXT,
-    pseudonym TEXT,
+    pseudonym TEXT UNIQUE,
     bio TEXT,
     avatar_url TEXT,
+    role TEXT DEFAULT 'Membre',
+    category TEXT DEFAULT 'Citoyen',
     impact_score INTEGER DEFAULT 0,
     email TEXT,
-    role TEXT DEFAULT 'Membre',
-    status TEXT DEFAULT 'active',
-    warn_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. TABLE QUESTS (SENTIERS D'IMPACT)
+-- 2. PUBLICATIONS (FIL D'ÉVEIL)
+CREATE TABLE IF NOT EXISTS public.posts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author_id UUID REFERENCES public.profiles(id),
+    content TEXT NOT NULL,
+    circle_type TEXT,
+    image_url TEXT,
+    reactions JSONB DEFAULT '{"useful":0, "relevant":0, "inspiring":0}',
+    is_majestic BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. SENTIERS (QUÊTES)
 CREATE TABLE IF NOT EXISTS public.quests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
@@ -58,25 +69,96 @@ CREATE TABLE IF NOT EXISTS public.quests (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. ACTIVATION RLS
+-- 4. BANQUE DES IDÉES
+CREATE TABLE IF NOT EXISTS public.ideas (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author_id UUID REFERENCES public.profiles(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    circle_type TEXT,
+    needs TEXT[],
+    status TEXT DEFAULT 'spark',
+    vouch_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. ÉDITS & VOTES (GOUVERNANCE)
+CREATE TABLE IF NOT EXISTS public.edicts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    proposer_id UUID REFERENCES public.profiles(id),
+    status TEXT DEFAULT 'voting',
+    votes_count INTEGER DEFAULT 0,
+    threshold INTEGER DEFAULT 100,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.votes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id),
+    edict_id UUID REFERENCES public.edicts(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, edict_id)
+);
+
+-- 6. MARCHÉ DE SOLIDARITÉ
+CREATE TABLE IF NOT EXISTS public.resource_gifts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    donor_id UUID REFERENCES public.profiles(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    status TEXT DEFAULT 'available',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7. CONTRIBUTIONS (WAVE)
+CREATE TABLE IF NOT EXISTS public.contributions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id),
+    amount INTEGER,
+    provider TEXT DEFAULT 'Wave',
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. FONCTION RPC POUR VOTE ATOMIQUE (CRUCIAL)
+CREATE OR REPLACE FUNCTION increment_edict_votes(row_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE edicts
+  SET votes_count = votes_count + 1
+  WHERE id = row_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 9. ACTIVATION RLS ET POLITIQUES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.quests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.resource_gifts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contributions ENABLE ROW LEVEL SECURITY;
 
--- 4. POLITIQUES QUESTS
-DROP POLICY IF EXISTS "Lecture publique des quêtes" ON public.quests;
-CREATE POLICY "Lecture publique des quêtes" ON public.quests FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Insertion par les citoyens" ON public.quests;
-CREATE POLICY "Insertion par les citoyens" ON public.quests FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Mise à jour par Admin ou Institution" ON public.quests;
-CREATE POLICY "Mise à jour par Admin ou Institution" ON public.quests FOR UPDATE USING (true);
+-- POLITIQUES SIMPLIFIÉES (LECTURE PUBLIQUE, ÉCRITURE CITOYENNE)
+CREATE POLICY "Acces_Public" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Acces_Public" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Acces_Public" ON public.quests FOR SELECT USING (true);
+CREATE POLICY "Acces_Public" ON public.ideas FOR SELECT USING (true);
+CREATE POLICY "Acces_Public" ON public.edicts FOR SELECT USING (true);
+CREATE POLICY "Acces_Public" ON public.resource_gifts FOR SELECT USING (true);
 
--- 5. POLITIQUES PROFILES
-DROP POLICY IF EXISTS "Public read access" ON public.profiles;
-CREATE POLICY "Public read access" ON public.profiles FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Allow public insert" ON public.profiles;
-CREATE POLICY "Allow public insert" ON public.profiles FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Update own profile" ON public.profiles;
-CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
+-- AUTORISER L'INSERTION POUR LES UTILISATEURS CONNECTÉS
+CREATE POLICY "Insert_Connecte" ON public.profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Insert_Connecte" ON public.posts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Insert_Connecte" ON public.quests FOR INSERT WITH CHECK (true);
+CREATE POLICY "Insert_Connecte" ON public.ideas FOR INSERT WITH CHECK (true);
+CREATE POLICY "Insert_Connecte" ON public.votes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Insert_Connecte" ON public.resource_gifts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (true);
 `;
 
   const fetchData = async () => {
@@ -138,9 +220,6 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
     }
   };
 
-  // Logique de filtrage optimisée : 
-  // 1. Si recherche vide : affiche uniquement les rôles administratifs (Gardien, Admin, Modérateur, Animateur)
-  // 2. Si recherche active : cherche parmi tous les membres
   const filteredCitizens = citizens.filter(c => {
     const isSearching = searchTerm.trim().length > 0;
     const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -317,8 +396,8 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
 
           <section className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V2.9.1</h3>
-                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.0</h3>
+                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.0 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
              </div>
              <div className="bg-black/40 p-6 rounded-2xl border border-white/10 font-mono text-[10px] leading-relaxed relative">
                 <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap max-h-80">{SQL_SCHEMA}</pre>
