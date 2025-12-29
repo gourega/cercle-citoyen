@@ -1,28 +1,43 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, RefreshCw, CheckCircle,
-  Award, Medal, Star, ShieldCheck, Zap, X, Camera
+  Award, Medal, Star, ShieldCheck, Zap, X, Camera, Upload
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
 import { MOCK_USERS, ADMIN_ID } from '../lib/mocks';
 
-const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string }> = ({ url, name, size = "w-40 h-40", className = "" }) => {
+const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick }) => {
   const [error, setError] = useState(false);
   const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : "??";
-  if (!url || url.trim() === "" || error) {
+  
+  const displayContent = () => {
+    if (!url || url.trim() === "" || error) {
+      return (
+        <div className={`${size} aspect-square shrink-0 rounded-[2.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-serif font-bold text-4xl shadow-2xl border-8 border-white ${className}`}>
+          {initials}
+        </div>
+      );
+    }
     return (
-      <div className={`${size} aspect-square shrink-0 rounded-[2.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-serif font-bold text-4xl shadow-2xl border-8 border-white ${className}`}>
-        {initials}
+      <div className={`${size} aspect-square shrink-0 rounded-[2.5rem] border-8 border-white shadow-2xl overflow-hidden bg-gray-100 ${className}`}>
+        <img src={url} alt={name} onError={() => setError(true)} className="w-full h-full object-cover" />
       </div>
     );
-  }
+  };
+
   return (
-    <div className={`${size} aspect-square shrink-0 rounded-[2.5rem] border-8 border-white shadow-2xl overflow-hidden bg-gray-100 ${className}`}>
-      <img src={url} alt={name} onError={() => setError(true)} className="w-full h-full object-cover" />
+    <div className="relative group cursor-pointer" onClick={isEditing ? onUploadClick : undefined}>
+      {displayContent()}
+      {isEditing && (
+        <div className="absolute inset-0 bg-black/40 rounded-[2.5rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white border-8 border-white/20">
+          <Camera size={32} />
+          <span className="text-[8px] font-black uppercase mt-2">Changer</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -34,8 +49,8 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const [syncing, setSyncing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { addToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // État local pour l'édition
   const [editData, setEditData] = useState({
     name: '',
     pseudonym: '',
@@ -91,6 +106,18 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditData({ ...editData, avatar: reader.result as string });
+        addToast("Nouvelle photo chargée !", "info");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async () => {
     setSyncing(true);
     try {
@@ -109,7 +136,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       const updatedProfile = { ...profile, ...updates, avatar: editData.avatar };
       setProfile(updatedProfile);
       
-      // Mettre à jour le localStorage si c'est notre propre profil
       if (profile.id === currentUser.id) {
         const saved = localStorage.getItem('cercle_user');
         if (saved) {
@@ -136,16 +162,10 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isGuardian = profile?.role === Role.SUPER_ADMIN || profile?.role === 'Gardien';
   const impactScore = profile?.impact_score || 0;
 
-  const badges = [
-    { id: 'founder', label: 'Fondateur', icon: <Crown className="text-amber-500" />, active: isGuardian, color: 'bg-amber-50 border-amber-200 text-amber-700' },
-    { id: 'builder', label: 'Bâtisseur', icon: <Medal className="text-blue-500" />, active: impactScore >= 1000, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-    { id: 'pioneer', label: 'Éclaireur', icon: <Zap className="text-emerald-500" />, active: impactScore >= 5000, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-    { id: 'verified', label: 'Identité Vérifiée', icon: <ShieldCheck className="text-indigo-500" />, active: true, color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-  ];
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
         
         <div className={`h-64 relative overflow-hidden ${isGuardian ? 'bg-gradient-to-r from-amber-600 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>
@@ -160,14 +180,13 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         <div className="px-10 pb-12 -mt-24 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-8 text-center md:text-left">
-              <div className="relative group">
-                <CitizenAvatar url={isEditing ? editData.avatar : (profile.avatar || profile.avatar_url)} name={profile.name} className="ring-8 ring-white" />
-                {isEditing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] ring-8 ring-white opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="text-white" size={32} />
-                  </div>
-                )}
-              </div>
+              <CitizenAvatar 
+                url={isEditing ? editData.avatar : (profile.avatar || profile.avatar_url)} 
+                name={profile.name} 
+                isEditing={isEditing}
+                onUploadClick={() => fileInputRef.current?.click()}
+                className="ring-8 ring-white" 
+              />
               <div className="pb-4 flex-1">
                 {isEditing ? (
                   <div className="space-y-4 max-w-sm">
@@ -202,26 +221,16 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
               <div className="flex flex-wrap justify-center gap-3">
                 {isEditing ? (
                   <>
-                    <button 
-                      onClick={handleSave} 
-                      disabled={syncing}
-                      className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl shadow-emerald-100"
-                    >
+                    <button onClick={handleSave} disabled={syncing} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl">
                       {syncing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Enregistrer
                     </button>
-                    <button 
-                      onClick={() => setIsEditing(false)}
-                      className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
-                    >
+                    <button onClick={() => setIsEditing(false)} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">
                       Annuler
                     </button>
                   </>
                 ) : (
                   <>
-                    <button 
-                      onClick={() => setIsEditing(true)}
-                      className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"
-                    >
+                    <button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl">
                       <PenLine size={16} /> Modifier
                     </button>
                     <button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100">
@@ -250,25 +259,10 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                     </p>
                   )}
                 </section>
-
-                <section>
-                  <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-8 px-1">Distinctions Citoyennes</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                    {badges.filter(b => b.active).map(badge => (
-                      <div key={badge.id} className={`flex flex-col items-center justify-center p-6 rounded-3xl border ${badge.color} transition-transform hover:scale-105`}>
-                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm">
-                          {React.cloneElement(badge.icon as React.ReactElement<any>, { size: 24 })}
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight">{badge.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
             </div>
 
-            <aside className="space-y-8">
+            <aside>
               <div className="p-10 bg-gray-950 text-white rounded-[3rem] text-center shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
                 <h3 className="font-black text-[10px] uppercase tracking-[0.4em] mb-6 text-blue-400 relative z-10">INDICE D'IMPACT</h3>
                 <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white">
                   {impactScore.toLocaleString()}
