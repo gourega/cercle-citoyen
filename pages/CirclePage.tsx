@@ -25,7 +25,8 @@ import {
   Building2,
   BadgeCheck
 } from 'lucide-react';
-import { summarizeCircleDiscussions, generateWisdomEcho, decodeBase64Audio, decodeAudioBuffer } from '../lib/gemini';
+// Fix: Use correct function names exported from lib/gemini.ts
+import { summarizeCircleDiscussions, generateWisdomEcho, decode, decodeAudioData } from '../lib/gemini';
 import { MOCK_POSTS, MOCK_USERS } from '../lib/mocks';
 
 const CirclePage: React.FC<{ user: User }> = ({ user }) => {
@@ -81,8 +82,9 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         }
-        const bytes = decodeBase64Audio(base64Audio);
-        const buffer = await decodeAudioBuffer(bytes, audioContextRef.current);
+        // Fix: Use correct function names exported from lib/gemini.ts
+        const bytes = decode(base64Audio);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current);
         
         const source = audioContextRef.current.createBufferSource();
         source.buffer = buffer;
@@ -231,7 +233,7 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
               <Sparkles className="w-32 h-32 text-indigo-900" />
             </div>
             <div className="mb-6">
-              <h3 className="text-indigo-900 font-black text-[11px] uppercase tracking-[0.2em] mb-1">Intelligence du Cercle</h3>
+              <h3 className="indigo-900 font-black text-[11px] uppercase tracking-[0.2em] mb-1">Intelligence du Cercle</h3>
               <p className="text-indigo-700/70 font-medium">Synthèse et Écho des Sages</p>
             </div>
             

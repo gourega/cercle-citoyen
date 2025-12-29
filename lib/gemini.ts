@@ -10,24 +10,33 @@ const getAI = () => {
 };
 
 /**
- * AUDIO UTILS - Pure TypeScript
+ * AUDIO UTILS - Standardized for PCM Streaming
  */
-export function decodeBase64Audio(base64: string): Uint8Array {
+export function decode(base64: string) {
   const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
 }
 
-export async function decodeAudioBuffer(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
+export async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number = 24000,
+  numChannels: number = 1,
+): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / 1; // Assuming numChannels is 1
-  const buffer = ctx.createBuffer(1, frameCount, 24000);
-  const channelData = buffer.getChannelData(0);
-  for (let i = 0; i < frameCount; i++) {
-    channelData[i] = dataInt16[i] / 32768.0;
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
   }
   return buffer;
 }
@@ -44,7 +53,7 @@ export async function getGriotReading(content: string) {
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
         },
       },
     });
@@ -126,7 +135,7 @@ export async function findInitiatives(query: string, lat?: number, lng?: number)
   } catch (e) {
     console.error("Maps Grounding Error:", e);
     return { 
-      text: "La recherche territoriale rencontre une difficulté. Essayez d'être plus spécifique (ex: 'Mairie de Cocody', 'ONG environnement à Bouaké'). Si le problème persiste, il se peut que les services de géolocalisation soient en maintenance.", 
+      text: "La recherche territoriale rencontre une difficulté. Essayez d'être plus spécifique (ex: 'Mairie de Cocody', 'ONG environnement à Bouaké').", 
       places: [] 
     };
   }

@@ -7,7 +7,7 @@ import {
   Bookmark
 } from 'lucide-react';
 import { User, CircleType, Role } from '../types';
-import { getGriotReading, decodeBase64Audio, decodeAudioBuffer } from '../lib/gemini';
+import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
@@ -57,10 +57,16 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
     try {
       const b64 = await getGriotReading(post.content);
       if (b64) {
-        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        }
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
         
-        const buffer = await decodeAudioBuffer(decodeBase64Audio(b64), audioContextRef.current);
+        const bytes = decode(b64);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current, 24000, 1);
+        
         const source = audioContextRef.current.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContextRef.current.destination);
@@ -71,10 +77,20 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
       }
     } catch (e) { 
       console.error(e); 
-      addToast("Le Griot est indisponible.", "info");
+      addToast("Le Griot est indisponible pour le moment.", "info");
     } finally { 
       setIsLoadingAudio(false); 
     }
+  };
+
+  const handleShare = () => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/feed?post=${post.id}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      addToast("Lien de l'onde copié dans le presse-papier !", "success");
+    }).catch(err => {
+      console.error('Erreur lors du partage:', err);
+      addToast("Échec de la copie du lien.", "error");
+    });
   };
 
   const handleReaction = (type: string) => {
@@ -82,15 +98,11 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
     addToast("Impact enregistré !", "success");
   };
 
-  const handleShare = () => {
-    addToast("Lien d'onde copié dans le presse-papier.", "success");
-  };
-
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
 
   return (
-    <article className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : 'border-gray-100'}`}>
+    <article id={`post-${post.id}`} className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : 'border-gray-100'}`}>
       
       {/* HEADER */}
       <div className="p-8 pb-4 flex justify-between items-center">
@@ -107,8 +119,10 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleShare} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all"><Share2 size={20} /></button>
-          <button onClick={toggleAudio} className={`p-4 rounded-2xl transition-all flex items-center gap-2 ${isPlaying ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
+          <button onClick={handleShare} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all" title="Partager">
+            <Share2 size={20} />
+          </button>
+          <button onClick={toggleAudio} className={`p-4 rounded-2xl transition-all flex items-center gap-2 ${isPlaying ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`} title="Écouter le Griot">
             {isLoadingAudio ? <Loader2 className="animate-spin" size={20} /> : isPlaying ? <Pause size={20} /> : <Volume2 size={20} />}
           </button>
         </div>
@@ -117,7 +131,7 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
       {/* CONTENT */}
       <div className={`px-8 md:px-12 py-6 text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`} dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
 
-      {/* TOOLBAR RE-COMPLÉTÉE */}
+      {/* TOOLBAR */}
       <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100">
         <div className="flex items-center gap-2 md:gap-4">
           <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm group">
@@ -175,14 +189,14 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (data) {
           allPosts = [...data, ...MOCK_POSTS];
-          // Tri chronologique strict (plus récent en haut)
-          allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         }
       } catch (e) {
         console.error("Fetch error:", e);
       }
     }
     
+    // Tri chronologique strict : les plus récents en premier
+    allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setPosts(allPosts);
     setLoading(false); 
   };
@@ -204,9 +218,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         }]);
         
         if (error) {
-          console.error("Supabase error detail:", error);
-          // Alerte précise pour le diagnostic
-          throw new Error(error.message || "Erreur d'insertion (Vérifiez les droits RLS)");
+          throw new Error(error.message || "Erreur d'insertion.");
         }
         
         addToast("Votre onde a été diffusée !", "success");
@@ -217,7 +229,6 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         setNewPostText('');
       }
     } catch (e: any) { 
-      console.error("Publication Exception:", e);
       addToast(`Échec de la publication : ${e.message}`, "error"); 
     } finally { 
       setSending(false); 
@@ -235,7 +246,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         <p className="text-gray-500 font-medium italic text-lg leading-relaxed">Exprimez votre vision, bâtissez la cité avec vos concitoyens.</p>
       </div>
 
-      {/* COMPOSER HAUTE COUTURE */}
+      {/* COMPOSER */}
       <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] mb-20 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-focus-within:opacity-10 transition-opacity">
            <Send size={120} />
@@ -286,7 +297,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         ) : (
           <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
              <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />
-             <p className="italic text-lg">Aucune onde n'a encore été détectée dans l'éther.</p>
+             <p className="italic text-lg">Aucune onde détectée.</p>
           </div>
         )}
       </div>

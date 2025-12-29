@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Volume2, ChevronLeft, Fingerprint, Crown, X, Sparkles, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { User as UserType, Message } from '../types';
-import { mediateChat, getConsensusSummary, getGriotReading, decodeBase64Audio, decodeAudioBuffer } from '../lib/gemini';
+// Fix: Use correct function names exported from lib/gemini.ts
+import { mediateChat, getConsensusSummary, getGriotReading, decode, decodeAudioData } from '../lib/gemini';
 
 const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
   const [messages, setMessages] = useState<Message[]>([
@@ -66,8 +67,9 @@ const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
       const base64Audio = await getGriotReading(text);
       if (base64Audio) {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        const bytes = decodeBase64Audio(base64Audio);
-        const buffer = await decodeAudioBuffer(bytes, audioContextRef.current);
+        // Fix: Use correct function names exported from lib/gemini.ts
+        const bytes = decode(base64Audio);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current);
         const source = audioContextRef.current.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContextRef.current.destination);
