@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Crown, ShieldCheck, Loader2, Activity, Database, CheckCircle2, AlertCircle,
@@ -90,11 +89,35 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.resource_gifts ENABLE ROW LEVEL SECURITY;
 
--- POLITIQUES (EXEMPLES SIMPLES)
+-- POLITIQUES (IDEMPOTENTES : DROP PUIS CREATE)
+
+-- Profils
+DROP POLICY IF EXISTS "Public read access" ON public.profiles;
 CREATE POLICY "Public read access" ON public.profiles FOR SELECT USING (true);
+
+-- Posts
+DROP POLICY IF EXISTS "Public read access posts" ON public.posts;
 CREATE POLICY "Public read access posts" ON public.posts FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Auth insert posts" ON public.posts;
 CREATE POLICY "Auth insert posts" ON public.posts FOR INSERT WITH CHECK (true);
+
+-- Édits
+DROP POLICY IF EXISTS "Public read access edicts" ON public.edicts;
+CREATE POLICY "Public read access edicts" ON public.edicts FOR SELECT USING (true);
+
+-- Votes
+DROP POLICY IF EXISTS "Users can see all votes" ON public.votes;
+CREATE POLICY "Users can see all votes" ON public.votes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can vote" ON public.votes;
+CREATE POLICY "Users can vote" ON public.votes FOR INSERT WITH CHECK (true);
+
+-- Marché
+DROP POLICY IF EXISTS "Public read access resources" ON public.resource_gifts;
+CREATE POLICY "Public read access resources" ON public.resource_gifts FOR SELECT USING (true);
 `;
 
   const initDiagnostic = async () => {
