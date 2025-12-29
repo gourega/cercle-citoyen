@@ -46,8 +46,7 @@ import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import NotificationDrawer from './components/NotificationDrawer.tsx';
 import { User, Role, CitizenNotification } from './types.ts';
-import { ADMIN_ID, MOCK_USERS } from './lib/mocks.ts';
-import { supabase, isRealSupabase, db } from './lib/supabase.ts';
+import { isRealSupabase } from './lib/supabase.ts';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -73,7 +72,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<CitizenNotification[]>([]);
+  const [notifications] = useState<CitizenNotification[]>([]);
 
   const hideNavbarPaths = ['/', '/manifesto', '/auth', '/welcome', '/legal'];
   if (!user || hideNavbarPaths.includes(location.pathname)) return null;
@@ -96,9 +95,9 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6 shadow-sm">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
         <div className="flex items-center gap-6">
-          <NavLink to="/feed" className="flex items-center group">
+          <Link to="/feed" className="flex items-center group">
             <Logo size={32} showText={true} />
-          </NavLink>
+          </Link>
           {isRealSupabase && (
             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -151,7 +150,6 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
         <div className="flex items-center gap-4 lg:hidden">
            <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative">
              <Bell size={24} />
-             {notifications.some(n => !n.isRead) && <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"></div>}
            </button>
            <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={28} /> : <Menu size={28} />}
@@ -163,7 +161,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
         <NotificationDrawer 
           notifications={notifications} 
           onClose={() => setIsNotifOpen(false)} 
-          onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? {...n, isRead: true} : n))} 
+          onMarkRead={() => {}} 
         />
       )}
 
@@ -192,9 +190,6 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
               <Crown size={16} /> Conseil
             </NavLink>
           )}
-          <NavLink to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white mt-4">
-            <UserIcon size={20} /> <span className="text-[10px] font-black uppercase tracking-widest">Mon Profil</span>
-          </NavLink>
           <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest text-left">
             Déconnexion
           </button>
@@ -253,11 +248,14 @@ const App = () => {
           <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
+              {/* Landing & Auth */}
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
+              
+              {/* Main App - Explicitly named routes */}
               <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
               <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
               <Route path="/live" element={user ? <LiveAssembly /> : <Navigate to="/" />} />
@@ -268,8 +266,12 @@ const App = () => {
               <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
               <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
-              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
+              
+              {/* Admin & Restricted */}
+              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
+              
+              {/* Catch all */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
