@@ -20,10 +20,10 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const SQL_SCHEMA = `-- INFRASTRUCTURE SOUVERAINE CERCLE CITOYEN (V2.9)
--- GESTION DES SENTIERS D'IMPACT ET SÉCURITÉ
+  const SQL_SCHEMA = `-- INFRASTRUCTURE SOUVERAINE CERCLE CITOYEN (V2.9.1)
+-- RÉPARATION CRUCIALE : AUTORISER L'INSCRIPTION ET LES SENTIERS
 
--- 1. TABLE DES PROFILS
+-- 1. TABLE PROFILES
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY,
     name TEXT,
@@ -38,52 +38,44 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. TABLE DES SENTIERS (QUESTS)
+-- 2. TABLE QUESTS (SENTIERS D'IMPACT)
 CREATE TABLE IF NOT EXISTS public.quests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     circle_type TEXT,
-    difficulty TEXT,
-    reward_xp INTEGER DEFAULT 0,
+    difficulty TEXT DEFAULT 'Initié',
+    reward_xp INTEGER DEFAULT 100,
     current_progress INTEGER DEFAULT 0,
     target_goal INTEGER DEFAULT 100,
     participants_count INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'pending', -- pending, validated, certified
+    status TEXT DEFAULT 'pending', -- pending, validated, certified, rejected
     location TEXT,
-    deadline TEXT,
     proposer_id UUID REFERENCES public.profiles(id),
     validator_id UUID REFERENCES public.profiles(id),
     certifier_id UUID REFERENCES public.profiles(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-ALTER TABLE public.quests ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public read quests" ON public.quests;
-CREATE POLICY "Public read quests" ON public.quests FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Insert quests" ON public.quests;
-CREATE POLICY "Insert quests" ON public.quests FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Update quests" ON public.quests;
-CREATE POLICY "Update quests" ON public.quests FOR UPDATE USING (true);
-
--- 3. POLITIQUES DE SÉCURITÉ PROFILS
+-- 3. ACTIVATION RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quests ENABLE ROW LEVEL SECURITY;
+
+-- 4. POLITIQUES QUESTS
+DROP POLICY IF EXISTS "Lecture publique des quêtes" ON public.quests;
+CREATE POLICY "Lecture publique des quêtes" ON public.quests FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Insertion par les citoyens" ON public.quests;
+CREATE POLICY "Insertion par les citoyens" ON public.quests FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Mise à jour par Admin ou Institution" ON public.quests;
+CREATE POLICY "Mise à jour par Admin ou Institution" ON public.quests FOR UPDATE USING (true);
+
+-- 5. POLITIQUES PROFILES
 DROP POLICY IF EXISTS "Public read access" ON public.profiles;
 CREATE POLICY "Public read access" ON public.profiles FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow public insert" ON public.profiles;
 CREATE POLICY "Allow public insert" ON public.profiles FOR INSERT WITH CHECK (true);
-
--- 4. AUTRES TABLES (POSTS)
-CREATE TABLE IF NOT EXISTS public.posts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    circle_type TEXT,
-    image_url TEXT,
-    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
-    is_majestic BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+DROP POLICY IF EXISTS "Update own profile" ON public.profiles;
+CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
 `;
 
   const fetchData = async () => {
@@ -95,7 +87,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
       try {
         const { data: profs } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         const { count: postCount } = await supabase.from('posts').select('*', { count: 'exact', head: true });
-        const { data: quests } = await supabase.from('quests').select('*, profiles:proposer_id(name, avatar_url)').eq('status', 'pending');
+        const { data: qData } = await supabase.from('quests').select('*, proposer:proposer_id(name, pseudonym)').eq('status', 'pending');
         
         if (profs) {
           setCitizens(profs);
@@ -107,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
             activeEdicts: 0
           });
         }
-        if (quests) setPendingQuests(quests);
+        if (qData) setPendingQuests(qData);
       } catch (e) {
         console.error("Fetch error:", e);
       }
@@ -119,21 +111,26 @@ CREATE TABLE IF NOT EXISTS public.posts (
 
   const handleValidateQuest = async (questId: string, approved: boolean) => {
     if (!isRealSupabase || !supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const { error } = await supabase
       .from('quests')
-      .update({ status: approved ? 'validated' : 'rejected' })
+      .update({ 
+        status: approved ? 'validated' : 'rejected',
+        validator_id: user.id 
+      })
       .eq('id', questId);
     
     if (!error) {
-      addToast(approved ? "Sentier validé avec succès !" : "Proposition rejetée.", approved ? "success" : "info");
+      addToast(approved ? "Sentier validé avec succès !" : "Proposition écartée.", approved ? "success" : "info");
       setPendingQuests(prev => prev.filter(q => q.id !== questId));
     }
   };
 
   const filteredCitizens = citizens.filter(c => 
     c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.role?.toLowerCase().includes(searchTerm.toLowerCase())
+    c.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -162,7 +159,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-in slide-in-from-bottom-4">
            {[
              { label: "Population", value: stats.totalUsers, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-             { label: "Sentiers en attente", value: pendingQuests.length, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
+             { label: "Sentiers en Attente", value: pendingQuests.length, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
              { label: "Impact Global", value: stats.totalPoints.toLocaleString(), icon: Zap, color: "text-emerald-600", bg: "bg-emerald-50" },
              { label: "Publications", value: stats.totalPosts, icon: Activity, color: "text-purple-600", bg: "bg-purple-50" }
            ].map((s, i) => (
@@ -179,34 +176,35 @@ CREATE TABLE IF NOT EXISTS public.posts (
 
       {activeTab === 'quests' && (
         <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm">
-          <h3 className="text-3xl font-serif font-bold mb-10">Propositions de Sentiers d'Impact</h3>
-          {pendingQuests.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {pendingQuests.map(q => (
-                <div key={q.id} className="p-8 bg-gray-50 rounded-[3rem] border border-gray-100">
-                  <div className="flex items-center gap-4 mb-6">
-                    <img src={q.profiles?.avatar_url || `https://picsum.photos/seed/${q.proposer_id}/100/100`} className="w-10 h-10 rounded-xl" />
-                    <div>
-                      <p className="font-bold">{q.profiles?.name}</p>
-                      <p className="text-[10px] uppercase font-black text-blue-600">{q.circle_type}</p>
+           <h3 className="text-3xl font-serif font-bold mb-10">Validation des Sentiers</h3>
+           {pendingQuests.length > 0 ? (
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               {pendingQuests.map(q => (
+                 <div key={q.id} className="p-8 bg-gray-50 rounded-[3rem] border border-gray-100 group">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                        <Target />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{q.title}</p>
+                        <p className="text-[10px] font-black uppercase text-gray-400">Proposé par {q.proposer?.name} (@{q.proposer?.pseudonym})</p>
+                      </div>
                     </div>
-                  </div>
-                  <h4 className="text-xl font-serif font-bold mb-3">{q.title}</h4>
-                  <p className="text-sm text-gray-600 mb-6">{q.description}</p>
-                  <div className="flex gap-3">
-                    <button onClick={() => handleValidateQuest(q.id, true)} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
-                      <Check size={16} /> Valider
-                    </button>
-                    <button onClick={() => handleValidateQuest(q.id, false)} className="flex-1 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
-                      <X size={16} /> Rejeter
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 text-gray-400 italic">Aucune proposition en attente de validation.</div>
-          )}
+                    <p className="text-sm text-gray-600 mb-8 leading-relaxed">{q.description}</p>
+                    <div className="flex gap-4">
+                       <button onClick={() => handleValidateQuest(q.id, true)} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
+                         <Check size={16} /> Approuver
+                       </button>
+                       <button onClick={() => handleValidateQuest(q.id, false)} className="flex-1 bg-white border border-rose-100 text-rose-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
+                         <X size={16} /> Rejeter
+                       </button>
+                    </div>
+                 </div>
+               ))}
+             </div>
+           ) : (
+             <div className="text-center py-20 text-gray-400 italic">Aucune proposition en attente de validation.</div>
+           )}
         </div>
       )}
 
@@ -277,7 +275,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
 
           <section className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V2.9</h3>
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V2.9.1</h3>
                 <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
              </div>
              <div className="bg-black/40 p-6 rounded-2xl border border-white/10 font-mono text-[10px] leading-relaxed relative">
