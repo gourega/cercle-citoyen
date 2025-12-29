@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
-  LogOut, Loader2, X, Save, PenLine, Crown, User as UserIcon, AtSign, FileText, Camera, Upload, 
-  ImageIcon, ShieldCheck, Scale, TreeDeciduous, DraftingCompass, Sparkles, RefreshCw, CheckCircle,
-  Award, Medal, Star, ShieldAlert, Zap
+  LogOut, Loader2, Save, PenLine, Crown, AtSign, RefreshCw, CheckCircle,
+  Award, Medal, Star, ShieldCheck, Zap, X, Camera
 } from 'lucide-react';
-import { supabase, isRealSupabase, db } from '../lib/supabase';
+import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
 import { MOCK_USERS, ADMIN_ID } from '../lib/mocks';
 
@@ -32,68 +32,100 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const { addToast } = useToast();
+
+  // État local pour l'édition
+  const [editData, setEditData] = useState({
+    name: '',
+    pseudonym: '',
+    bio: '',
+    avatar: ''
+  });
 
   const fetchProfile = async () => {
     setLoading(true);
     const targetId = id || currentUser.id;
-    
-    // Initialisation avec les données locales (Mocks inclus)
     let currentProfileState = { ...currentUser, avatar_url: currentUser.avatar, impact_score: currentUser.impact_score || currentUser.impactScore || 0 };
 
-    // Si c'est le Gardien et qu'on est sur son profil, on s'assure qu'il a son score de fondateur par défaut
     if (targetId === ADMIN_ID && currentProfileState.impact_score === 0) {
       currentProfileState.impact_score = MOCK_USERS[ADMIN_ID].impact_score;
     }
 
     setProfile(currentProfileState);
+    setEditData({
+      name: currentProfileState.name,
+      pseudonym: currentProfileState.pseudonym,
+      bio: currentProfileState.bio,
+      avatar: currentProfileState.avatar
+    });
 
     try {
       if (isRealSupabase && supabase) {
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
+        const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         if (data) {
-          // Fusion intelligente : On garde le score le plus haut si c'est le nôtre (protection du prestige)
           const finalScore = (targetId === currentUser.id) 
             ? Math.max(data.impact_score || 0, currentProfileState.impact_score)
             : (data.impact_score || 0);
 
-          setProfile({ 
+          const fetchedProfile = { 
             ...data, 
             avatar: data.avatar_url || data.avatar, 
             impact_score: finalScore 
-          });
+          };
+          setProfile(fetchedProfile);
+          if (targetId === currentUser.id) {
+            setEditData({
+              name: fetchedProfile.name,
+              pseudonym: fetchedProfile.pseudonym,
+              bio: fetchedProfile.bio,
+              avatar: fetchedProfile.avatar
+            });
+          }
         }
       }
     } catch (e) {
-      console.error("Erreur de récupération profil:", e);
+      console.error(e);
     } finally { 
       setLoading(false); 
     }
   };
 
-  const forceSync = async () => {
-    if (!isRealSupabase || !supabase || syncing) return;
+  const handleSave = async () => {
     setSyncing(true);
     try {
-      const dbUpdates = {
-        id: profile.id,
-        name: profile.name,
-        pseudonym: profile.pseudonym,
-        bio: profile.bio || "Citoyen du Cercle",
-        avatar_url: profile.avatar || profile.avatar_url,
-        impact_score: profile.impact_score || 0,
-        role: profile.role
+      const updates = {
+        name: editData.name,
+        pseudonym: editData.pseudonym,
+        bio: editData.bio,
+        avatar_url: editData.avatar
       };
 
-      // Upsert pour s'assurer que le profil existe dans Supabase
-      const { error } = await supabase.from('profiles').upsert([dbUpdates]);
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
+        if (error) throw error;
+      }
+
+      const updatedProfile = { ...profile, ...updates, avatar: editData.avatar };
+      setProfile(updatedProfile);
       
-      if (error) throw error;
-      
-      addToast("Synchronisation Cloud réussie ! Prestige sauvegardé.", "success");
+      // Mettre à jour le localStorage si c'est notre propre profil
+      if (profile.id === currentUser.id) {
+        const saved = localStorage.getItem('cercle_user');
+        if (saved) {
+          const user = JSON.parse(saved);
+          localStorage.setItem('cercle_user', JSON.stringify({ ...user, ...updates, avatar: editData.avatar }));
+        }
+        if (onProfileUpdate) onProfileUpdate(updatedProfile);
+      }
+
+      addToast("Profil mis à jour avec succès !", "success");
+      setIsEditing(false);
     } catch (e: any) {
       addToast(`Erreur : ${e.message}`, "error");
-    } finally { setSyncing(false); }
+    } finally {
+      setSyncing(false);
+    }
   };
 
   useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
@@ -104,7 +136,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isGuardian = profile?.role === Role.SUPER_ADMIN || profile?.role === 'Gardien';
   const impactScore = profile?.impact_score || 0;
 
-  // Définition des badges basés sur le score
   const badges = [
     { id: 'founder', label: 'Fondateur', icon: <Crown className="text-amber-500" />, active: isGuardian, color: 'bg-amber-50 border-amber-200 text-amber-700' },
     { id: 'builder', label: 'Bâtisseur', icon: <Medal className="text-blue-500" />, active: impactScore >= 1000, color: 'bg-blue-50 border-blue-200 text-blue-700' },
@@ -116,7 +147,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     <div className="max-w-5xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
         
-        {/* Banner Section */}
         <div className={`h-64 relative overflow-hidden ${isGuardian ? 'bg-gradient-to-r from-amber-600 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>
            <div className="absolute top-8 left-8 flex items-center gap-3 px-4 py-2 bg-black/20 backdrop-blur-xl rounded-full border border-white/20">
@@ -125,41 +155,80 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 {isRealSupabase ? 'Liaison Cloud Active' : 'Mode Hors-Ligne'}
               </span>
            </div>
-           {isGuardian && (
-             <div className="absolute top-8 right-8 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-               <Crown size={14} className="text-amber-300" />
-               <span className="text-[9px] font-black uppercase tracking-widest text-white">Autorité Suprême</span>
-             </div>
-           )}
         </div>
 
         <div className="px-10 pb-12 -mt-24 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-8 text-center md:text-left">
-              <CitizenAvatar url={profile.avatar || profile.avatar_url} name={profile.name} className="ring-8 ring-white" />
-              <div className="pb-4">
-                <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
-                <p className="text-gray-400 font-bold text-base tracking-wide flex items-center justify-center md:justify-start gap-2">
-                  <AtSign size={16} /> {profile.pseudonym}
-                </p>
+              <div className="relative group">
+                <CitizenAvatar url={isEditing ? editData.avatar : (profile.avatar || profile.avatar_url)} name={profile.name} className="ring-8 ring-white" />
+                {isEditing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] ring-8 ring-white opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="text-white" size={32} />
+                  </div>
+                )}
+              </div>
+              <div className="pb-4 flex-1">
+                {isEditing ? (
+                  <div className="space-y-4 max-w-sm">
+                    <input 
+                      value={editData.name}
+                      onChange={e => setEditData({...editData, name: e.target.value})}
+                      className="text-4xl font-serif font-bold text-gray-900 bg-gray-50 border-b-2 border-blue-600 w-full outline-none p-2"
+                      placeholder="Votre nom"
+                    />
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <AtSign size={16} />
+                      <input 
+                        value={editData.pseudonym}
+                        onChange={e => setEditData({...editData, pseudonym: e.target.value})}
+                        className="font-bold text-base outline-none bg-transparent border-b border-blue-200"
+                        placeholder="Pseudonyme"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
+                    <p className="text-gray-400 font-bold text-base tracking-wide flex items-center justify-center md:justify-start gap-2">
+                      <AtSign size={16} /> {profile.pseudonym}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             
             {isOwnProfile && (
               <div className="flex flex-wrap justify-center gap-3">
-                <button 
-                  onClick={forceSync} 
-                  disabled={syncing} 
-                  className="px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 border border-emerald-100 shadow-sm"
-                >
-                   {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} Sync Cloud
-                </button>
-                <button className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl">
-                  <PenLine size={16} /> Modifier
-                </button>
-                <button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100">
-                  <LogOut size={16} />
-                </button>
+                {isEditing ? (
+                  <>
+                    <button 
+                      onClick={handleSave} 
+                      disabled={syncing}
+                      className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl shadow-emerald-100"
+                    >
+                      {syncing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Enregistrer
+                    </button>
+                    <button 
+                      onClick={() => setIsEditing(false)}
+                      className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+                    >
+                      Annuler
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => setIsEditing(true)}
+                      className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"
+                    >
+                      <PenLine size={16} /> Modifier
+                    </button>
+                    <button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100">
+                      <LogOut size={16} />
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -168,9 +237,18 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             <div className="lg:col-span-2 space-y-12">
                 <section>
                   <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6 px-1">Présentation</h3>
-                  <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100/50">
-                    {profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}
-                  </p>
+                  {isEditing ? (
+                    <textarea 
+                      value={editData.bio}
+                      onChange={e => setEditData({...editData, bio: e.target.value})}
+                      className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all"
+                      placeholder="Décrivez votre vision pour la cité..."
+                    />
+                  ) : (
+                    <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100/50">
+                      {profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}
+                    </p>
+                  )}
                 </section>
 
                 <section>
@@ -179,7 +257,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                     {badges.filter(b => b.active).map(badge => (
                       <div key={badge.id} className={`flex flex-col items-center justify-center p-6 rounded-3xl border ${badge.color} transition-transform hover:scale-105`}>
                         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm">
-                          {/* Fix: cast element to React.ReactElement<any> to allow 'size' prop and resolve TypeScript error */}
                           {React.cloneElement(badge.icon as React.ReactElement<any>, { size: 24 })}
                         </div>
                         <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight">{badge.label}</span>
@@ -197,35 +274,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                   {impactScore.toLocaleString()}
                 </div>
                 <p className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] relative z-10">POINTS CITOYENS</p>
-                
-                {impactScore > 0 && (
-                  <div className="mt-8 pt-8 border-t border-white/10 relative z-10">
-                    <div className="flex items-center justify-center gap-2 text-emerald-400 text-[10px] font-black uppercase">
-                      <Star size={14} className="fill-current" /> Citoyen d'Élite
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border border-blue-100 border-dashed">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-4">Statistiques Civiques</h4>
-                <div className="space-y-4">
-                  {[
-                    { label: 'Réflexions', val: profile.civicStats?.thought || 0, color: 'bg-blue-400' },
-                    { label: 'Palabres', val: profile.civicStats?.link || 0, color: 'bg-purple-400' },
-                    { label: 'Actions', val: profile.civicStats?.action || 0, color: 'bg-emerald-400' }
-                  ].map(stat => (
-                    <div key={stat.label}>
-                      <div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-2">
-                        <span>{stat.label}</span>
-                        <span className="text-gray-400">{stat.val}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-white rounded-full overflow-hidden">
-                        <div className={`h-full ${stat.color} transition-all duration-1000`} style={{ width: `${stat.val}%` }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </aside>
           </div>
