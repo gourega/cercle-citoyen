@@ -4,7 +4,8 @@ import {
   Crown, ShieldCheck, Loader2, RefreshCw, Terminal, Copy, Wifi, 
   ShieldAlert, UserX, AlertTriangle, Ban, Trash2, Search,
   CheckCircle2, Mail, AtSign, Filter, Activity, Users, Zap, Gavel,
-  ShieldPlus, UserRoundCheck, Shield, AlertCircle, MapPin, Target, Check, X
+  ShieldPlus, UserRoundCheck, Shield, AlertCircle, MapPin, Target, Check, X,
+  UserCog
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../App.tsx';
@@ -109,6 +110,15 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
 
   useEffect(() => { fetchData(); }, []);
 
+  const handleUpdateRole = async (citizen: any, newRole: string) => {
+    if (!isRealSupabase || !supabase) return;
+    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', citizen.id);
+    if (!error) {
+      setCitizens(prev => prev.map(c => c.id === citizen.id ? { ...c, role: newRole } : c));
+      addToast(`Rôle de ${citizen.name} mis à jour : ${newRole}`, "success");
+    }
+  };
+
   const handleValidateQuest = async (questId: string, approved: boolean) => {
     if (!isRealSupabase || !supabase) return;
     const { data: { user } } = await supabase.auth.getUser();
@@ -128,10 +138,20 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
     }
   };
 
-  const filteredCitizens = citizens.filter(c => 
-    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Logique de filtrage optimisée : 
+  // 1. Si recherche vide : affiche uniquement les rôles administratifs (Gardien, Admin, Modérateur, Animateur)
+  // 2. Si recherche active : cherche parmi tous les membres
+  const filteredCitizens = citizens.filter(c => {
+    const isSearching = searchTerm.trim().length > 0;
+    const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         c.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase());
+    const isStaff = c.role !== 'Membre';
+
+    if (isSearching) {
+      return matchesSearch;
+    }
+    return isStaff;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-500">
@@ -149,7 +169,7 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
         
         <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200 overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('stats')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Impact</button>
-          <button onClick={() => setActiveTab('citizens')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'citizens' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Citoyens</button>
+          <button onClick={() => setActiveTab('citizens')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'citizens' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Conseil ({citizens.filter(c => c.role !== 'Membre').length})</button>
           <button onClick={() => setActiveTab('quests')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'quests' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Sentiers ({pendingQuests.length})</button>
           <button onClick={() => setActiveTab('system')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'system' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Système</button>
         </div>
@@ -211,10 +231,13 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
       {activeTab === 'citizens' && (
         <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm">
            <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
-              <h3 className="text-3xl font-serif font-bold">Gestion des Citoyens</h3>
+              <div>
+                <h3 className="text-3xl font-serif font-bold mb-2">Gestion de la Cité</h3>
+                <p className="text-xs text-gray-400 font-medium italic">Affiche par défaut les membres du Conseil. Recherchez un citoyen pour modifier son rôle.</p>
+              </div>
               <div className="relative w-full md:w-96">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Nom, pseudo, rôle..." className="w-full bg-gray-50 border border-transparent py-4 pl-12 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-sm shadow-inner" />
+                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Chercher un citoyen (Nom, pseudo...)" className="w-full bg-gray-50 border border-transparent py-4 pl-12 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-sm shadow-inner" />
               </div>
            </div>
 
@@ -223,12 +246,12 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Citoyen</th>
-                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Rôle</th>
-                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Actions</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Rôle Actuel</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Leviers</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filteredCitizens.map(citizen => (
+                  {filteredCitizens.length > 0 ? filteredCitizens.map(citizen => (
                     <tr key={citizen.id} className="group">
                       <td className="py-6">
                         <div className="flex items-center gap-4">
@@ -240,16 +263,35 @@ CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE USING (true);
                         </div>
                       </td>
                       <td className="py-6">
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-gray-50">{citizen.role}</span>
+                         <div className="flex items-center gap-2">
+                           {citizen.role !== 'Membre' && <UserCog size={14} className="text-blue-500" />}
+                           <select 
+                             value={citizen.role} 
+                             onChange={(e) => handleUpdateRole(citizen, e.target.value)}
+                             className="bg-gray-50 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border-none outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer hover:bg-white transition-all"
+                           >
+                             <option value="Membre">Membre</option>
+                             <option value="Animateur">Animateur</option>
+                             <option value="Modérateur">Modérateur</option>
+                             <option value="Administrateur">Administrateur</option>
+                             <option value="Gardien">Gardien</option>
+                           </select>
+                         </div>
                       </td>
                       <td className="py-6 text-right">
                          <div className="flex justify-end gap-2">
-                            <button title="Avertir" className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 border border-amber-100"><AlertTriangle size={18} /></button>
-                            <button title="Suspendre" className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 border border-rose-100"><Ban size={18} /></button>
+                            <button title="Avertir" className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 border border-amber-100 transition-all"><AlertTriangle size={18} /></button>
+                            <button title="Suspendre" className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 border border-rose-100 transition-all"><Ban size={18} /></button>
                          </div>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr>
+                      <td colSpan={3} className="py-20 text-center text-gray-400 italic">
+                         Aucun citoyen trouvé pour cette recherche.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
            </div>
