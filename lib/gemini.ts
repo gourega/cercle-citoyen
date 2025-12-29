@@ -58,7 +58,6 @@ export async function getGriotReading(content: string) {
 /**
  * WISDOM ECHO - TTS pour les synthèses de cercle
  */
-// Fix: Added generateWisdomEcho for CirclePage to support audio summaries
 export async function generateWisdomEcho(circleType: string, summary: string) {
   try {
     const ai = getAI();
@@ -99,7 +98,6 @@ export async function summarizeCircleDiscussions(circleType: string, posts: stri
 /**
  * ANCRAGE TERRITORIAL - Recherche avec Google Maps Grounding
  */
-// Fix: Updated model to gemini-2.5-flash for maps grounding tasks
 export async function findInitiatives(query: string, lat?: number, lng?: number) {
   try {
     const ai = getAI();
@@ -115,27 +113,28 @@ export async function findInitiatives(query: string, lat?: number, lng?: number)
     }
 
     const response = await ai.models.generateContent({
-      // Fix: Use gemini-2.5-flash for maps grounding as per task requirements
-      model: "gemini-2.5-flash",
-      contents: `Localise des initiatives, organisations ou lieux physiques en Côte d'Ivoire liés à cette recherche citoyenne : "${query}".`,
+      model: "gemini-2.5-flash-preview-09-2025",
+      contents: `Localise des initiatives citoyennes, ONG, mairies ou lieux d'action collective en Côte d'Ivoire liés à : "${query}". Si aucun lieu exact n'est trouvé, propose des conseils pour mobiliser sur ce sujet en Côte d'Ivoire.`,
       config,
     });
 
     const places = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     return {
-      text: response.text || "Voici ce que j'ai trouvé sur le terrain.",
+      text: response.text || "Voici les ressources territoriales identifiées pour votre action.",
       places: places
     };
   } catch (e) {
     console.error("Maps Grounding Error:", e);
-    return { text: "Erreur lors de la recherche territoriale.", places: [] };
+    return { 
+      text: "La recherche territoriale rencontre une difficulté. Essayez d'être plus spécifique (ex: 'Mairie de Cocody', 'ONG environnement à Bouaké'). Si le problème persiste, il se peut que les services de géolocalisation soient en maintenance.", 
+      places: [] 
+    };
   }
 }
 
 /**
  * BOUSSOLE DES LOIS - Simplification de textes juridiques
  */
-// Fix: Added simplifyLegalText for LegislativeCompass with structured JSON output
 export async function simplifyLegalText(text: string) {
   try {
     const ai = getAI();
@@ -173,7 +172,6 @@ export async function simplifyLegalText(text: string) {
 /**
  * RÉPUTATION COMMUNAUTAIRE - Analyse de sentiment et traits
  */
-// Fix: Added analyzeCommunityReputation for BusinessPortal with structured JSON output
 export async function analyzeCommunityReputation(userName: string, vouches: string[]) {
   try {
     const ai = getAI();
@@ -207,7 +205,6 @@ export async function analyzeCommunityReputation(userName: string, vouches: stri
 /**
  * MÉDIATION DE PALABRE - Intervient dans le chat
  */
-// Fix: Added mediateChat for ChatPage to provide AI mediation in discussions
 export async function mediateChat(messages: {sender: string, text: string}[]) {
   try {
     const ai = getAI();
@@ -226,7 +223,6 @@ export async function mediateChat(messages: {sender: string, text: string}[]) {
 /**
  * CONSENSUS - Résumé de discussion
  */
-// Fix: Added getConsensusSummary for ChatPage to summarize discussion points
 export async function getConsensusSummary(messages: {sender: string, text: string}[]) {
   try {
     const ai = getAI();
@@ -245,7 +241,6 @@ export async function getConsensusSummary(messages: {sender: string, text: strin
 /**
  * VÉRIFICATION DE QUÊTE - Analyse d'image multi-modale
  */
-// Fix: Added verifyQuestAction for QuestsPage using multimodal analysis with JSON output
 export async function verifyQuestAction(base64Image: string, questDescription: string) {
   try {
     const ai = getAI();
@@ -279,7 +274,6 @@ export async function verifyQuestAction(base64Image: string, questDescription: s
 /**
  * ANALYSE D'IMPACT D'IDÉE - Analyse de vision
  */
-// Fix: Added analyzeIdeaImpact for IdeaBankPage with structured response schema
 export async function analyzeIdeaImpact(title: string, description: string) {
   try {
     const ai = getAI();

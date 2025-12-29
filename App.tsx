@@ -63,10 +63,17 @@ export const useToast = () => {
 
 // Composant pour forcer le scroll en haut à chaque changement de route
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    // Utilisation de instant pour éviter l'effet de glissement si on change de page
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant'
+    });
+  }, [pathname, hash]);
+  
   return null;
 };
 
