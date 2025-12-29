@@ -1,342 +1,379 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { 
-  ThumbsUp, Lightbulb, Loader2, Volume2, Send, Tag, Sparkles, Bell, RefreshCw,
-  Crown, Share2, MessageSquare, ShieldCheck, Bold, Italic, Underline as UnderlineIcon
+  Crown, ShieldCheck, Loader2, RefreshCw, Terminal, Copy, Wifi, 
+  ShieldAlert, UserX, AlertTriangle, Ban, Trash2, Search,
+  CheckCircle2, Mail, AtSign, Filter, Activity, Users, Zap, Gavel,
+  ShieldPlus, UserRoundCheck, Shield, AlertCircle, MapPin, Target, Check, X,
+  UserCog, Building2, Store, Landmark, Info, BellRing
 } from 'lucide-react';
-import { User, CircleType, Role } from '../types';
-import { getGriotReading, decodeBase64Audio, decodeAudioBuffer } from '../lib/gemini';
-import { supabase, isRealSupabase } from '../lib/supabase';
-import { CIRCLES_CONFIG } from '../constants';
-import { MOCK_POSTS } from '../lib/mocks';
-import { useToast } from '../App';
+import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
+import { useToast } from '../App.tsx';
+import { Role, UserCategory } from '../types.ts';
 
-// Parseur de texte pour les styles simples
-const formatContent = (content: string) => {
-  if (!content) return '';
-  
-  let html = content
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
-  html = html.replace(/__(.*?)__/g, '<u style="text-decoration: underline;">$1</u>');
-  
-  return html;
-};
-
-const PostCard: React.FC<{ post: any }> = ({ post }) => {
-  const [author, setAuthor] = useState<any>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-
-  useEffect(() => {
-    const fetchAuthor = async () => {
-      if (!supabase) {
-        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: 'Membre' });
-        return;
-      }
-      const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-      setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: 'Membre' });
-    };
-    fetchAuthor();
-  }, [post.author_id]);
-
-  const toggleAudio = async () => {
-    if (isPlaying) { setIsPlaying(false); return; }
-    setIsLoadingAudio(true);
-    try {
-      const b64 = await getGriotReading(post.content);
-      if (b64) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        }
-        const buffer = await decodeAudioBuffer(decodeBase64Audio(b64), audioContextRef.current);
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.onended = () => setIsPlaying(false);
-        source.start(0);
-        setIsPlaying(true);
-      }
-    } catch (e) { console.error(e); } finally { setIsLoadingAudio(false); }
-  };
-
-  if (!author) return <div className="h-48 bg-gray-50 rounded-[2.5rem] animate-pulse mb-8"></div>;
-
-  const isMajestic = post.is_majestic || author.role === 'Gardien';
-
-  return (
-    <div className={`bg-white border rounded-[2.5rem] p-8 md:p-10 shadow-sm hover:shadow-xl transition-all mb-8 animate-in fade-in slide-in-from-bottom-4 group relative overflow-hidden ${isMajestic ? 'border-amber-200 ring-2 ring-amber-50 shadow-amber-50' : 'border-gray-100'}`}>
-      
-      {isMajestic && (
-        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-125 transition-transform duration-700 pointer-events-none">
-          <Crown size={120} />
-        </div>
-      )}
-
-      <div className="flex justify-between items-start mb-8">
-        <div className="flex items-center gap-5">
-          <div className="relative">
-            <img src={author.avatar_url || `https://picsum.photos/seed/${post.author_id}/150/150`} className={`w-14 h-14 rounded-2xl object-cover shadow-md ${isMajestic ? 'ring-4 ring-amber-100' : ''}`} alt="" />
-            {isMajestic && <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-1 rounded-lg shadow-lg"><Crown size={12} /></div>}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-               <h4 className="font-bold text-gray-900 text-lg">{author.name}</h4>
-               {author.role === 'Gardien' && <ShieldCheck size={16} className="text-blue-600" />}
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-gray-400">
-              {new Date(post.created_at).toLocaleDateString()} • <span className={`${isMajestic ? 'text-amber-600' : 'text-blue-600'}`}>{post.circle_type}</span>
-            </div>
-          </div>
-        </div>
-        <button onClick={toggleAudio} className={`p-4 rounded-2xl transition-all shadow-sm ${isPlaying ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
-          {isLoadingAudio ? <Loader2 className="animate-spin w-5 h-5" /> : <Volume2 size={20} />}
-        </button>
-      </div>
-
-      <div 
-        className={`text-gray-800 leading-relaxed mb-10 whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif font-medium italic text-gray-900 border-l-4 border-amber-200 pl-8' : 'text-[17px]'}`}
-        dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
-      />
-      
-      <div className="flex items-center justify-between pt-8 border-t border-gray-50">
-        <div className="flex gap-8">
-            <button className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-400 hover:text-blue-600 transition-colors">
-            <ThumbsUp size={16} /> Utile ({post.reactions?.useful || 0})
-            </button>
-            <button className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-400 hover:text-amber-500 transition-colors">
-            <Lightbulb size={16} /> Inspirant ({post.reactions?.inspiring || 0})
-            </button>
-        </div>
-        <button className="p-3 text-gray-300 hover:text-blue-600 transition-colors"><Share2 size={18} /></button>
-      </div>
-    </div>
-  );
-};
-
-const FeedPage: React.FC<{ user: User }> = ({ user }) => {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newPostText, setNewPostText] = useState('');
-  const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
-  const [sending, setSending] = useState(false);
-  const [newIncomingCount, setNewIncomingCount] = useState(0);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
+  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'entities' | 'quests'>('stats');
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [pendingQuests, setPendingQuests] = useState<any[]>([]);
+  const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeEdicts: 0 });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const fetchPosts = async () => {
+  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.3)
+-- RÉPARATION : GESTION ROBUSTE DES POLITIQUES ET TABLES
+
+-- 1. EXTENSION TABLE PROFILES
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+
+-- 2. TABLE POSTS (CRÉATION SI NON EXISTANTE)
+CREATE TABLE IF NOT EXISTS public.posts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author_id UUID REFERENCES public.profiles(id),
+    content TEXT NOT NULL,
+    circle_type TEXT,
+    is_majestic BOOLEAN DEFAULT false,
+    image_url TEXT,
+    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. CORRECTION NOM DE COLONNE SI TYPO
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='is_majectic') THEN
+    ALTER TABLE public.posts RENAME COLUMN is_majectic TO is_majestic;
+  END IF;
+END $$;
+
+-- 4. TABLE NOTIFICATIONS
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id),
+    type TEXT,
+    title TEXT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. POLITIQUES DE SÉCURITÉ (RLS) - NETTOYAGE PUIS CRÉATION
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture_Tous_Posts" ON public.posts;
+CREATE POLICY "Lecture_Tous_Posts" ON public.posts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Insertion_Tous_Posts" ON public.posts;
+CREATE POLICY "Insertion_Tous_Posts" ON public.posts FOR INSERT WITH CHECK (true);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture_Propre_Notif" ON public.notifications;
+CREATE POLICY "Lecture_Propre_Notif" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Insert_System" ON public.notifications;
+CREATE POLICY "Insert_System" ON public.notifications FOR INSERT WITH CHECK (true);
+`;
+
+  const fetchData = async () => {
     setLoading(true);
-    if (!supabase) {
-      const local = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
-      setPosts([...MOCK_POSTS, ...local]);
-      setLoading(false);
-      return;
-    }
-    const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-    if (data) setPosts([...MOCK_POSTS, ...data]);
-    setLoading(false);
-    setNewIncomingCount(0);
-  };
-
-  useEffect(() => {
-    fetchPosts();
-
-    if (supabase) {
-      const channel = supabase
-        .channel('public:posts')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
-          if (payload.new.author_id !== user.id) {
-            setNewIncomingCount(prev => prev + 1);
-          } else {
-            setPosts(prev => {
-                if (prev.some(p => p.id === payload.new.id)) return prev;
-                return [payload.new, ...prev];
-            });
-          }
-        })
-        .subscribe();
-
-      return () => { supabase.removeChannel(channel); };
-    }
-  }, [user.id]);
-
-  const applyFormatting = (prefix: string, suffix: string) => {
-    if (!textareaRef.current) return;
+    const status = await db.checkConnection();
+    setConnStatus(status);
     
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const selectedText = newPostText.substring(start, end);
-    
-    const formattedText = `${prefix}${selectedText}${suffix}`;
-    const newFullText = 
-      newPostText.substring(0, start) + 
-      formattedText + 
-      newPostText.substring(end);
-    
-    setNewPostText(newFullText);
-    
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const newPos = start + prefix.length + selectedText.length + suffix.length;
-        textareaRef.current.setSelectionRange(newPos, newPos);
-      }
-    }, 10);
-  };
-
-  const handleCreatePost = async () => {
-    if (!newPostText.trim()) return;
-    setSending(true);
-    
-    const isGuardian = user.role === Role.SUPER_ADMIN;
-
-    try {
-        if (supabase) {
-            // Tentative d'insertion avec le nom de colonne correct : is_majestic
-            const { error } = await supabase.from('posts').insert([{
-                author_id: user.id,
-                content: newPostText,
-                circle_type: selectedCircle,
-                is_majestic: isGuardian 
-            }]);
-            
-            if (error) {
-                // Si l'erreur mentionne un problème de colonne, on tente sans la colonne is_majestic
-                if (error.message.includes("column") || error.message.includes("is_majectic")) {
-                    console.warn("Problème de schéma détecté, tentative sans la colonne is_majestic...");
-                    const { error: retryError } = await supabase.from('posts').insert([{
-                        author_id: user.id,
-                        content: newPostText,
-                        circle_type: selectedCircle
-                    }]);
-                    if (retryError) throw retryError;
-                } else {
-                    throw error;
-                }
-            }
-            
-            addToast("Onde publiée sur le Cloud !", "success");
-            setNewPostText('');
-        } else {
-            const localPosts = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
-            const newPost = { 
-                id: crypto.randomUUID(), 
-                author_id: user.id, 
-                content: newPostText, 
-                circle_type: selectedCircle, 
-                created_at: new Date().toISOString(),
-                is_majestic: isGuardian,
-                reactions: { useful: 0, relevant: 0, inspiring: 0 }
-            };
-            
-            localStorage.setItem('cercle_db_posts', JSON.stringify([newPost, ...localPosts]));
-            setPosts(prev => [newPost, ...prev]);
-            setNewPostText('');
-            addToast("Onde enregistrée localement.", "info");
+    if (isRealSupabase && supabase) {
+      try {
+        const { data: profs } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        const { count: postCount } = await supabase.from('posts').select('*', { count: 'exact', head: true });
+        const { data: qData } = await supabase.from('quests').select('*, proposer:proposer_id(name, pseudonym)').eq('status', 'pending');
+        
+        if (profs) {
+          setProfiles(profs);
+          const points = profs.reduce((acc, curr) => acc + (curr.impact_score || 0), 0);
+          setStats({
+            totalUsers: profs.length,
+            totalPosts: postCount || 0,
+            totalPoints: points,
+            activeEdicts: 0
+          });
         }
-    } catch (err: any) {
-        console.error("Erreur de publication:", err);
-        addToast(`Échec de publication : ${err.message}. Allez dans 'Conseil' pour mettre à jour le schéma SQL.`, "error");
-    } finally {
-        setSending(false);
+        if (qData) setPendingQuests(qData);
+      } catch (e) {
+        console.error("Fetch error:", e);
+      }
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const sendNotification = async (userId: string, title: string, message: string, type: string) => {
+    if (!supabase) return;
+    await supabase.from('notifications').insert([{
+      user_id: userId,
+      title,
+      message,
+      type
+    }]);
+  };
+
+  const handleUpdateStatus = async (profile: any, newStatus: string) => {
+    if (!isRealSupabase || !supabase) return;
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', profile.id);
+    
+    if (!error) {
+      setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, status: newStatus } : p));
+      
+      let msg = "";
+      if (newStatus === 'active') msg = "Votre accès a été activé par le Gardien.";
+      if (newStatus === 'suspended') msg = "Votre accès a été suspendu pour vérification.";
+      if (newStatus === 'revoked') msg = "Votre accès a été révoqué définitivement.";
+      
+      await sendNotification(profile.id, "Mise à jour de Statut", msg, "drum_call");
+      addToast(`Statut de ${profile.name} mis à jour : ${newStatus}`, "success");
+    }
+  };
+
+  const handleUpdateRole = async (profile: any, newRole: string) => {
+    if (!isRealSupabase || !supabase) return;
+    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profile.id);
+    if (!error) {
+      setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, role: newRole } : p));
+      addToast(`Rôle de ${profile.name} mis à jour : ${newRole}`, "success");
+    }
+  };
+
+  const filteredCitizens = profiles.filter(p => {
+    const isSearching = searchTerm.trim().length > 0;
+    const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         p.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase());
+    const isCitizen = p.category === UserCategory.CITIZEN || !p.category;
+    
+    if (activeTab === 'citizens') {
+        if (isSearching) return matchesSearch && isCitizen;
+        return isCitizen && p.role !== 'Membre';
+    }
+    
+    if (activeTab === 'entities') {
+        const isEntity = p.category && p.category !== UserCategory.CITIZEN;
+        if (isSearching) return matchesSearch && isEntity;
+        return isEntity;
+    }
+
+    return false;
+  });
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case UserCategory.MUNICIPALITY: return <Landmark className="text-blue-600" size={18} />;
+      case UserCategory.ENTERPRISE: return <Building2 className="text-teal-600" size={18} />;
+      case UserCategory.LOCAL_BUSINESS: return <Store className="text-amber-600" size={18} />;
+      default: return <Shield className="text-gray-400" size={18} />;
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
-      <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h2 className="text-4xl font-serif font-bold text-gray-900 mb-2 tracking-tight">L'Éveil de la Cité</h2>
-          <p className="text-gray-500 font-medium">La mémoire vive et souveraine de notre nation.</p>
-        </div>
-        <div className="flex gap-4">
-           <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 text-gray-400 rounded-2xl hover:text-blue-600 shadow-sm transition-all active:scale-95">
-             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
-           </button>
-           {newIncomingCount > 0 && (
-            <button 
-              onClick={fetchPosts}
-              className="flex items-center gap-3 bg-blue-600 text-white px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] animate-bounce shadow-xl shadow-blue-100"
-            >
-              <Bell size={16} /> {newIncomingCount} Nouvelles Ondes
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm mb-16 relative overflow-hidden group">
-        <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 opacity-20"></div>
-        
-        <div className="px-8 pt-8 flex items-center gap-2 border-b border-gray-50 pb-4">
-          <button onClick={() => applyFormatting('**', '**')} title="Gras" className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-            <Bold size={18} />
-          </button>
-          <button onClick={() => applyFormatting('_', '_')} title="Italique" className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-            <Italic size={18} />
-          </button>
-          <button onClick={() => applyFormatting('__', '__')} title="Souligné" className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-            <UnderlineIcon size={18} />
-          </button>
-          <div className="h-6 w-px bg-gray-100 mx-2"></div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">Style Citoyen</span>
-        </div>
-
-        <textarea 
-          ref={textareaRef}
-          value={newPostText}
-          onChange={e => setNewPostText(e.target.value)}
-          placeholder="Partagez une réflexion pour le bien commun, Citoyen..."
-          className="w-full h-40 bg-gray-50/50 p-8 text-gray-800 outline-none border-none focus:bg-white mb-6 text-lg font-medium transition-all resize-none"
-        />
-        
-        <div className="px-8 pb-8 flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4 bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100 w-full sm:w-auto">
-            <Tag size={16} className="text-blue-600" />
-            <select 
-              value={selectedCircle}
-              onChange={e => setSelectedCircle(e.target.value as CircleType)}
-              className="bg-transparent text-[11px] font-black uppercase tracking-widest text-gray-500 outline-none cursor-pointer flex-1"
-            >
-              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
-            </select>
-          </div>
-          <button 
-            onClick={handleCreatePost}
-            disabled={sending || !newPostText.trim()}
-            className="w-full sm:w-auto px-12 py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95"
-          >
-            {sending ? <Loader2 className="animate-spin w-5 h-5" /> : <Send size={18} className="text-blue-400" />} Publier l'Onde
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex flex-col items-center py-20 gap-6 text-gray-300">
-          <div className="w-16 h-16 border-4 border-blue-50 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.4em]">Récupération de la sagesse...</p>
-        </div>
-      ) : posts.length > 0 ? (
-        <div className="space-y-4">
-            {posts.map(p => <PostCard key={p.id} post={p} />)}
-        </div>
-      ) : (
-        <div className="text-center py-32 bg-gray-50 rounded-[4rem] border-4 border-dashed border-gray-100">
-           <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-sm text-gray-200">
-                <Sparkles size={40} />
+    <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-500">
+      
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12 mb-16">
+        <div className="flex items-center gap-8">
+           <div className="w-20 h-20 rounded-3xl bg-gray-900 flex items-center justify-center shadow-xl">
+             <Crown className="w-10 h-10 text-amber-500" />
            </div>
-           <p className="text-sm font-black text-gray-300 uppercase tracking-[0.3em]">Le silence est d'or, mais l'éveil est d'action.</p>
+           <div>
+            <h1 className="text-4xl font-serif font-bold text-gray-900">Conseil du Gardien</h1>
+            <p className="text-gray-500 font-medium">Leviers de Gouvernance & Modération.</p>
+          </div>
+        </div>
+        
+        <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200 overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveTab('stats')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Impact</button>
+          <button onClick={() => setActiveTab('citizens')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'citizens' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Membres</button>
+          <button onClick={() => setActiveTab('entities')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'entities' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Entités</button>
+          <button onClick={() => setActiveTab('quests')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'quests' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Sentiers ({pendingQuests.length})</button>
+          <button onClick={() => setActiveTab('system')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'system' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Système</button>
+        </div>
+      </div>
+
+      {(activeTab === 'citizens' || activeTab === 'entities') && (
+        <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm animate-in fade-in duration-300">
+           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+              <div>
+                <h3 className="text-3xl font-serif font-bold mb-2">
+                    {activeTab === 'citizens' ? 'Gestion des Citoyens' : 'Registre des Acteurs'}
+                </h3>
+                <p className="text-xs text-gray-400 font-medium italic">
+                    {activeTab === 'citizens' ? 'Modération et rôles administratifs.' : 'Institutions, Entreprises et Piliers économiques.'}
+                </p>
+              </div>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Chercher un nom ou pseudo..." className="w-full bg-gray-50 border border-transparent py-4 pl-12 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-sm shadow-inner" />
+              </div>
+           </div>
+
+           <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Acteur</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Catégorie / Rôle</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Statut</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Leviers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredCitizens.length > 0 ? filteredCitizens.map(p => (
+                    <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-6">
+                        <div className="flex items-center gap-4">
+                          <img src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`} className="w-10 h-10 rounded-xl object-cover shadow-sm" alt="" />
+                          <div>
+                            <p className="font-bold text-gray-900">{p.name}</p>
+                            <p className="text-[10px] text-gray-400 font-black uppercase">@{p.pseudonym}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-6">
+                         <div className="flex flex-col gap-2">
+                           <div className="flex items-center gap-2">
+                              {getCategoryIcon(p.category)}
+                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">{p.category || 'Citoyen'}</span>
+                           </div>
+                           <select 
+                             value={p.role} 
+                             onChange={(e) => handleUpdateRole(p, e.target.value)}
+                             className="bg-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-gray-100 outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                           >
+                             <option value="Membre">Membre</option>
+                             <option value="Animateur">Animateur</option>
+                             <option value="Modérateur">Modérateur</option>
+                             <option value="Administrateur">Administrateur</option>
+                             <option value="Gardien">Gardien</option>
+                           </select>
+                         </div>
+                      </td>
+                      <td className="py-6">
+                         <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                             p.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                             p.status === 'suspended' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                             'bg-rose-50 text-rose-600 border border-rose-100'
+                         }`}>
+                             {p.status || 'active'}
+                         </span>
+                      </td>
+                      <td className="py-6 text-right">
+                         <div className="flex justify-end gap-2">
+                            {p.status !== 'active' && (
+                                <button onClick={() => handleUpdateStatus(p, 'active')} title="Activer" className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-all">
+                                    <CheckCircle2 size={18} />
+                                </button>
+                            )}
+                            {p.status !== 'suspended' && (
+                                <button onClick={() => handleUpdateStatus(p, 'suspended')} title="Suspendre" className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 border border-amber-100 transition-all">
+                                    <Ban size={18} />
+                                </button>
+                            )}
+                            {p.status !== 'revoked' && (
+                                <button onClick={() => handleUpdateStatus(p, 'revoked')} title="Révoquer définitivement" className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 border border-rose-100 transition-all">
+                                    <UserX size={18} />
+                                </button>
+                            )}
+                         </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="py-20 text-center text-gray-400 italic">
+                         Aucun acteur trouvé pour cette recherche.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'stats' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-in slide-in-from-bottom-4">
+           {[
+             { label: "Population", value: stats.totalUsers, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+             { label: "Sentiers en Attente", value: pendingQuests.length, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
+             { label: "Impact Global", value: stats.totalPoints.toLocaleString(), icon: Zap, color: "text-emerald-600", bg: "bg-emerald-50" },
+             { label: "Entités Actives", value: profiles.filter(p => p.category && p.category !== UserCategory.CITIZEN).length, icon: Landmark, color: "text-purple-600", bg: "bg-purple-50" }
+           ].map((s, i) => (
+             <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+                <div className={`w-12 h-12 ${s.bg} ${s.color} rounded-2xl flex items-center justify-center mb-6`}>
+                   <s.icon size={24} />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">{s.label}</p>
+                <p className="text-3xl font-serif font-bold text-gray-900">{s.value}</p>
+             </div>
+           ))}
+        </div>
+      )}
+
+      {activeTab === 'quests' && (
+        <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm">
+           <h3 className="text-3xl font-serif font-bold mb-10">Validation des Sentiers</h3>
+           {pendingQuests.length > 0 ? (
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               {pendingQuests.map(q => (
+                 <div key={q.id} className="p-8 bg-gray-50 rounded-[3rem] border border-gray-100 group">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                        <Target />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{q.title}</p>
+                        <p className="text-[10px] font-black uppercase text-gray-400">Proposé par {q.proposer?.name} (@{q.proposer?.pseudonym})</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-8 leading-relaxed">{q.description}</p>
+                    <div className="flex gap-4">
+                       <button onClick={() => fetchData()} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
+                         <Check size={16} /> Approuver
+                       </button>
+                       <button onClick={() => fetchData()} className="flex-1 bg-white border border-rose-100 text-rose-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
+                         <X size={16} /> Rejeter
+                       </button>
+                    </div>
+                 </div>
+               ))}
+             </div>
+           ) : (
+             <div className="text-center py-20 text-gray-400 italic">Aucune proposition en attente de validation.</div>
+           )}
+        </div>
+      )}
+
+      {activeTab === 'system' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <section className="bg-white p-10 rounded-[3.5rem] border border-gray-100 shadow-sm">
+             <div className="flex items-center justify-between mb-10">
+               <h3 className="text-2xl font-serif font-bold flex items-center gap-3"><Wifi className="text-blue-600" /> État Civil Cloud</h3>
+               <button onClick={fetchData} className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
+             </div>
+             
+             <div className={`p-8 rounded-[2rem] border-2 mb-8 flex items-center gap-6 ${connStatus?.ok ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                {connStatus?.ok ? <CheckCircle2 className="text-emerald-500 w-12 h-12" /> : <ShieldAlert className="text-rose-500 w-12 h-12" />}
+                <div>
+                   <p className="font-black text-[10px] uppercase tracking-widest text-gray-400 mb-1">Status de Liaison</p>
+                   <p className={`text-sm font-bold ${connStatus?.ok ? 'text-emerald-800' : 'text-rose-800'}`}>{connStatus?.message || 'Vérification...'}</p>
+                </div>
+             </div>
+          </section>
+
+          <section className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
+             <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.3</h3>
+                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.3 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
+             </div>
+             <div className="bg-black/40 p-6 rounded-2xl border border-white/10 font-mono text-[10px] leading-relaxed relative">
+                <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap max-h-80">{SQL_SCHEMA}</pre>
+             </div>
+          </section>
         </div>
       )}
     </div>
   );
 };
 
-export default FeedPage;
+export default AdminDashboard;
