@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { 
   ThumbsUp, Lightbulb, Loader2, Volume2, Send, Sparkles, 
   Crown, Share2, ShieldCheck, Heart, MessageCircle, 
   MoreHorizontal, RefreshCw, Info, Play, Pause, AlertCircle,
-  Bookmark
+  Bookmark, LogIn
 } from 'lucide-react';
 import { User, CircleType, Role } from '../types';
 import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
@@ -23,7 +24,7 @@ const formatContent = (content: string) => {
   return html;
 };
 
-const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUser }) => {
+const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: boolean }> = ({ post, currentUser, isHighlighted }) => {
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -84,7 +85,8 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
   };
 
   const handleShare = () => {
-    const shareUrl = `${window.location.origin}${window.location.pathname}#/feed?post=${post.id}`;
+    // Utilisation d'un format d'URL compatible avec le routage React Router
+    const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       addToast("Lien de l'onde copié dans le presse-papier !", "success");
     }).catch(err => {
@@ -94,6 +96,10 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
   };
 
   const handleReaction = (type: string) => {
+    if (!currentUser) {
+      addToast("Veuillez vous connecter pour agir.", "info");
+      return;
+    }
     setReactions((prev: any) => ({ ...prev, [type]: prev[type] + 1 }));
     addToast("Impact enregistré !", "success");
   };
@@ -102,7 +108,12 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
 
   return (
-    <article id={`post-${post.id}`} className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : 'border-gray-100'}`}>
+    <article 
+      id={`post-${post.id}`} 
+      className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col 
+        ${isHighlighted ? 'ring-4 ring-blue-500/20 border-blue-200' : 'border-gray-100'} 
+        ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : ''}`}
+    >
       
       {/* HEADER */}
       <div className="p-8 pb-4 flex justify-between items-center">
@@ -172,7 +183,10 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
   );
 };
 
-const FeedPage: React.FC<{ user: User }> = ({ user }) => {
+const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
+  const [searchParams] = useSearchParams();
+  const highlightPostId = searchParams.get('post');
+  
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPostText, setNewPostText] = useState('');
@@ -203,8 +217,24 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
 
   useEffect(() => { fetchPosts(); }, []);
 
+  // Gestion du défilement automatique vers un post partagé
+  useEffect(() => {
+    if (!loading && highlightPostId && posts.length > 0) {
+      setTimeout(() => {
+        const element = document.getElementById(`post-${highlightPostId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, [loading, highlightPostId, posts]);
+
   const handleCreatePost = async () => {
     if (!newPostText.trim()) return;
+    if (!user) {
+      addToast("Vous devez être connecté pour publier une onde.", "error");
+      return;
+    }
     setSending(true);
     try {
       if (isRealSupabase && supabase) {
@@ -246,40 +276,55 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         <p className="text-gray-500 font-medium italic text-lg leading-relaxed">Exprimez votre vision, bâtissez la cité avec vos concitoyens.</p>
       </div>
 
-      {/* COMPOSER */}
-      <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] mb-20 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-focus-within:opacity-10 transition-opacity">
-           <Send size={120} />
-        </div>
-        <textarea 
-          value={newPostText} 
-          onChange={e => setNewPostText(e.target.value)} 
-          placeholder="Quelle onde souhaitez-vous partager avec la cité ?" 
-          className="w-full h-44 bg-gray-50/80 p-10 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner leading-relaxed" 
-        />
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div className="w-full sm:w-auto relative">
-            <select 
-              value={selectedCircle} 
-              onChange={e => setSelectedCircle(e.target.value as any)} 
-              className="w-full bg-gray-50 px-8 py-5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-gray-100 transition-all cursor-pointer appearance-none pr-14"
-            >
-              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
-            </select>
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-               <MoreHorizontal size={16} />
-            </div>
+      {/* COMPOSER (Masqué si non connecté) */}
+      {user ? (
+        <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] mb-20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-focus-within:opacity-10 transition-opacity">
+             <Send size={120} />
           </div>
-          <button 
-            onClick={handleCreatePost} 
-            disabled={sending || !newPostText.trim()} 
-            className="w-full sm:w-auto bg-gray-950 text-white px-14 py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl hover:bg-black hover:-translate-y-2 active:translate-y-0 transition-all disabled:opacity-30 disabled:translate-y-0"
-          >
-            {sending ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />} 
-            {sending ? "Diffusion..." : "Publier l'Onde"}
-          </button>
+          <textarea 
+            value={newPostText} 
+            onChange={e => setNewPostText(e.target.value)} 
+            placeholder="Quelle onde souhaitez-vous partager avec la cité ?" 
+            className="w-full h-44 bg-gray-50/80 p-10 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner leading-relaxed" 
+          />
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div className="w-full sm:w-auto relative">
+              <select 
+                value={selectedCircle} 
+                onChange={e => setSelectedCircle(e.target.value as any)} 
+                className="w-full bg-gray-50 px-8 py-5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-gray-100 transition-all cursor-pointer appearance-none pr-14"
+              >
+                {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
+              </select>
+              <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                 <MoreHorizontal size={16} />
+              </div>
+            </div>
+            <button 
+              onClick={handleCreatePost} 
+              disabled={sending || !newPostText.trim()} 
+              className="w-full sm:w-auto bg-gray-950 text-white px-14 py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl hover:bg-black hover:-translate-y-2 active:translate-y-0 transition-all disabled:opacity-30 disabled:translate-y-0"
+            >
+              {sending ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />} 
+              {sending ? "Diffusion..." : "Publier l'Onde"}
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[3rem] p-10 mb-20 text-white shadow-2xl relative overflow-hidden">
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="max-w-md text-center md:text-left">
+              <h3 className="text-2xl font-serif font-bold mb-2">Prenez place au Cercle</h3>
+              <p className="opacity-80 text-sm font-medium">Pour réagir, commenter ou partager vos propres ondes, connectez-vous à la cité.</p>
+            </div>
+            <Link to="/auth" className="bg-white text-blue-700 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:scale-105 transition-transform shadow-xl">
+              <LogIn size={16} /> Rejoindre maintenant
+            </Link>
+          </div>
+          <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none"><Sparkles size={120} /></div>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="flex justify-between items-center mb-12 px-6">
@@ -293,7 +338,14 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Consultation des archives...</p>
           </div>
         ) : posts.length > 0 ? (
-          posts.map(p => <PostCard key={p.id} post={p} currentUser={user} />)
+          posts.map(p => (
+            <PostCard 
+              key={p.id} 
+              post={p} 
+              currentUser={user} 
+              isHighlighted={highlightPostId === String(p.id)} 
+            />
+          ))
         ) : (
           <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
              <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />

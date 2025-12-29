@@ -75,9 +75,9 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
   const [notifications] = useState<CitizenNotification[]>([]);
 
   const hideNavbarPaths = ['/', '/manifesto', '/auth', '/welcome', '/legal'];
-  if (!user || hideNavbarPaths.includes(location.pathname)) return null;
+  if (!user && hideNavbarPaths.includes(location.pathname)) return null;
 
-  const isGuardian = user.role === Role.SUPER_ADMIN;
+  const isGuardian = user?.role === Role.SUPER_ADMIN;
 
   const navItems = [
     { to: "/feed", icon: <Home size={16} />, label: "Fil" },
@@ -107,57 +107,67 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
         </div>
 
         <div className="hidden lg:flex items-center gap-1">
-          {navItems.map((item) => (
-            <NavLink 
-              key={item.to} 
-              to={item.to} 
-              className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              {item.icon} {item.label}
-            </NavLink>
-          ))}
-          
-          <div className="h-6 w-px bg-gray-100 mx-3"></div>
-          
-          <button 
-            onClick={() => setIsNotifOpen(true)}
-            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative"
-          >
-            <Bell size={20} />
-            {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>}
-          </button>
+          {user ? (
+            <>
+              {navItems.map((item) => (
+                <NavLink 
+                  key={item.to} 
+                  to={item.to} 
+                  className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {item.icon} {item.label}
+                </NavLink>
+              ))}
+              
+              <div className="h-6 w-px bg-gray-100 mx-3"></div>
+              
+              <button 
+                onClick={() => setIsNotifOpen(true)}
+                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative"
+              >
+                <Bell size={20} />
+                {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>}
+              </button>
 
-          {isGuardian && (
-            <NavLink 
-              to="/admin" 
-              className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                isActive ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
-              }`}
-            >
-              <Crown size={16} /> Conseil
-            </NavLink>
+              {isGuardian && (
+                <NavLink 
+                  to="/admin" 
+                  className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    isActive ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
+                  }`}
+                >
+                  <Crown size={16} /> Conseil
+                </NavLink>
+              )}
+              
+              <NavLink to="/profile" className={({ isActive }) => `flex items-center group ml-2 rounded-xl overflow-hidden ring-2 transition-all ${isActive ? 'ring-blue-600' : 'ring-transparent hover:ring-blue-200'}`}>
+                 <div className="w-10 h-10 bg-gray-100 overflow-hidden">
+                   <img src={user.avatar} className="w-full h-full object-cover" alt="Profil" />
+                 </div>
+              </NavLink>
+            </>
+          ) : (
+            <Link to="/auth" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">
+              Rejoindre la Cité
+            </Link>
           )}
-          
-          <NavLink to="/profile" className={({ isActive }) => `flex items-center group ml-2 rounded-xl overflow-hidden ring-2 transition-all ${isActive ? 'ring-blue-600' : 'ring-transparent hover:ring-blue-200'}`}>
-             <div className="w-10 h-10 bg-gray-100 overflow-hidden">
-               <img src={user.avatar} className="w-full h-full object-cover" alt="Profil" />
-             </div>
-          </NavLink>
         </div>
 
         <div className="flex items-center gap-4 lg:hidden">
-           <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative">
-             <Bell size={24} />
-           </button>
+           {user && (
+             <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative">
+               <Bell size={24} />
+             </button>
+           )}
            <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
       </div>
 
-      {isNotifOpen && (
+      {isNotifOpen && user && (
         <NotificationDrawer 
           notifications={notifications} 
           onClose={() => setIsNotifOpen(false)} 
@@ -167,32 +177,40 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
 
       {isOpen && (
         <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
-          {navItems.map((item) => (
-            <NavLink 
-              key={item.to} 
-              to={item.to} 
-              onClick={() => setIsOpen(false)} 
-              className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                isActive ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-              }`}
-            >
-              {item.icon} {item.label}
-            </NavLink>
-          ))}
-          {isGuardian && (
-            <NavLink 
-              to="/admin" 
-              onClick={() => setIsOpen(false)} 
-              className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                isActive ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-              }`}
-            >
-              <Crown size={16} /> Conseil
-            </NavLink>
+          {user ? (
+            <>
+              {navItems.map((item) => (
+                <NavLink 
+                  key={item.to} 
+                  to={item.to} 
+                  onClick={() => setIsOpen(false)} 
+                  className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                  }`}
+                >
+                  {item.icon} {item.label}
+                </NavLink>
+              ))}
+              {isGuardian && (
+                <NavLink 
+                  to="/admin" 
+                  onClick={() => setIsOpen(false)} 
+                  className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                    isActive ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                  }`}
+                >
+                  <Crown size={16} /> Conseil
+                </NavLink>
+              )}
+              <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest text-left">
+                Déconnexion
+              </button>
+            </>
+          ) : (
+            <Link to="/auth" onClick={() => setIsOpen(false)} className="bg-blue-600 text-white p-6 rounded-2xl font-black text-center uppercase tracking-widest">
+              S'inscrire au Cercle
+            </Link>
           )}
-          <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest text-left">
-            Déconnexion
-          </button>
         </div>
       )}
     </nav>
@@ -254,10 +272,10 @@ const App = () => {
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
               
-              {/* ROUTES PRINCIPALES - ORDRE CRITIQUE */}
-              <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
-              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
+              {/* ACCÈS PUBLIC AU FEED POUR LE DEEP LINKING */}
+              <Route path="/feed" element={<FeedPage user={user} />} />
               
+              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
               <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
               <Route path="/live" element={user ? <LiveAssembly /> : <Navigate to="/" />} />
               <Route path="/map" element={user ? <ActionMap /> : <Navigate to="/" />} />
