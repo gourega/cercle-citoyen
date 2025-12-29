@@ -1,6 +1,6 @@
 
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate, Link } from 'react-router-dom';
 import { 
   Home, 
   MessageSquare, 
@@ -61,19 +61,11 @@ export const useToast = () => {
   return context;
 };
 
-// Composant pour forcer le scroll en haut à chaque changement de route
 const ScrollToTop = () => {
-  const { pathname, hash } = useLocation();
-  
+  const { pathname } = useLocation();
   useEffect(() => {
-    // Utilisation de instant pour éviter l'effet de glissement si on change de page
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: 'instant'
-    });
-  }, [pathname, hash]);
-  
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
   return null;
 };
 
@@ -83,7 +75,6 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<CitizenNotification[]>([]);
 
-  // Masquer la navbar sur les pages d'entrée
   const hideNavbarPaths = ['/', '/manifesto', '/auth', '/welcome', '/legal'];
   if (!user || hideNavbarPaths.includes(location.pathname)) return null;
 
@@ -105,9 +96,9 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6 shadow-sm">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
         <div className="flex items-center gap-6">
-          <Link to="/feed" className="flex items-center group">
+          <NavLink to="/feed" className="flex items-center group">
             <Logo size={32} showText={true} />
-          </Link>
+          </NavLink>
           {isRealSupabase && (
             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -118,15 +109,15 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
 
         <div className="hidden lg:flex items-center gap-1">
           {navItems.map((item) => (
-            <Link 
+            <NavLink 
               key={item.to} 
               to={item.to} 
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                location.pathname === item.to ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
+              className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
               {item.icon} {item.label}
-            </Link>
+            </NavLink>
           ))}
           
           <div className="h-6 w-px bg-gray-100 mx-3"></div>
@@ -140,21 +131,21 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
           </button>
 
           {isGuardian && (
-            <Link 
+            <NavLink 
               to="/admin" 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                location.pathname === '/admin' ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
+              className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                isActive ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600 hover:bg-amber-50/50'
               }`}
             >
               <Crown size={16} /> Conseil
-            </Link>
+            </NavLink>
           )}
           
-          <Link to="/profile" className="flex items-center group ml-2">
-             <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-blue-200 transition-all">
-               <img src={user.avatar} className="w-full h-full object-cover" alt="Mon Profil" />
+          <NavLink to="/profile" className={({ isActive }) => `flex items-center group ml-2 rounded-xl overflow-hidden ring-2 transition-all ${isActive ? 'ring-blue-600' : 'ring-transparent hover:ring-blue-200'}`}>
+             <div className="w-10 h-10 bg-gray-100 overflow-hidden">
+               <img src={user.avatar} className="w-full h-full object-cover" alt="Profil" />
              </div>
-          </Link>
+          </NavLink>
         </div>
 
         <div className="flex items-center gap-4 lg:hidden">
@@ -179,28 +170,32 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
       {isOpen && (
         <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
           {navItems.map((item) => (
-            <Link 
+            <NavLink 
               key={item.to} 
               to={item.to} 
               onClick={() => setIsOpen(false)} 
-              className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 font-black text-[10px] uppercase tracking-widest text-gray-600 hover:bg-blue-50 hover:text-blue-600"
+              className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                isActive ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+              }`}
             >
               {item.icon} {item.label}
-            </Link>
+            </NavLink>
           ))}
           {isGuardian && (
-            <Link 
+            <NavLink 
               to="/admin" 
               onClick={() => setIsOpen(false)} 
-              className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 font-black text-[10px] uppercase tracking-widest text-amber-600 hover:bg-amber-100"
+              className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                isActive ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+              }`}
             >
               <Crown size={16} /> Conseil
-            </Link>
+            </NavLink>
           )}
-          <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white mt-4">
+          <NavLink to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white mt-4">
             <UserIcon size={20} /> <span className="text-[10px] font-black uppercase tracking-widest">Mon Profil</span>
-          </Link>
-          <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest">
+          </NavLink>
+          <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest text-left">
             Déconnexion
           </button>
         </div>
@@ -211,13 +206,11 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
 
 const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<{id: string, message: string, type: string}[]>([]);
-
   const addToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   };
-
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
@@ -238,9 +231,7 @@ const App = () => {
     try {
       const saved = localStorage.getItem('cercle_user');
       return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   });
 
   const handleLogin = (u: User) => {

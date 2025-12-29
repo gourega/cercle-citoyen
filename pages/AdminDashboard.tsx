@@ -21,7 +21,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.3)
+  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.4)
 -- RÉPARATION : GESTION ROBUSTE DES POLITIQUES ET TABLES
 
 -- 1. EXTENSION TABLE PROFILES
@@ -363,8 +363,8 @@ CREATE POLICY "Insert_System" ON public.notifications FOR INSERT WITH CHECK (tru
 
           <section className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.3</h3>
-                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.3 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.4</h3>
+                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.4 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
              </div>
              <div className="bg-black/40 p-6 rounded-2xl border border-white/10 font-mono text-[10px] leading-relaxed relative">
                 <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap max-h-80">{SQL_SCHEMA}</pre>
