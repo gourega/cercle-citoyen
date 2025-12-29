@@ -21,13 +21,33 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.1)
--- RÉPARATION : AJOUT DU STATUT ET DES NOTIFICATIONS
+  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.2)
+-- RÉPARATION : AJOUT DE LA TABLE POSTS ET COLONNE MAJESTIC
 
 -- 1. EXTENSION TABLE PROFILES
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 
--- 2. TABLE NOTIFICATIONS (SI NON EXISTANTE)
+-- 2. TABLE POSTS (CRÉATION SI NON EXISTANTE)
+CREATE TABLE IF NOT EXISTS public.posts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author_id UUID REFERENCES public.profiles(id),
+    content TEXT NOT NULL,
+    circle_type TEXT,
+    is_majestic BOOLEAN DEFAULT false,
+    image_url TEXT,
+    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. CORRECTION NOM DE COLONNE SI TYPO
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='is_majectic') THEN
+    ALTER TABLE public.posts RENAME COLUMN is_majectic TO is_majestic;
+  END IF;
+END $$;
+
+-- 4. TABLE NOTIFICATIONS
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id),
@@ -38,7 +58,11 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. POLITIQUES NOTIFICATIONS
+-- 5. POLITIQUES DE SÉCURITÉ (RLS)
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture_Tous_Posts" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Insertion_Tous_Posts" ON public.posts FOR INSERT WITH CHECK (true);
+
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Lecture_Propre_Notif" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Insert_System" ON public.notifications FOR INSERT WITH CHECK (true);
@@ -335,8 +359,8 @@ CREATE POLICY "Insert_System" ON public.notifications FOR INSERT WITH CHECK (tru
 
           <section className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.1</h3>
-                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.1 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.2</h3>
+                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.2 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
              </div>
              <div className="bg-black/40 p-6 rounded-2xl border border-white/10 font-mono text-[10px] leading-relaxed relative">
                 <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap max-h-80">{SQL_SCHEMA}</pre>

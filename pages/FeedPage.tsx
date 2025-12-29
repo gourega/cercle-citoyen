@@ -16,7 +16,6 @@ import { useToast } from '../App';
 const formatContent = (content: string) => {
   if (!content) return '';
   
-  // Remplacement sécurisé pour éviter l'injection XSS tout en permettant le gras/italique/souligné
   let html = content
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -24,10 +23,9 @@ const formatContent = (content: string) => {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-  // Appliquer le Markdown-lite
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Gras
-  html = html.replace(/_(.*?)_/g, '<em>$1</em>'); // Italique
-  html = html.replace(/__(.*?)__/g, '<u style="text-decoration: underline;">$1</u>'); // Souligné
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+  html = html.replace(/__(.*?)__/g, '<u style="text-decoration: underline;">$1</u>');
   
   return html;
 };
@@ -104,12 +102,6 @@ const PostCard: React.FC<{ post: any }> = ({ post }) => {
         </button>
       </div>
 
-      {post.image_url && (
-        <div className="mb-8 rounded-[2.5rem] overflow-hidden bg-gray-50 flex items-center justify-center p-8 border border-gray-100 shadow-inner">
-          <img src={post.image_url} className="max-h-80 object-contain" alt="Image de la publication" />
-        </div>
-      )}
-
       <div 
         className={`text-gray-800 leading-relaxed mb-10 whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif font-medium italic text-gray-900 border-l-4 border-amber-200 pl-8' : 'text-[17px]'}`}
         dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
@@ -164,7 +156,6 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
           if (payload.new.author_id !== user.id) {
             setNewIncomingCount(prev => prev + 1);
           } else {
-            // Uniquement si on n'a pas déjà ajouté localement pour éviter les doublons
             setPosts(prev => {
                 if (prev.some(p => p.id === payload.new.id)) return prev;
                 return [payload.new, ...prev];
@@ -192,7 +183,6 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
     
     setNewPostText(newFullText);
     
-    // Repositionner le curseur après l'insertion
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
@@ -210,6 +200,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
 
     try {
         if (supabase) {
+            // Tentative d'insertion avec le nom de colonne correct : is_majestic
             const { error } = await supabase.from('posts').insert([{
                 author_id: user.id,
                 content: newPostText,
@@ -217,7 +208,20 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
                 is_majestic: isGuardian 
             }]);
             
-            if (error) throw error;
+            if (error) {
+                // Si l'erreur mentionne un problème de colonne, on tente sans la colonne is_majestic
+                if (error.message.includes("column") || error.message.includes("is_majectic")) {
+                    console.warn("Problème de schéma détecté, tentative sans la colonne is_majestic...");
+                    const { error: retryError } = await supabase.from('posts').insert([{
+                        author_id: user.id,
+                        content: newPostText,
+                        circle_type: selectedCircle
+                    }]);
+                    if (retryError) throw retryError;
+                } else {
+                    throw error;
+                }
+            }
             
             addToast("Onde publiée sur le Cloud !", "success");
             setNewPostText('');
@@ -233,15 +237,14 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
                 reactions: { useful: 0, relevant: 0, inspiring: 0 }
             };
             
-            const updatedLocal = [newPost, ...localPosts];
-            localStorage.setItem('cercle_db_posts', JSON.stringify(updatedLocal));
+            localStorage.setItem('cercle_db_posts', JSON.stringify([newPost, ...localPosts]));
             setPosts(prev => [newPost, ...prev]);
             setNewPostText('');
             addToast("Onde enregistrée localement.", "info");
         }
     } catch (err: any) {
         console.error("Erreur de publication:", err);
-        addToast(`Échec de publication: ${err.message}`, "error");
+        addToast(`Échec de publication : ${err.message}. Allez dans 'Conseil' pour mettre à jour le schéma SQL.`, "error");
     } finally {
         setSending(false);
     }
@@ -272,27 +275,14 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
       <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm mb-16 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 opacity-20"></div>
         
-        {/* Toolbar de mise en forme */}
         <div className="px-8 pt-8 flex items-center gap-2 border-b border-gray-50 pb-4">
-          <button 
-            onClick={() => applyFormatting('**', '**')}
-            title="Gras"
-            className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-          >
+          <button onClick={() => applyFormatting('**', '**')} title="Gras" className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
             <Bold size={18} />
           </button>
-          <button 
-            onClick={() => applyFormatting('_', '_')}
-            title="Italique"
-            className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-          >
+          <button onClick={() => applyFormatting('_', '_')} title="Italique" className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
             <Italic size={18} />
           </button>
-          <button 
-            onClick={() => applyFormatting('__', '__')}
-            title="Souligné"
-            className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-          >
+          <button onClick={() => applyFormatting('__', '__')} title="Souligné" className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
             <UnderlineIcon size={18} />
           </button>
           <div className="h-6 w-px bg-gray-100 mx-2"></div>
