@@ -28,13 +28,15 @@ export async function decodeAudioData(
   sampleRate: number = 24000,
   numChannels: number = 1,
 ): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
+  // Correction : Utilisation de data.byteOffset et data.byteLength pour un accès précis au buffer
+  const dataInt16 = new Int16Array(data.buffer, data.byteOffset, data.byteLength / 2);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
+      // Conversion PCM 16-bit vers Float32 compatible AudioContext
       channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
     }
   }
@@ -135,7 +137,7 @@ export async function findInitiatives(query: string, lat?: number, lng?: number)
   } catch (e) {
     console.error("Maps Grounding Error:", e);
     return { 
-      text: "La recherche territoriale rencontre une difficulté. Essayez d'être plus spécifique (ex: 'Mairie de Cocody', 'ONG environnement à Bouaké').", 
+      text: "La recherche territoriale rencontre une difficulté. Essayez d'être plus spécifique.", 
       places: [] 
     };
   }

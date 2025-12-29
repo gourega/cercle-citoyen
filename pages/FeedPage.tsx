@@ -3,9 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   ThumbsUp, Lightbulb, Loader2, Volume2, Send, Sparkles, 
-  Crown, Share2, ShieldCheck, Heart, MessageCircle, 
-  MoreHorizontal, RefreshCw, Info, Play, Pause, AlertCircle,
-  Bookmark, LogIn
+  ShieldCheck, Share2, MessageCircle, MoreHorizontal, RefreshCw, 
+  Info, Pause, LogIn
 } from 'lucide-react';
 import { User, CircleType, Role } from '../types';
 import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
@@ -78,30 +77,32 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
       }
     } catch (e) { 
       console.error(e); 
-      addToast("Le Griot est indisponible pour le moment.", "info");
+      addToast("La parole du Griot ne peut être portée actuellement.", "info");
     } finally { 
       setIsLoadingAudio(false); 
     }
   };
 
   const handleShare = () => {
-    // Utilisation d'un format d'URL compatible avec le routage React Router
-    const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
+    // Construction de l'URL respectant le HashRouter de React (/#/feed?post=...)
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}#/feed?post=${post.id}`;
+    
     navigator.clipboard.writeText(shareUrl).then(() => {
-      addToast("Lien de l'onde copié dans le presse-papier !", "success");
+      addToast("Lien de l'onde copié ! Partagez la vision.", "success");
     }).catch(err => {
-      console.error('Erreur lors du partage:', err);
-      addToast("Échec de la copie du lien.", "error");
+      console.error('Erreur partage:', err);
+      addToast("Impossible de copier le lien.", "error");
     });
   };
 
   const handleReaction = (type: string) => {
     if (!currentUser) {
-      addToast("Veuillez vous connecter pour agir.", "info");
+      addToast("Rejoignez le Cercle pour réagir.", "info");
       return;
     }
     setReactions((prev: any) => ({ ...prev, [type]: prev[type] + 1 }));
-    addToast("Impact enregistré !", "success");
+    addToast("Impact enregistré.", "success");
   };
 
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
@@ -111,7 +112,7 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
     <article 
       id={`post-${post.id}`} 
       className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col 
-        ${isHighlighted ? 'ring-4 ring-blue-500/20 border-blue-200' : 'border-gray-100'} 
+        ${isHighlighted ? 'ring-8 ring-amber-500/10 border-amber-200 animate-pulse' : 'border-gray-100'} 
         ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : ''}`}
     >
       
@@ -175,7 +176,7 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
                    <p className="text-sm text-gray-700 font-medium">{c.content}</p>
                 </div>
               </div>
-            )) : <p className="text-center py-8 text-gray-400 italic text-sm">Aucun palabre ici.</p>}
+            )) : <p className="text-center py-8 text-gray-400 italic text-sm">Silence dans cette palabre.</p>}
           </div>
         </div>
       )}
@@ -209,7 +210,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       }
     }
     
-    // Tri chronologique strict : les plus récents en premier
+    // Tri chronologique strict (plus récent en haut)
     allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setPosts(allPosts);
     setLoading(false); 
@@ -217,22 +218,23 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   useEffect(() => { fetchPosts(); }, []);
 
-  // Gestion du défilement automatique vers un post partagé
+  // Gestion robuste du défilement automatique vers un post partagé
   useEffect(() => {
     if (!loading && highlightPostId && posts.length > 0) {
-      setTimeout(() => {
+      const scrollTimer = setTimeout(() => {
         const element = document.getElementById(`post-${highlightPostId}`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 500);
+      }, 800); // Délai accru pour s'assurer que le rendu est terminé
+      return () => clearTimeout(scrollTimer);
     }
   }, [loading, highlightPostId, posts]);
 
   const handleCreatePost = async () => {
     if (!newPostText.trim()) return;
     if (!user) {
-      addToast("Vous devez être connecté pour publier une onde.", "error");
+      addToast("Identifiez-vous pour diffuser une onde.", "error");
       return;
     }
     setSending(true);
@@ -247,19 +249,17 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
           comments: []
         }]);
         
-        if (error) {
-          throw new Error(error.message || "Erreur d'insertion.");
-        }
+        if (error) throw new Error(error.message);
         
-        addToast("Votre onde a été diffusée !", "success");
+        addToast("Votre onde se propage !", "success");
         setNewPostText('');
         fetchPosts();
       } else {
-        addToast("Mode démo : Publication simulée.", "info");
+        addToast("Mode démo : Onde simulée.", "info");
         setNewPostText('');
       }
     } catch (e: any) { 
-      addToast(`Échec de la publication : ${e.message}`, "error"); 
+      addToast(`Échec de la diffusion : ${e.message}`, "error"); 
     } finally { 
       setSending(false); 
     }
@@ -267,75 +267,67 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
-      <div className="mb-16 text-center md:text-left">
+      <div className="mb-12 text-center md:text-left">
         <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6 border border-blue-100 shadow-sm">
           <Sparkles className="text-blue-600 w-4 h-4" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Flux Souverain</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Flux de la Cité</span>
         </div>
         <h2 className="text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Le Fil d'Éveil</h2>
-        <p className="text-gray-500 font-medium italic text-lg leading-relaxed">Exprimez votre vision, bâtissez la cité avec vos concitoyens.</p>
+        <p className="text-gray-500 font-medium italic text-lg">Pensez, Reliez, Agissez ensemble.</p>
       </div>
 
-      {/* COMPOSER (Masqué si non connecté) */}
       {user ? (
-        <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] mb-20 relative overflow-hidden group">
+        <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-focus-within:opacity-10 transition-opacity">
              <Send size={120} />
           </div>
           <textarea 
             value={newPostText} 
             onChange={e => setNewPostText(e.target.value)} 
-            placeholder="Quelle onde souhaitez-vous partager avec la cité ?" 
-            className="w-full h-44 bg-gray-50/80 p-10 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner leading-relaxed" 
+            placeholder="Déposez une pierre à l'édifice..." 
+            className="w-full h-36 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
           />
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <div className="w-full sm:w-auto relative">
-              <select 
-                value={selectedCircle} 
-                onChange={e => setSelectedCircle(e.target.value as any)} 
-                className="w-full bg-gray-50 px-8 py-5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-gray-100 transition-all cursor-pointer appearance-none pr-14"
-              >
-                {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
-              </select>
-              <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                 <MoreHorizontal size={16} />
-              </div>
-            </div>
+            <select 
+              value={selectedCircle} 
+              onChange={e => setSelectedCircle(e.target.value as any)} 
+              className="w-full sm:w-auto bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100"
+            >
+              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
+            </select>
             <button 
               onClick={handleCreatePost} 
               disabled={sending || !newPostText.trim()} 
-              className="w-full sm:w-auto bg-gray-950 text-white px-14 py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl hover:bg-black hover:-translate-y-2 active:translate-y-0 transition-all disabled:opacity-30 disabled:translate-y-0"
+              className="w-full sm:w-auto bg-gray-950 text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl hover:bg-black transition-all disabled:opacity-30"
             >
-              {sending ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />} 
-              {sending ? "Diffusion..." : "Publier l'Onde"}
+              {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
+              Diffuser l'Onde
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[3rem] p-10 mb-20 text-white shadow-2xl relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="max-w-md text-center md:text-left">
-              <h3 className="text-2xl font-serif font-bold mb-2">Prenez place au Cercle</h3>
-              <p className="opacity-80 text-sm font-medium">Pour réagir, commenter ou partager vos propres ondes, connectez-vous à la cité.</p>
-            </div>
-            <Link to="/auth" className="bg-white text-blue-700 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:scale-105 transition-transform shadow-xl">
-              <LogIn size={16} /> Rejoindre maintenant
-            </Link>
+        <div className="bg-gray-900 rounded-[3rem] p-8 mb-16 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+          <div className="relative z-10">
+            <h3 className="text-xl font-serif font-bold mb-2">Rejoignez le dialogue citoyen</h3>
+            <p className="opacity-60 text-sm">Créez un compte pour agir et partager vos ondes.</p>
           </div>
-          <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none"><Sparkles size={120} /></div>
+          <Link to="/auth" className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-blue-50 transition-all relative z-10">
+            <LogIn size={16} /> Rejoindre le Cercle
+          </Link>
+          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><Sparkles size={120} /></div>
         </div>
       )}
 
       <div className="space-y-4">
-        <div className="flex justify-between items-center mb-12 px-6">
-           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">Chronologie Citoyenne</h3>
-           <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-blue-600 hover:border-blue-100 hover:shadow-lg transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
+        <div className="flex justify-between items-center mb-10 px-6">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">Archives de l'Éveil</h3>
+           <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-blue-600 transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
         </div>
         
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-8 opacity-50">
-             <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Consultation des archives...</p>
+          <div className="flex flex-col items-center justify-center py-32 opacity-50">
+             <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Interrogation de l'éther...</p>
           </div>
         ) : posts.length > 0 ? (
           posts.map(p => (
@@ -349,7 +341,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         ) : (
           <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
              <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />
-             <p className="italic text-lg">Aucune onde détectée.</p>
+             <p className="italic text-lg">Le silence règne sur le fil.</p>
           </div>
         )}
       </div>
