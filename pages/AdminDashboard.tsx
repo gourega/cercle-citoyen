@@ -5,160 +5,43 @@ import {
   ShieldAlert, UserX, AlertTriangle, Ban, Trash2, Search,
   CheckCircle2, Mail, AtSign, Filter, Activity, Users, Zap, Gavel,
   ShieldPlus, UserRoundCheck, Shield, AlertCircle, MapPin, Target, Check, X,
-  UserCog
+  UserCog, Building2, Store, Landmark, Info, BellRing
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../App.tsx';
-import { Role } from '../types.ts';
+import { Role, UserCategory } from '../types.ts';
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests'>('stats');
-  const [citizens, setCitizens] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'entities' | 'quests'>('stats');
+  const [profiles, setProfiles] = useState<any[]>([]);
   const [pendingQuests, setPendingQuests] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeEdicts: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.0)
--- A exécuter dans l'éditeur SQL de Supabase
+  const SQL_SCHEMA = `-- INFRASTRUCTURE COMPLÈTE CERCLE CITOYEN (V3.1)
+-- RÉPARATION : AJOUT DU STATUT ET DES NOTIFICATIONS
 
--- 1. PROFILS CITOYENS
-CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY,
-    name TEXT,
-    pseudonym TEXT UNIQUE,
-    bio TEXT,
-    avatar_url TEXT,
-    role TEXT DEFAULT 'Membre',
-    category TEXT DEFAULT 'Citoyen',
-    impact_score INTEGER DEFAULT 0,
-    email TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- 1. EXTENSION TABLE PROFILES
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 
--- 2. PUBLICATIONS (FIL D'ÉVEIL)
-CREATE TABLE IF NOT EXISTS public.posts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    author_id UUID REFERENCES public.profiles(id),
-    content TEXT NOT NULL,
-    circle_type TEXT,
-    image_url TEXT,
-    reactions JSONB DEFAULT '{"useful":0, "relevant":0, "inspiring":0}',
-    is_majestic BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. SENTIERS (QUÊTES)
-CREATE TABLE IF NOT EXISTS public.quests (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    circle_type TEXT,
-    difficulty TEXT DEFAULT 'Initié',
-    reward_xp INTEGER DEFAULT 100,
-    current_progress INTEGER DEFAULT 0,
-    target_goal INTEGER DEFAULT 100,
-    participants_count INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'pending', -- pending, validated, certified, rejected
-    location TEXT,
-    proposer_id UUID REFERENCES public.profiles(id),
-    validator_id UUID REFERENCES public.profiles(id),
-    certifier_id UUID REFERENCES public.profiles(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 4. BANQUE DES IDÉES
-CREATE TABLE IF NOT EXISTS public.ideas (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    author_id UUID REFERENCES public.profiles(id),
-    title TEXT NOT NULL,
-    description TEXT,
-    circle_type TEXT,
-    needs TEXT[],
-    status TEXT DEFAULT 'spark',
-    vouch_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 5. ÉDITS & VOTES (GOUVERNANCE)
-CREATE TABLE IF NOT EXISTS public.edicts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    proposer_id UUID REFERENCES public.profiles(id),
-    status TEXT DEFAULT 'voting',
-    votes_count INTEGER DEFAULT 0,
-    threshold INTEGER DEFAULT 100,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.votes (
+-- 2. TABLE NOTIFICATIONS (SI NON EXISTANTE)
+CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id),
-    edict_id UUID REFERENCES public.edicts(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, edict_id)
-);
-
--- 6. MARCHÉ DE SOLIDARITÉ
-CREATE TABLE IF NOT EXISTS public.resource_gifts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    donor_id UUID REFERENCES public.profiles(id),
-    title TEXT NOT NULL,
-    description TEXT,
-    category TEXT,
-    status TEXT DEFAULT 'available',
+    type TEXT,
+    title TEXT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 7. CONTRIBUTIONS (WAVE)
-CREATE TABLE IF NOT EXISTS public.contributions (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES public.profiles(id),
-    amount INTEGER,
-    provider TEXT DEFAULT 'Wave',
-    status TEXT DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 8. FONCTION RPC POUR VOTE ATOMIQUE (CRUCIAL)
-CREATE OR REPLACE FUNCTION increment_edict_votes(row_id UUID)
-RETURNS void AS $$
-BEGIN
-  UPDATE edicts
-  SET votes_count = votes_count + 1
-  WHERE id = row_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- 9. ACTIVATION RLS ET POLITIQUES
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.quests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ideas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.resource_gifts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.contributions ENABLE ROW LEVEL SECURITY;
-
--- POLITIQUES SIMPLIFIÉES (LECTURE PUBLIQUE, ÉCRITURE CITOYENNE)
-CREATE POLICY "Acces_Public" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Acces_Public" ON public.posts FOR SELECT USING (true);
-CREATE POLICY "Acces_Public" ON public.quests FOR SELECT USING (true);
-CREATE POLICY "Acces_Public" ON public.ideas FOR SELECT USING (true);
-CREATE POLICY "Acces_Public" ON public.edicts FOR SELECT USING (true);
-CREATE POLICY "Acces_Public" ON public.resource_gifts FOR SELECT USING (true);
-
--- AUTORISER L'INSERTION POUR LES UTILISATEURS CONNECTÉS
-CREATE POLICY "Insert_Connecte" ON public.profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Insert_Connecte" ON public.posts FOR INSERT WITH CHECK (true);
-CREATE POLICY "Insert_Connecte" ON public.quests FOR INSERT WITH CHECK (true);
-CREATE POLICY "Insert_Connecte" ON public.ideas FOR INSERT WITH CHECK (true);
-CREATE POLICY "Insert_Connecte" ON public.votes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Insert_Connecte" ON public.resource_gifts FOR INSERT WITH CHECK (true);
-CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (true);
+-- 3. POLITIQUES NOTIFICATIONS
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture_Propre_Notif" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Insert_System" ON public.notifications FOR INSERT WITH CHECK (true);
 `;
 
   const fetchData = async () => {
@@ -173,7 +56,7 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
         const { data: qData } = await supabase.from('quests').select('*, proposer:proposer_id(name, pseudonym)').eq('status', 'pending');
         
         if (profs) {
-          setCitizens(profs);
+          setProfiles(profs);
           const points = profs.reduce((acc, curr) => acc + (curr.impact_score || 0), 0);
           setStats({
             totalUsers: profs.length,
@@ -192,45 +75,70 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleUpdateRole = async (citizen: any, newRole: string) => {
-    if (!isRealSupabase || !supabase) return;
-    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', citizen.id);
-    if (!error) {
-      setCitizens(prev => prev.map(c => c.id === citizen.id ? { ...c, role: newRole } : c));
-      addToast(`Rôle de ${citizen.name} mis à jour : ${newRole}`, "success");
-    }
+  const sendNotification = async (userId: string, title: string, message: string, type: string) => {
+    if (!supabase) return;
+    await supabase.from('notifications').insert([{
+      user_id: userId,
+      title,
+      message,
+      type
+    }]);
   };
 
-  const handleValidateQuest = async (questId: string, approved: boolean) => {
+  const handleUpdateStatus = async (profile: any, newStatus: string) => {
     if (!isRealSupabase || !supabase) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('quests')
-      .update({ 
-        status: approved ? 'validated' : 'rejected',
-        validator_id: user.id 
-      })
-      .eq('id', questId);
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', profile.id);
     
     if (!error) {
-      addToast(approved ? "Sentier validé avec succès !" : "Proposition écartée.", approved ? "success" : "info");
-      setPendingQuests(prev => prev.filter(q => q.id !== questId));
+      setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, status: newStatus } : p));
+      
+      let msg = "";
+      if (newStatus === 'active') msg = "Votre accès a été activé par le Gardien.";
+      if (newStatus === 'suspended') msg = "Votre accès a été suspendu pour vérification.";
+      if (newStatus === 'revoked') msg = "Votre accès a été révoqué définitivement.";
+      
+      await sendNotification(profile.id, "Mise à jour de Statut", msg, "drum_call");
+      addToast(`Statut de ${profile.name} mis à jour : ${newStatus}`, "success");
     }
   };
 
-  const filteredCitizens = citizens.filter(c => {
-    const isSearching = searchTerm.trim().length > 0;
-    const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         c.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase());
-    const isStaff = c.role !== 'Membre';
-
-    if (isSearching) {
-      return matchesSearch;
+  const handleUpdateRole = async (profile: any, newRole: string) => {
+    if (!isRealSupabase || !supabase) return;
+    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profile.id);
+    if (!error) {
+      setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, role: newRole } : p));
+      addToast(`Rôle de ${profile.name} mis à jour : ${newRole}`, "success");
     }
-    return isStaff;
+  };
+
+  const filteredCitizens = profiles.filter(p => {
+    const isSearching = searchTerm.trim().length > 0;
+    const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         p.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase());
+    const isCitizen = p.category === UserCategory.CITIZEN || !p.category;
+    
+    if (activeTab === 'citizens') {
+        if (isSearching) return matchesSearch && isCitizen;
+        return isCitizen && p.role !== 'Membre';
+    }
+    
+    if (activeTab === 'entities') {
+        const isEntity = p.category && p.category !== UserCategory.CITIZEN;
+        if (isSearching) return matchesSearch && isEntity;
+        return isEntity;
+    }
+
+    return false;
   });
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case UserCategory.MUNICIPALITY: return <Landmark className="text-blue-600" size={18} />;
+      case UserCategory.ENTERPRISE: return <Building2 className="text-teal-600" size={18} />;
+      case UserCategory.LOCAL_BUSINESS: return <Store className="text-amber-600" size={18} />;
+      default: return <Shield className="text-gray-400" size={18} />;
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-500">
@@ -248,11 +156,112 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
         
         <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200 overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('stats')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Impact</button>
-          <button onClick={() => setActiveTab('citizens')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'citizens' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Conseil ({citizens.filter(c => c.role !== 'Membre').length})</button>
+          <button onClick={() => setActiveTab('citizens')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'citizens' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Membres</button>
+          <button onClick={() => setActiveTab('entities')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'entities' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Entités</button>
           <button onClick={() => setActiveTab('quests')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'quests' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Sentiers ({pendingQuests.length})</button>
           <button onClick={() => setActiveTab('system')} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === 'system' ? 'bg-white text-blue-600 shadow-md' : 'text-gray-400'}`}>Système</button>
         </div>
       </div>
+
+      {(activeTab === 'citizens' || activeTab === 'entities') && (
+        <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm animate-in fade-in duration-300">
+           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+              <div>
+                <h3 className="text-3xl font-serif font-bold mb-2">
+                    {activeTab === 'citizens' ? 'Gestion des Citoyens' : 'Registre des Acteurs'}
+                </h3>
+                <p className="text-xs text-gray-400 font-medium italic">
+                    {activeTab === 'citizens' ? 'Modération et rôles administratifs.' : 'Institutions, Entreprises et Piliers économiques.'}
+                </p>
+              </div>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Chercher un nom ou pseudo..." className="w-full bg-gray-50 border border-transparent py-4 pl-12 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-sm shadow-inner" />
+              </div>
+           </div>
+
+           <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Acteur</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Catégorie / Rôle</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Statut</th>
+                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Leviers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredCitizens.length > 0 ? filteredCitizens.map(p => (
+                    <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-6">
+                        <div className="flex items-center gap-4">
+                          <img src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`} className="w-10 h-10 rounded-xl object-cover shadow-sm" alt="" />
+                          <div>
+                            <p className="font-bold text-gray-900">{p.name}</p>
+                            <p className="text-[10px] text-gray-400 font-black uppercase">@{p.pseudonym}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-6">
+                         <div className="flex flex-col gap-2">
+                           <div className="flex items-center gap-2">
+                              {getCategoryIcon(p.category)}
+                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">{p.category || 'Citoyen'}</span>
+                           </div>
+                           <select 
+                             value={p.role} 
+                             onChange={(e) => handleUpdateRole(p, e.target.value)}
+                             className="bg-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-gray-100 outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                           >
+                             <option value="Membre">Membre</option>
+                             <option value="Animateur">Animateur</option>
+                             <option value="Modérateur">Modérateur</option>
+                             <option value="Administrateur">Administrateur</option>
+                             <option value="Gardien">Gardien</option>
+                           </select>
+                         </div>
+                      </td>
+                      <td className="py-6">
+                         <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                             p.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                             p.status === 'suspended' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                             'bg-rose-50 text-rose-600 border border-rose-100'
+                         }`}>
+                             {p.status || 'active'}
+                         </span>
+                      </td>
+                      <td className="py-6 text-right">
+                         <div className="flex justify-end gap-2">
+                            {p.status !== 'active' && (
+                                <button onClick={() => handleUpdateStatus(p, 'active')} title="Activer" className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-all">
+                                    <CheckCircle2 size={18} />
+                                </button>
+                            )}
+                            {p.status !== 'suspended' && (
+                                <button onClick={() => handleUpdateStatus(p, 'suspended')} title="Suspendre" className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 border border-amber-100 transition-all">
+                                    <Ban size={18} />
+                                </button>
+                            )}
+                            {p.status !== 'revoked' && (
+                                <button onClick={() => handleUpdateStatus(p, 'revoked')} title="Révoquer définitivement" className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 border border-rose-100 transition-all">
+                                    <UserX size={18} />
+                                </button>
+                            )}
+                         </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="py-20 text-center text-gray-400 italic">
+                         Aucun acteur trouvé pour cette recherche.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+           </div>
+        </div>
+      )}
 
       {activeTab === 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-in slide-in-from-bottom-4">
@@ -260,7 +269,7 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
              { label: "Population", value: stats.totalUsers, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
              { label: "Sentiers en Attente", value: pendingQuests.length, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
              { label: "Impact Global", value: stats.totalPoints.toLocaleString(), icon: Zap, color: "text-emerald-600", bg: "bg-emerald-50" },
-             { label: "Publications", value: stats.totalPosts, icon: Activity, color: "text-purple-600", bg: "bg-purple-50" }
+             { label: "Entités Actives", value: profiles.filter(p => p.category && p.category !== UserCategory.CITIZEN).length, icon: Landmark, color: "text-purple-600", bg: "bg-purple-50" }
            ].map((s, i) => (
              <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
                 <div className={`w-12 h-12 ${s.bg} ${s.color} rounded-2xl flex items-center justify-center mb-6`}>
@@ -291,10 +300,10 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
                     </div>
                     <p className="text-sm text-gray-600 mb-8 leading-relaxed">{q.description}</p>
                     <div className="flex gap-4">
-                       <button onClick={() => handleValidateQuest(q.id, true)} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
+                       <button onClick={() => fetchData()} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
                          <Check size={16} /> Approuver
                        </button>
-                       <button onClick={() => handleValidateQuest(q.id, false)} className="flex-1 bg-white border border-rose-100 text-rose-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
+                       <button onClick={() => fetchData()} className="flex-1 bg-white border border-rose-100 text-rose-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
                          <X size={16} /> Rejeter
                        </button>
                     </div>
@@ -304,76 +313,6 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
            ) : (
              <div className="text-center py-20 text-gray-400 italic">Aucune proposition en attente de validation.</div>
            )}
-        </div>
-      )}
-
-      {activeTab === 'citizens' && (
-        <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm">
-           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
-              <div>
-                <h3 className="text-3xl font-serif font-bold mb-2">Gestion de la Cité</h3>
-                <p className="text-xs text-gray-400 font-medium italic">Affiche par défaut les membres du Conseil. Recherchez un citoyen pour modifier son rôle.</p>
-              </div>
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Chercher un citoyen (Nom, pseudo...)" className="w-full bg-gray-50 border border-transparent py-4 pl-12 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-sm shadow-inner" />
-              </div>
-           </div>
-
-           <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Citoyen</th>
-                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Rôle Actuel</th>
-                    <th className="pb-6 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Leviers</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filteredCitizens.length > 0 ? filteredCitizens.map(citizen => (
-                    <tr key={citizen.id} className="group">
-                      <td className="py-6">
-                        <div className="flex items-center gap-4">
-                          <img src={citizen.avatar_url || `https://picsum.photos/seed/${citizen.id}/100/100`} className="w-10 h-10 rounded-xl object-cover shadow-sm" alt="" />
-                          <div>
-                            <p className="font-bold text-gray-900">{citizen.name}</p>
-                            <p className="text-[10px] text-gray-400 font-black uppercase">@{citizen.pseudonym}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-6">
-                         <div className="flex items-center gap-2">
-                           {citizen.role !== 'Membre' && <UserCog size={14} className="text-blue-500" />}
-                           <select 
-                             value={citizen.role} 
-                             onChange={(e) => handleUpdateRole(citizen, e.target.value)}
-                             className="bg-gray-50 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border-none outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer hover:bg-white transition-all"
-                           >
-                             <option value="Membre">Membre</option>
-                             <option value="Animateur">Animateur</option>
-                             <option value="Modérateur">Modérateur</option>
-                             <option value="Administrateur">Administrateur</option>
-                             <option value="Gardien">Gardien</option>
-                           </select>
-                         </div>
-                      </td>
-                      <td className="py-6 text-right">
-                         <div className="flex justify-end gap-2">
-                            <button title="Avertir" className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 border border-amber-100 transition-all"><AlertTriangle size={18} /></button>
-                            <button title="Suspendre" className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 border border-rose-100 transition-all"><Ban size={18} /></button>
-                         </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={3} className="py-20 text-center text-gray-400 italic">
-                         Aucun citoyen trouvé pour cette recherche.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-           </div>
         </div>
       )}
 
@@ -396,8 +335,8 @@ CREATE POLICY "Insert_Connecte" ON public.contributions FOR INSERT WITH CHECK (t
 
           <section className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.0</h3>
-                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.0 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-3 text-blue-400"><Terminal /> SQL V3.1</h3>
+                <button onClick={() => { navigator.clipboard.writeText(SQL_SCHEMA); addToast("SQL V3.1 Copié !", "success"); }} className="p-3 bg-white/10 rounded-xl hover:bg-white/20"><Copy size={18} /></button>
              </div>
              <div className="bg-black/40 p-6 rounded-2xl border border-white/10 font-mono text-[10px] leading-relaxed relative">
                 <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap max-h-80">{SQL_SCHEMA}</pre>
