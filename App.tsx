@@ -248,15 +248,16 @@ const App = () => {
           <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
-              {/* Landing & Auth */}
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
               
-              {/* Main App - Explicitly named routes */}
+              {/* ROUTES PRINCIPALES - ORDRE CRITIQUE */}
               <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
+              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
+              
               <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
               <Route path="/live" element={user ? <LiveAssembly /> : <Navigate to="/" />} />
               <Route path="/map" element={user ? <ActionMap /> : <Navigate to="/" />} />
@@ -266,12 +267,8 @@ const App = () => {
               <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
               <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
-              
-              {/* Admin & Restricted */}
-              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               
-              {/* Catch all */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
