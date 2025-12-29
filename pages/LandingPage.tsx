@@ -15,7 +15,10 @@ import {
   ArrowRight, 
   Loader2, 
   ChevronRight,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles,
+  LayoutGrid,
+  ShieldAlert
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
@@ -49,15 +52,11 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Note: On ne redirige pas automatiquement si l'utilisateur est présent pour laisser la landing page visible.
-  // On laisse l'utilisateur choisir d'entrer via le formulaire ou un bouton s'il est déjà logué.
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Simulation d'authentification robuste
     setTimeout(() => {
       if (email === 'cerclecitoyenci@gmail.com') {
         setSuccess(true);
@@ -67,7 +66,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           navigate('/feed');
         }, 800);
       } else {
-        setError('Identifiants incorrects ou compte non vérifié.');
+        setError('Identifiants incorrects. Pour les tests, utilisez : cerclecitoyenci@gmail.com');
         setLoading(false);
       }
     }, 1200);
@@ -75,9 +74,11 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
   const handleCircleClick = (circleType: string) => {
     if (user) {
+      // Si connecté : direct vers le cercle
       navigate(`/circle/${encodeURIComponent(circleType)}`);
     } else {
-      navigate('/auth');
+      // Si visiteur : passage obligatoire par le Manifeste (Éveil)
+      navigate('/manifesto');
     }
   };
 
@@ -103,31 +104,30 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
       </header>
 
       <main className="relative z-10 w-full max-w-6xl px-6 flex flex-col items-center text-center">
-        {/* Hero Section */}
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold text-gray-900 leading-[1.1] mb-10">
+          <h1 className="text-5xl md:text-8xl font-serif font-bold text-gray-900 leading-[1.05] mb-10 tracking-tighter">
             Un espace pour <br />
             <span className="text-blue-600 italic underline decoration-blue-100 underline-offset-[12px]">penser</span>, relier et <br />
             agir.
           </h1>
 
-          <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-16 font-medium">
+          <p className="text-gray-400 text-lg md:text-2xl max-w-2xl mx-auto mb-16 font-medium leading-relaxed">
             Rejoignez une communauté de citoyens engagés pour un dialogue mature et tourné vers le progrès social de notre nation.
           </p>
         </div>
 
-        {/* Login Form Card */}
-        <div className="w-full max-w-[540px] mb-24 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-          <div className="bg-white rounded-[3.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] border border-gray-100 p-10 md:p-14 mb-8">
-            <div className="text-left mb-10">
-              <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Accès au Cercle</h2>
+        {/* Login Card */}
+        <div id="login-section" className="w-full max-w-[540px] mb-32 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
+          <div className="bg-white rounded-[4rem] shadow-[0_48px_96px_-24px_rgba(0,0,0,0.12)] border border-gray-100 p-10 md:p-16 mb-10">
+            <div className="text-left mb-12">
+              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">Accès au Cercle</h2>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">Saisissez vos identifiants citoyens</p>
             </div>
 
             {user ? (
               <div className="text-center py-6">
                 <p className="text-gray-500 mb-8 font-medium italic">Vous êtes déjà reconnu par le Cercle, citoyen.</p>
-                <Link to="/feed" className="w-full py-6 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-100 flex items-center justify-center gap-3">
+                <Link to="/feed" className="w-full py-6 rounded-[2rem] bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-blue-100 flex items-center justify-center gap-3">
                   Entrer dans la Cité <ArrowRight size={16} />
                 </Link>
               </div>
@@ -148,12 +148,11 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email citoyen"
-                    className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
+                    className="w-full bg-gray-50 border border-transparent py-6 pl-16 pr-6 rounded-3xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
                   />
                 </div>
 
                 <div className="relative group">
-                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
                   <input 
                     type={showPassword ? "text" : "password"}
                     required
@@ -161,8 +160,9 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mot de passe"
-                    className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-16 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
+                    className="w-full bg-gray-50 border border-transparent py-6 pl-16 pr-16 rounded-3xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
                   />
+                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -172,14 +172,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                   </button>
                 </div>
 
-                <div className="flex justify-end px-2">
-                  <button type="button" className="text-[10px] font-black uppercase text-gray-300 hover:text-blue-600 transition-colors tracking-widest">Identifiant oublié ?</button>
-                </div>
-
                 <button 
                   type="submit"
                   disabled={loading || success}
-                  className={`w-full py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${
+                  className={`w-full py-7 rounded-3xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-2xl ${
                     success 
                       ? 'bg-emerald-500 text-white shadow-emerald-100' 
                       : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
@@ -191,122 +187,98 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             )}
           </div>
           
-          {!user && (
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-gray-400 text-xs font-bold tracking-tight">Pas encore membre du Cercle ?</p>
-              <Link 
-                to="/manifesto" 
-                className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] hover:text-blue-800 hover:underline transition-all underline-offset-4"
-              >
-                DÉBUTER MON ÉVEIL
-              </Link>
-            </div>
-          )}
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-gray-400 text-xs font-bold tracking-tight">Pas encore membre du Cercle ?</p>
+            <Link 
+              to="/manifesto" 
+              className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] hover:text-blue-800 hover:underline transition-all underline-offset-4"
+            >
+              DÉBUTER MON ÉVEIL
+            </Link>
+          </div>
         </div>
 
+        {/* Thematic Circles Section */}
+        <section className="w-full mb-40 animate-in fade-in duration-1000 delay-500">
+           <div className="flex flex-col items-center mb-20">
+              <div className="inline-flex items-center gap-3 bg-gray-100 px-6 py-2 rounded-full mb-8">
+                <LayoutGrid size={14} className="text-gray-400" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Les Piliers de l'Éveil</span>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6">Nos Cercles d'Échanges.</h2>
+              <p className="text-gray-400 max-w-xl text-lg font-medium leading-relaxed">
+                Douze dimensions thématiques pour couvrir l'intégralité du progrès social ivoirien.
+              </p>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+              {CIRCLES_CONFIG.map((circle, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => handleCircleClick(circle.type)}
+                  className="bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden"
+                >
+                  <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:scale-150 transition-transform duration-700">
+                    {React.cloneElement(circle.icon as React.ReactElement<any>, { size: 120 })}
+                  </div>
+                  
+                  <div className={`w-14 h-14 ${circle.color} rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-500`}>
+                    {React.cloneElement(circle.icon as React.ReactElement<any>, { className: "w-6 h-6" })}
+                  </div>
+                  
+                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-4">{circle.type}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed font-medium mb-6 line-clamp-3">
+                    {circle.description}
+                  </p>
+                  
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
+                    {user ? "Entrer dans le Cercle" : "Découvrir le Manifeste"} <ArrowRight size={14} />
+                  </div>
+                </div>
+              ))}
+           </div>
+        </section>
+
         {/* Territory Map Section */}
-        <section className="w-full bg-gray-950 rounded-[4rem] p-12 md:p-24 mb-32 text-left relative overflow-hidden shadow-2xl">
+        <section className="w-full bg-gray-950 rounded-[5rem] p-12 md:p-32 mb-32 text-left relative overflow-hidden shadow-2xl border border-white/5">
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px'}}></div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
-            <div className="animate-in slide-in-from-left-8 duration-1000">
-              <div className="inline-flex items-center gap-3 bg-blue-900/30 border border-blue-800/50 px-5 py-2 rounded-full mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center relative z-10">
+            <div>
+              <div className="inline-flex items-center gap-3 bg-blue-900/30 border border-blue-800/50 px-6 py-2.5 rounded-full mb-10">
                 <Globe size={14} className="text-blue-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">Impact Territorial</span>
               </div>
               
-              <h2 className="text-4xl md:text-6xl font-serif font-bold text-white mb-8 leading-tight">
+              <h2 className="text-5xl md:text-7xl font-serif font-bold text-white mb-10 leading-[1.1]">
                 Votre Éveil <br />
                 <span className="text-blue-400 italic">change</span> la Carte.
               </h2>
               
-              <p className="text-gray-400 text-lg mb-12 max-w-md leading-relaxed font-medium">
+              <p className="text-gray-400 text-xl mb-14 max-w-md leading-relaxed font-medium">
                 Chaque réflexion partagée allume une lumière. Chaque action certifiée éveille un territoire ivoirien.
               </p>
               
-              <div className="space-y-6 mb-12">
-                <div className="bg-gray-900/80 border border-white/5 p-6 rounded-3xl flex items-center gap-6 group hover:border-blue-500/30 transition-all">
-                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Zap size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Puissance Citoyenne</p>
-                    <p className="text-xl font-bold text-white tracking-tight">4,280 Points collectés</p>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-900/80 border border-white/5 p-6 rounded-3xl flex items-center gap-6 group hover:border-emerald-500/30 transition-all">
-                  <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Target size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Objectif National</p>
-                    <p className="text-xl font-bold text-white tracking-tight">38% du Territoire éveillé</p>
-                  </div>
-                </div>
-              </div>
-              
               <Link 
                 to="/manifesto" 
-                className="inline-flex items-center gap-3 bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-900/40 group active:scale-95"
+                className="inline-flex items-center gap-4 bg-white text-gray-900 px-12 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl group active:scale-95"
               >
-                Commencer ma quête <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                Découvrir le Manifeste <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
             
-            <div className="relative aspect-square animate-in zoom-in duration-1000">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/10 to-transparent rounded-full blur-3xl opacity-50 animate-pulse"></div>
-              <div className="w-full h-full bg-gray-900/50 rounded-[3rem] border border-white/5 flex items-center justify-center relative overflow-hidden group">
+            <div className="relative aspect-square">
+              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent rounded-full blur-3xl opacity-50 animate-pulse"></div>
+              <div className="w-full h-full bg-gray-900/50 rounded-[4rem] border border-white/10 flex items-center justify-center relative overflow-hidden group shadow-inner">
                 <svg viewBox="0 0 100 100" className="w-4/5 h-4/5 text-gray-800 opacity-40 transition-opacity group-hover:opacity-60 duration-500">
                   <path d="M25 15 L35 12 L45 10 L60 12 L75 10 L85 15 L88 30 L85 45 L80 60 L85 75 L82 85 L75 90 L60 92 L45 95 L30 92 L20 88 L15 75 L12 60 L15 45 L18 30 L20 20 Z" fill="currentColor" />
                 </svg>
                 <PulsePoint x="72%" y="82%" city="Abidjan" action="Nettoyage collectif de la plage d'Anoumabo" />
-                <PulsePoint x="52%" y="62%" city="Yamoussoukro" action="Installation de lampadaires solaires communautaires" color="bg-amber-400" />
+                <PulsePoint x="52%" y="62%" city="Yamoussoukro" action="Installation de lampadaires solaires" color="bg-amber-400" />
                 <PulsePoint x="55%" y="45%" city="Bouaké" action="Inauguration de la bibliothèque citoyenne" color="bg-emerald-400" />
-                <PulsePoint x="28%" y="78%" city="San Pedro" action="Reforestation des abords du port" color="bg-blue-400" />
-                <PulsePoint x="25%" y="22%" city="Odienné" action="Formation à l'agriculture durable" color="bg-emerald-400" />
-                <PulsePoint x="55%" y="20%" city="Korhogo" action="Atelier de transmission culturelle" color="bg-rose-400" />
               </div>
             </div>
           </div>
-        </section>
-
-        {/* Wisdom Libraries Section */}
-        <section className="w-full max-w-6xl mb-32 px-4">
-           <header className="mb-20 text-center animate-in fade-in duration-1000">
-              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">Bibliothèques de Sagesse</h2>
-              <p className="text-gray-400 text-lg font-medium">Le savoir partagé est le premier rempart contre l'ignorance.</p>
-           </header>
-
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {CIRCLES_CONFIG.map((circle, index) => (
-                <button 
-                  key={index} 
-                  onClick={() => handleCircleClick(circle.type)}
-                  className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-sm hover:shadow-2xl hover:border-blue-100 transition-all group text-left flex flex-col items-start hover:-translate-y-2 relative overflow-hidden"
-                >
-                   <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-500 ${circle.color}`}></div>
-                   
-                   <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-10 shadow-xl shadow-blue-100 group-hover:rotate-12 transition-transform">
-                      <div className="text-white">
-                        {React.cloneElement(circle.icon as any, { size: 28 })}
-                      </div>
-                   </div>
-                   
-                   <h3 className="text-2xl font-serif font-bold text-gray-900 mb-6 leading-tight group-hover:text-blue-600 transition-colors">
-                      {circle.type}
-                   </h3>
-                   
-                   <p className="text-gray-500 text-base leading-relaxed font-medium mb-10">
-                      {circle.description}
-                   </p>
-                   
-                   <div className="mt-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                      Entrer dans le cercle <ChevronRight size={14} />
-                   </div>
-                </button>
-              ))}
-           </div>
         </section>
       </main>
     </div>
