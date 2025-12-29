@@ -48,7 +48,7 @@ const Badge: React.FC<{ icon: React.ReactNode, label: string, color: string, des
     <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 border-4 border-white shadow-lg ${color} group-hover:scale-110 group-hover:-rotate-12`}>
       {icon}
     </div>
-    <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 transition-colors">{label}</span>
+    <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 transition-colors text-center">{label}</span>
     
     {/* Tooltip */}
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-40 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50">
@@ -190,7 +190,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
         
@@ -278,42 +278,50 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                     <textarea 
                       value={editData.bio}
                       onChange={e => setEditData({...editData, bio: e.target.value})}
-                      className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all"
+                      className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all shadow-inner"
                       placeholder="Décrivez votre vision pour la cité..."
                     />
                   ) : (
-                    <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100/50 min-h-[200px]">
+                    <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-10 rounded-[3rem] border border-gray-100/50 min-h-[300px] shadow-sm">
                       {profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}
                     </p>
                   )}
                 </section>
             </div>
 
-            {/* Colonne Droite : Impact & Badges (Toujours visible) */}
-            <aside className="space-y-10">
-              <div className="p-10 bg-gray-950 text-white rounded-[3rem] text-center shadow-2xl relative overflow-hidden group">
+            {/* Colonne Droite : Impact & Badges (Toujours visible grâce au sticky) */}
+            <aside className="lg:sticky lg:top-24 space-y-10 self-start">
+              {/* Carte Impact Score */}
+              <div className="p-10 bg-gray-950 text-white rounded-[3rem] text-center shadow-2xl relative overflow-hidden group border border-white/5">
                 <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:scale-125 transition-transform duration-700">
                   <Zap size={80} />
                 </div>
                 <h3 className="font-black text-[10px] uppercase tracking-[0.4em] mb-6 text-blue-400 relative z-10">INDICE D'IMPACT</h3>
-                <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white">
+                <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white animate-in zoom-in">
                   {impactScore.toLocaleString()}
                 </div>
                 <p className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] relative z-10">POINTS CITOYENS</p>
               </div>
 
-              {/* Section Badges Repositionnée sous l'Impact */}
-              <div className="bg-gray-50/50 border border-gray-100 p-8 rounded-[3rem]">
-                <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-gray-400 mb-8 text-center px-1">DÉCORATIONS CITOYENNES</h3>
-                <div className="grid grid-cols-3 gap-y-8 gap-x-2">
+              {/* Section Badges */}
+              <div className="bg-white border border-gray-100 p-10 rounded-[3rem] shadow-sm">
+                <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-gray-400 mb-10 text-center px-1">DÉCORATIONS CITOYENNES</h3>
+                <div className="grid grid-cols-3 gap-y-10 gap-x-2">
                   {badges.map((b, i) => (
                     <Badge key={i} {...b} />
                   ))}
                 </div>
                 
                 {badges.length === 0 && (
-                  <p className="text-[10px] text-gray-400 italic text-center py-4">Aucune décoration pour le moment.</p>
+                  <p className="text-[10px] text-gray-400 italic text-center py-6">Aucune décoration pour le moment.</p>
                 )}
+
+                <div className="mt-12 pt-8 border-t border-gray-50 flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-amber-500" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Mérite Territorial</span>
+                  </div>
+                </div>
               </div>
             </aside>
           </div>
