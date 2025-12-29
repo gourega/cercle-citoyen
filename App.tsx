@@ -61,6 +61,15 @@ export const useToast = () => {
   return context;
 };
 
+// Composant pour forcer le scroll en haut à chaque changement de route
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
 const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -241,6 +250,7 @@ const App = () => {
   return (
     <ToastProvider>
       <Router>
+        <ScrollToTop />
         <div className="min-h-screen flex flex-col bg-[#fcfcfc]">
           <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
