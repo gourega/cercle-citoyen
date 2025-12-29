@@ -15,8 +15,7 @@ import {
   ArrowRight, 
   Loader2, 
   ChevronRight,
-  CheckCircle2,
-  Heart
+  CheckCircle2
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
@@ -50,11 +49,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      navigate('/profile');
-    }
-  }, [user, navigate]);
+  // Note: On ne redirige pas automatiquement si l'utilisateur est présent pour laisser la landing page visible.
+  // On laisse l'utilisateur choisir d'entrer via le formulaire ou un bouton s'il est déjà logué.
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +64,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         setTimeout(() => {
           const adminUser = MOCK_USERS[ADMIN_ID];
           onLogin(adminUser);
-          navigate('/profile');
+          navigate('/feed');
         }, 800);
       } else {
         setError('Identifiants incorrects ou compte non vérifié.');
@@ -86,7 +82,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-hidden flex flex-col items-center page-transition">
+    <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
       
       {/* Background Decor */}
       <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]">
@@ -128,73 +124,84 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">Saisissez vos identifiants citoyens</p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6">
-              {error && (
-                <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake duration-300">
-                  <AlertCircle size={18} /> {error}
+            {user ? (
+              <div className="text-center py-6">
+                <p className="text-gray-500 mb-8 font-medium italic">Vous êtes déjà reconnu par le Cercle, citoyen.</p>
+                <Link to="/feed" className="w-full py-6 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-100 flex items-center justify-center gap-3">
+                  Entrer dans la Cité <ArrowRight size={16} />
+                </Link>
+              </div>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-6">
+                {error && (
+                  <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake duration-300">
+                    <AlertCircle size={18} /> {error}
+                  </div>
+                )}
+
+                <div className="relative group">
+                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  <input 
+                    type="email"
+                    required
+                    disabled={loading || success}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email citoyen"
+                    className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
+                  />
                 </div>
-              )}
 
-              <div className="relative group">
-                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                <input 
-                  type="email"
-                  required
-                  disabled={loading || success}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email citoyen"
-                  className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-6 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
-                />
-              </div>
+                <div className="relative group">
+                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    required
+                    disabled={loading || success}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mot de passe"
+                    className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-16 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
 
-              <div className="relative group">
-                <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  required
-                  disabled={loading || success}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mot de passe"
-                  className="w-full bg-gray-50 border border-transparent py-5 pl-16 pr-16 rounded-2xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-medium disabled:opacity-50"
-                />
+                <div className="flex justify-end px-2">
+                  <button type="button" className="text-[10px] font-black uppercase text-gray-300 hover:text-blue-600 transition-colors tracking-widest">Identifiant oublié ?</button>
+                </div>
+
                 <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors"
+                  type="submit"
+                  disabled={loading || success}
+                  className={`w-full py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${
+                    success 
+                      ? 'bg-emerald-500 text-white shadow-emerald-100' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
+                  }`}
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Se connecter"}
                 </button>
-              </div>
-
-              <div className="flex justify-end px-2">
-                <button type="button" className="text-[10px] font-black uppercase text-gray-300 hover:text-blue-600 transition-colors tracking-widest">Identifiant oublié ?</button>
-              </div>
-
-              <button 
-                type="submit"
-                disabled={loading || success}
-                className={`w-full py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 btn-shine shadow-xl ${
-                  success 
-                    ? 'bg-emerald-500 text-white shadow-emerald-100' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
-                }`}
-              >
-                {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Se connecter"}
-              </button>
-            </form>
+              </form>
+            )}
           </div>
           
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-gray-400 text-xs font-bold tracking-tight">Pas encore membre du Cercle ?</p>
-            <Link 
-              to="/auth" 
-              className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] hover:text-blue-800 hover:underline transition-all underline-offset-4"
-            >
-              DÉBUTER MON ÉVEIL
-            </Link>
-          </div>
+          {!user && (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-gray-400 text-xs font-bold tracking-tight">Pas encore membre du Cercle ?</p>
+              <Link 
+                to="/manifesto" 
+                className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] hover:text-blue-800 hover:underline transition-all underline-offset-4"
+              >
+                DÉBUTER MON ÉVEIL
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Territory Map Section */}
@@ -240,7 +247,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               </div>
               
               <Link 
-                to="/auth" 
+                to="/manifesto" 
                 className="inline-flex items-center gap-3 bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-900/40 group active:scale-95"
               >
                 Commencer ma quête <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -282,10 +289,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                    
                    <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-10 shadow-xl shadow-blue-100 group-hover:rotate-12 transition-transform">
                       <div className="text-white">
-                        {circle.icon && React.isValidElement(circle.icon) 
-                          ? React.cloneElement(circle.icon as any, { size: 28 }) 
-                          : <BookOpen size={28} />
-                        }
+                        {React.cloneElement(circle.icon as any, { size: 28 })}
                       </div>
                    </div>
                    

@@ -46,7 +46,7 @@ import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import NotificationDrawer from './components/NotificationDrawer.tsx';
 import { User, Role, CitizenNotification } from './types.ts';
-import { ADMIN_ID } from './lib/mocks.ts';
+import { ADMIN_ID, MOCK_USERS } from './lib/mocks.ts';
 import { supabase, isRealSupabase, db } from './lib/supabase.ts';
 
 interface ToastContextType {
@@ -67,8 +67,11 @@ const Navbar = ({ user }: { user: User | null }) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<CitizenNotification[]>([]);
 
-  if (!user || ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
+  // Masquer la navbar sur les pages d'entrée
+  const hideNavbarPaths = ['/', '/manifesto', '/auth', '/welcome', '/legal'];
+  if (!user || hideNavbarPaths.includes(location.pathname)) return null;
 
+  // Fix: Removed redundant string comparison for 'Gardien' as Role.SUPER_ADMIN evaluates to that value.
   const isGuardian = user.role === Role.SUPER_ADMIN;
 
   const navItems = [
@@ -84,7 +87,7 @@ const Navbar = ({ user }: { user: User | null }) => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6 shadow-sm">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
         <div className="flex items-center gap-6">
           <Link to="/feed" className="flex items-center group">
@@ -207,7 +210,7 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-sm px-4">
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-w-sm px-4">
         {toasts.map(t => (
           <div key={t.id} className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-2 ${t.type === 'success' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
              <CheckCircle size={18} />
@@ -221,8 +224,13 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 const App = () => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('cercle_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('cercle_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Erreur de lecture du cache utilisateur:", e);
+      return null;
+    }
   });
 
   const handleLogin = (u: User) => {
@@ -248,10 +256,8 @@ const App = () => {
       localRegistry[user.id] = { ...localRegistry[user.id], ...updates };
       localStorage.setItem('cercle_registry', JSON.stringify(localRegistry));
 
-      // SYNCHRONISATION SUPABASE
       if (isRealSupabase && supabase) {
         try {
-          // Mapper les noms de champs si nécessaire (ex: avatar -> avatar_url)
           const dbUpdates: any = { ...updates };
           if (dbUpdates.avatar) {
             dbUpdates.avatar_url = dbUpdates.avatar;
@@ -263,9 +269,8 @@ const App = () => {
           }
 
           await db.updateProfile(user.id, dbUpdates);
-          console.log("☁️ Supabase : Profil synchronisé avec succès.");
         } catch (e) {
-          console.error("❌ Erreur de synchronisation Supabase:", e);
+          console.error("Erreur de synchronisation Supabase:", e);
         }
       }
     }
@@ -274,7 +279,7 @@ const App = () => {
   return (
     <ToastProvider>
       <Router>
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-[#fcfcfc]">
           <Navbar user={user} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
@@ -293,13 +298,14 @@ const App = () => {
               <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
               <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} onProfileUpdate={handleProfileUpdate} /> : <Navigate to="/" />} />
+              {/* Fix: Simplified comparison to resolve type mismatch with 'Gardien' string literal */}
               <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
-            <Footer />
           </main>
           <GuardianAssistant />
+          <Footer />
         </div>
       </Router>
     </ToastProvider>

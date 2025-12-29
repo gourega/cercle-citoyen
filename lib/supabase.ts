@@ -1,80 +1,55 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration de l'environnement
 const getEnv = (key: string) => {
   try {
-    return (window as any).process?.env?.[key] || (import.meta as any).env?.[key] || (window as any)[key];
+    return (
+      (window as any).process?.env?.[key] || 
+      (import.meta as any).env?.[key] || 
+      (window as any)[key] ||
+      null
+    );
   } catch {
     return null;
   }
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('Url Supabase');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('Clé public Supabase');
+const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
 
 export const isRealSupabase = 
   !!supabaseUrl && 
   !!supabaseAnonKey && 
   typeof supabaseUrl === 'string' &&
-  supabaseUrl.includes('.supabase.co');
+  supabaseUrl.startsWith('https://');
 
-/**
- * CLIENT SUPABASE SOUVERAIN
- * Utilisé pour la synchronisation en temps réel de la Cité.
- */
+if (!supabaseUrl) console.warn("Diagnostic Supabase : VITE_SUPABASE_URL est manquante.");
+if (!supabaseAnonKey) console.warn("Diagnostic Supabase : VITE_SUPABASE_ANON_KEY est manquante.");
+
 export const supabase = isRealSupabase
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
-      },
-    })
+  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
   : null;
 
-/**
- * MOTEUR DE PERSISTANCE (SÉCURITÉ & ROBUSTESSE)
- * Gère le basculement entre la base réelle et la mémoire locale si nécessaire.
- */
 export const db = {
-  // Profils Citoyens
-  async getProfile(id: string) {
-    if (!supabase) return JSON.parse(localStorage.getItem('cercle_user') || 'null');
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
-    if (error) throw error;
-    return data;
-  },
-
-  // Publications du Fil
-  async createPost(post: { author_id: string, content: string, circle_type: string }) {
-    if (!supabase) {
-      const posts = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
-      const newPost = { 
-        ...post, 
-        id: crypto.randomUUID(), 
-        created_at: new Date().toISOString(), 
-        reactions: { useful: 0, relevant: 0, inspiring: 0 } 
-      };
-      localStorage.setItem('cercle_db_posts', JSON.stringify([newPost, ...posts]));
-      return newPost;
+  async checkConnection() {
+    if (!supabase) return { ok: false, message: "Variables d'environnement (URL ou Clé) manquantes." };
+    try {
+      // On teste une lecture simple
+      const { error } = await supabase.from('profiles').select('id').limit(1);
+      if (error) return { ok: false, message: error.message };
+      return { ok: true, message: "Liaison avec la base de données établie." };
+    } catch (e: any) {
+      return { ok: false, message: e.message };
     }
-    const { data, error } = await supabase.from('posts').insert([post]).select().single();
-    if (error) throw error;
-    return data;
   },
 
-  // Système de Vote (Édits)
-  async voteForEdict(userId: string, edictId: string) {
-    if (!supabase) return { success: true };
-    const { error: voteError } = await supabase.from('votes').insert([{ user_id: userId, edict_id: edictId }]);
-    if (voteError) throw voteError;
-    const { error: rpcError } = await supabase.rpc('increment_edict_votes', { row_id: edictId });
-    if (rpcError) throw rpcError;
-    return { success: true };
+  async updateProfile(id: string, updates: any) {
+    if (!supabase) return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', id);
+    if (error) throw error;
+    return data;
   }
 };
-
-if (!supabase) {
-  console.warn("⚠️ ARCHITECTURE EN MODE DÉGRADÉ : Connectez Supabase pour activer le temps réel.");
-}
