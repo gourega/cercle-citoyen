@@ -10,6 +10,7 @@ import { getGriotReading, decodeBase64Audio, decodeAudioBuffer } from '../lib/ge
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
+import { useToast } from '../App';
 
 // Parseur de texte pour les styles simples
 const formatContent = (content: string) => {
@@ -137,8 +138,10 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
   const [sending, setSending] = useState(false);
   const [newIncomingCount, setNewIncomingCount] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { addToast } = useToast();
 
   const fetchPosts = async () => {
+    setLoading(true);
     if (!supabase) {
       const local = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
       setPosts([...MOCK_POSTS, ...local]);
@@ -161,7 +164,11 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
           if (payload.new.author_id !== user.id) {
             setNewIncomingCount(prev => prev + 1);
           } else {
-            setPosts(prev => [payload.new, ...prev]);
+            // Uniquement si on n'a pas déjà ajouté localement pour éviter les doublons
+            setPosts(prev => {
+                if (prev.some(p => p.id === payload.new.id)) return prev;
+                return [payload.new, ...prev];
+            });
           }
         })
         .subscribe();
@@ -201,31 +208,43 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
     
     const isGuardian = user.role === Role.SUPER_ADMIN;
 
-    if (supabase) {
-      const { error } = await supabase.from('posts').insert([{
-        author_id: user.id,
-        content: newPostText,
-        circle_type: selectedCircle,
-        is_majestic: isGuardian 
-      }]);
-      if (!error) {
-        setNewPostText('');
-      }
-    } else {
-      const posts = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
-      const newPost = { 
-          id: crypto.randomUUID(), 
-          author_id: user.id, 
-          content: newPostText, 
-          circle_type: selectedCircle, 
-          created_at: new Date().toISOString(),
-          is_majestic: isGuardian
-      };
-      localStorage.setItem('cercle_db_posts', JSON.stringify([newPost, ...posts]));
-      setPosts([newPost, ...MOCK_POSTS, ...posts]);
-      setNewPostText('');
+    try {
+        if (supabase) {
+            const { error } = await supabase.from('posts').insert([{
+                author_id: user.id,
+                content: newPostText,
+                circle_type: selectedCircle,
+                is_majestic: isGuardian 
+            }]);
+            
+            if (error) throw error;
+            
+            addToast("Onde publiée sur le Cloud !", "success");
+            setNewPostText('');
+        } else {
+            const localPosts = JSON.parse(localStorage.getItem('cercle_db_posts') || '[]');
+            const newPost = { 
+                id: crypto.randomUUID(), 
+                author_id: user.id, 
+                content: newPostText, 
+                circle_type: selectedCircle, 
+                created_at: new Date().toISOString(),
+                is_majestic: isGuardian,
+                reactions: { useful: 0, relevant: 0, inspiring: 0 }
+            };
+            
+            const updatedLocal = [newPost, ...localPosts];
+            localStorage.setItem('cercle_db_posts', JSON.stringify(updatedLocal));
+            setPosts(prev => [newPost, ...prev]);
+            setNewPostText('');
+            addToast("Onde enregistrée localement.", "info");
+        }
+    } catch (err: any) {
+        console.error("Erreur de publication:", err);
+        addToast(`Échec de publication: ${err.message}`, "error");
+    } finally {
+        setSending(false);
     }
-    setSending(false);
   };
 
   return (

@@ -27,6 +27,10 @@ const ActionMap: React.FC = () => {
       setResults(res);
     } catch (e) {
       console.error(e);
+      setResults({
+          text: "Une erreur est survenue lors de la recherche territoriale. Cela peut arriver si la connexion au service Google Maps Grounding est temporairement indisponible ou si la requête est trop complexe.",
+          places: []
+      });
     } finally {
       setLoading(false);
     }
