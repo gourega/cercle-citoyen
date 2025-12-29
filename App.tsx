@@ -61,7 +61,7 @@ export const useToast = () => {
   return context;
 };
 
-const Navbar = ({ user }: { user: User | null }) => {
+const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -71,7 +71,6 @@ const Navbar = ({ user }: { user: User | null }) => {
   const hideNavbarPaths = ['/', '/manifesto', '/auth', '/welcome', '/legal'];
   if (!user || hideNavbarPaths.includes(location.pathname)) return null;
 
-  // Fix: Removed redundant string comparison for 'Gardien' as Role.SUPER_ADMIN evaluates to that value.
   const isGuardian = user.role === Role.SUPER_ADMIN;
 
   const navItems = [
@@ -96,12 +95,11 @@ const Navbar = ({ user }: { user: User | null }) => {
           {isRealSupabase && (
             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-               <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Réseau Souverain Connecté</span>
+               <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Cloud Connecté</span>
             </div>
           )}
         </div>
 
-        {/* Desktop Nav */}
         <div className="hidden lg:flex items-center gap-1">
           {navItems.map((item) => (
             <Link 
@@ -143,7 +141,6 @@ const Navbar = ({ user }: { user: User | null }) => {
           </Link>
         </div>
 
-        {/* Mobile Toggle */}
         <div className="flex items-center gap-4 lg:hidden">
            <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative">
              <Bell size={24} />
@@ -163,7 +160,6 @@ const Navbar = ({ user }: { user: User | null }) => {
         />
       )}
 
-      {/* Mobile Menu */}
       {isOpen && (
         <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
           {navItems.map((item) => (
@@ -182,16 +178,15 @@ const Navbar = ({ user }: { user: User | null }) => {
               onClick={() => setIsOpen(false)} 
               className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 font-black text-[10px] uppercase tracking-widest text-amber-600 hover:bg-amber-100"
             >
-              <Crown size={16} /> Conseil du Gardien
+              <Crown size={16} /> Conseil
             </Link>
           )}
-          <Link 
-            to="/profile" 
-            onClick={() => setIsOpen(false)} 
-            className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white shadow-lg mt-4"
-          >
+          <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-600 text-white mt-4">
             <UserIcon size={20} /> <span className="text-[10px] font-black uppercase tracking-widest">Mon Profil</span>
           </Link>
+          <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest">
+            Déconnexion
+          </button>
         </div>
       )}
     </nav>
@@ -228,59 +223,26 @@ const App = () => {
       const saved = localStorage.getItem('cercle_user');
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      console.error("Erreur de lecture du cache utilisateur:", e);
       return null;
     }
   });
 
   const handleLogin = (u: User) => {
-    const localRegistry = JSON.parse(localStorage.getItem('cercle_registry') || '{}');
-    const existingProfile = localRegistry[u.id];
-    const finalUser = existingProfile ? { ...u, ...existingProfile } : u;
-    setUser(finalUser);
-    localStorage.setItem('cercle_user', JSON.stringify(finalUser));
+    setUser(u);
+    localStorage.setItem('cercle_user', JSON.stringify(u));
   };
 
   const handleLogout = async () => {
     setUser(null);
     localStorage.removeItem('cercle_user');
-  };
-
-  const handleProfileUpdate = async (updates: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem('cercle_user', JSON.stringify(updatedUser));
-      
-      const localRegistry = JSON.parse(localStorage.getItem('cercle_registry') || '{}');
-      localRegistry[user.id] = { ...localRegistry[user.id], ...updates };
-      localStorage.setItem('cercle_registry', JSON.stringify(localRegistry));
-
-      if (isRealSupabase && supabase) {
-        try {
-          const dbUpdates: any = { ...updates };
-          if (dbUpdates.avatar) {
-            dbUpdates.avatar_url = dbUpdates.avatar;
-            delete dbUpdates.avatar;
-          }
-          if (dbUpdates.impactScore) {
-            dbUpdates.impact_score = dbUpdates.impactScore;
-            delete dbUpdates.impactScore;
-          }
-
-          await db.updateProfile(user.id, dbUpdates);
-        } catch (e) {
-          console.error("Erreur de synchronisation Supabase:", e);
-        }
-      }
-    }
+    window.location.hash = '#/';
   };
 
   return (
     <ToastProvider>
       <Router>
         <div className="min-h-screen flex flex-col bg-[#fcfcfc]">
-          <Navbar user={user} />
+          <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
@@ -297,8 +259,7 @@ const App = () => {
               <Route path="/griot" element={user ? <GriotStudio /> : <Navigate to="/" />} />
               <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
-              <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} onProfileUpdate={handleProfileUpdate} /> : <Navigate to="/" />} />
-              {/* Fix: Simplified comparison to resolve type mismatch with 'Gardien' string literal */}
+              <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
               <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
