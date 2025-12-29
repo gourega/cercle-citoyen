@@ -22,8 +22,9 @@ import {
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
-import { User } from '../types.ts';
+import { User, Role, UserCategory } from '../types.ts';
 import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
 
 const PulsePoint = ({ x, y, city, action, color = "bg-blue-400" }: { x: string, y: string, city: string, action: string, color?: string }) => (
   <div 
@@ -52,32 +53,77 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      if (email === 'cerclecitoyenci@gmail.com') {
-        setSuccess(true);
-        setTimeout(() => {
-          const adminUser = MOCK_USERS[ADMIN_ID];
-          onLogin(adminUser);
-          navigate('/feed');
-        }, 800);
+    try {
+      if (isRealSupabase && supabase) {
+        // Authentification réelle via Supabase
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Récupération du profil public associé
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+          if (profileError) throw profileError;
+
+          const loggedInUser: User = {
+            id: profile.id,
+            name: profile.name,
+            pseudonym: profile.pseudonym,
+            email: profile.email,
+            bio: profile.bio,
+            role: profile.role as Role,
+            category: UserCategory.CITIZEN,
+            interests: [],
+            avatar: profile.avatar_url,
+            impactScore: profile.impact_score || 0
+          };
+
+          setSuccess(true);
+          setTimeout(() => {
+            onLogin(loggedInUser);
+            navigate('/feed');
+          }, 800);
+        }
       } else {
-        setError('Identifiants incorrects. Pour les tests, utilisez : cerclecitoyenci@gmail.com');
-        setLoading(false);
+        // Mode démo (Fallback)
+        setTimeout(() => {
+          if (email === 'cerclecitoyenci@gmail.com') {
+            setSuccess(true);
+            setTimeout(() => {
+              const adminUser = MOCK_USERS[ADMIN_ID];
+              onLogin(adminUser);
+              navigate('/feed');
+            }, 800);
+          } else {
+            setError('Identifiants incorrects ou mode hors-ligne. Utilisez cerclecitoyenci@gmail.com en démo.');
+            setLoading(false);
+          }
+        }, 1200);
       }
-    }, 1200);
+    } catch (err: any) {
+      console.error("Erreur de connexion:", err);
+      setError(err.message || "Impossible de se connecter. Vérifiez vos identifiants.");
+      setLoading(false);
+    }
   };
 
   const handleCircleClick = (circleType: string) => {
     if (user) {
-      // Si connecté : direct vers le cercle
       navigate(`/circle/${encodeURIComponent(circleType)}`);
     } else {
-      // Si visiteur : passage obligatoire par le Manifeste (Éveil)
       navigate('/manifesto');
     }
   };
@@ -85,7 +131,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
       
-      {/* Background Decor */}
       <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]">
         <svg className="w-full h-full" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="400" cy="300" r="300" stroke="currentColor" strokeWidth="0.5" strokeDasharray="5 5" />
@@ -116,7 +161,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           </p>
         </div>
 
-        {/* Login Card */}
         <div id="login-section" className="w-full max-w-[540px] mb-32 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
           <div className="bg-white rounded-[4rem] shadow-[0_48px_96px_-24px_rgba(0,0,0,0.12)] border border-gray-100 p-10 md:p-16 mb-10">
             <div className="text-left mb-12">
@@ -198,7 +242,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           </div>
         </div>
 
-        {/* Thematic Circles Section */}
         <section className="w-full mb-40 animate-in fade-in duration-1000 delay-500">
            <div className="flex flex-col items-center mb-20">
               <div className="inline-flex items-center gap-3 bg-gray-100 px-6 py-2 rounded-full mb-8">
@@ -239,7 +282,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
            </div>
         </section>
 
-        {/* Territory Map Section */}
         <section className="w-full bg-gray-950 rounded-[5rem] p-12 md:p-32 mb-32 text-left relative overflow-hidden shadow-2xl border border-white/5">
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px'}}></div>
           
