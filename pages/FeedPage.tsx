@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ThumbsUp, Lightbulb, Loader2, Volume2, Send, Sparkles, 
   Crown, Share2, ShieldCheck, Heart, MessageCircle, 
-  MoreHorizontal, RefreshCw, Info, Play, Pause, AlertCircle
+  MoreHorizontal, RefreshCw, Info, Play, Pause, AlertCircle,
+  Bookmark
 } from 'lucide-react';
 import { User, CircleType, Role } from '../types';
 import { getGriotReading, decodeBase64Audio, decodeAudioBuffer } from '../lib/gemini';
@@ -28,7 +29,6 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [newComment, setNewComment] = useState('');
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -82,6 +82,10 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
     addToast("Impact enregistré !", "success");
   };
 
+  const handleShare = () => {
+    addToast("Lien d'onde copié dans le presse-papier.", "success");
+  };
+
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
 
@@ -102,22 +106,28 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
             </p>
           </div>
         </div>
-        <button onClick={toggleAudio} className={`p-4 rounded-2xl transition-all flex items-center gap-2 ${isPlaying ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
-          {isLoadingAudio ? <Loader2 className="animate-spin" size={20} /> : isPlaying ? <Pause size={20} /> : <Volume2 size={20} />}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={handleShare} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all"><Share2 size={20} /></button>
+          <button onClick={toggleAudio} className={`p-4 rounded-2xl transition-all flex items-center gap-2 ${isPlaying ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
+            {isLoadingAudio ? <Loader2 className="animate-spin" size={20} /> : isPlaying ? <Pause size={20} /> : <Volume2 size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* CONTENT */}
-      <div className={`px-8 md:px-12 py-6 text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg'}`} dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
+      <div className={`px-8 md:px-12 py-6 text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`} dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
 
-      {/* TOOLBAR */}
+      {/* TOOLBAR RE-COMPLÉTÉE */}
       <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100">
         <div className="flex items-center gap-2 md:gap-4">
-          <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
-            <ThumbsUp size={18} /> <span className="text-[11px] font-black">{reactions.useful}</span>
+          <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm group">
+            <ThumbsUp size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.useful}</span>
           </button>
-          <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm">
-            <Sparkles size={18} /> <span className="text-[11px] font-black">{reactions.inspiring}</span>
+          <button onClick={() => handleReaction('relevant')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm group">
+            <Lightbulb size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.relevant}</span>
+          </button>
+          <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm group">
+            <Sparkles size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.inspiring}</span>
           </button>
         </div>
         
@@ -131,7 +141,7 @@ const PostCard: React.FC<{ post: any, currentUser: User }> = ({ post, currentUse
 
       {showComments && (
         <div className="p-8 bg-white border-t border-gray-100 animate-in slide-in-from-top-4 duration-300">
-          <div className="space-y-6 mb-10">
+          <div className="space-y-6">
             {post.comments?.length > 0 ? post.comments.map((c: any, i: number) => (
               <div key={i} className="flex gap-4">
                 <img src={c.avatar || `https://picsum.photos/seed/${i}/50/50`} className="w-10 h-10 rounded-xl object-cover" alt="" />
@@ -158,18 +168,23 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
 
   const fetchPosts = async () => {
     setLoading(true);
-    if (!isRealSupabase || !supabase) { 
-      setPosts(MOCK_POSTS); 
-      setLoading(false); 
-      return; 
+    let allPosts: any[] = [...MOCK_POSTS];
+    
+    if (isRealSupabase && supabase) { 
+      try {
+        const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (data) {
+          allPosts = [...data, ...MOCK_POSTS];
+          // Tri chronologique strict (plus récent en haut)
+          allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+      } catch (e) {
+        console.error("Fetch error:", e);
+      }
     }
-    try {
-      const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-      setPosts([...MOCK_POSTS, ...(data || [])]);
-    } catch (e) {
-      setPosts(MOCK_POSTS);
-    }
-    setLoading(false);
+    
+    setPosts(allPosts);
+    setLoading(false); 
   };
 
   useEffect(() => { fetchPosts(); }, []);
@@ -189,8 +204,9 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         }]);
         
         if (error) {
-          console.error("Supabase error:", error);
-          throw new Error(error.message || "Erreur lors de l'insertion.");
+          console.error("Supabase error detail:", error);
+          // Alerte précise pour le diagnostic
+          throw new Error(error.message || "Erreur d'insertion (Vérifiez les droits RLS)");
         }
         
         addToast("Votre onde a été diffusée !", "success");
@@ -201,65 +217,76 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         setNewPostText('');
       }
     } catch (e: any) { 
-      console.error("Publication Error:", e);
-      addToast(`Échec : ${e.message || "Vérifiez votre connexion"}`, "error"); 
+      console.error("Publication Exception:", e);
+      addToast(`Échec de la publication : ${e.message}`, "error"); 
     } finally { 
       setSending(false); 
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12 lg:py-20">
+    <div className="max-w-3xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
       <div className="mb-16 text-center md:text-left">
-        <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6">
+        <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6 border border-blue-100 shadow-sm">
           <Sparkles className="text-blue-600 w-4 h-4" />
           <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Flux Souverain</span>
         </div>
         <h2 className="text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Le Fil d'Éveil</h2>
-        <p className="text-gray-500 font-medium italic text-lg">Exprimez votre vision, bâtissez la cité.</p>
+        <p className="text-gray-500 font-medium italic text-lg leading-relaxed">Exprimez votre vision, bâtissez la cité avec vos concitoyens.</p>
       </div>
 
-      {/* COMPOSER */}
-      <div className="bg-white rounded-[3.5rem] border border-gray-100 p-8 md:p-12 shadow-sm mb-16 relative overflow-hidden group">
+      {/* COMPOSER HAUTE COUTURE */}
+      <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] mb-20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-focus-within:opacity-10 transition-opacity">
+           <Send size={120} />
+        </div>
         <textarea 
           value={newPostText} 
           onChange={e => setNewPostText(e.target.value)} 
-          placeholder="Quelle onde souhaitez-vous partager ?" 
-          className="w-full h-44 bg-gray-50 p-8 rounded-[2.5rem] outline-none mb-8 font-medium text-lg focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all resize-none border border-transparent shadow-inner" 
+          placeholder="Quelle onde souhaitez-vous partager avec la cité ?" 
+          className="w-full h-44 bg-gray-50/80 p-10 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner leading-relaxed" 
         />
         <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-          <select 
-            value={selectedCircle} 
-            onChange={e => setSelectedCircle(e.target.value as any)} 
-            className="w-full sm:w-auto bg-gray-50 px-8 py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-gray-100 transition-all cursor-pointer"
-          >
-            {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
-          </select>
+          <div className="w-full sm:w-auto relative">
+            <select 
+              value={selectedCircle} 
+              onChange={e => setSelectedCircle(e.target.value as any)} 
+              className="w-full bg-gray-50 px-8 py-5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-gray-100 transition-all cursor-pointer appearance-none pr-14"
+            >
+              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
+            </select>
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+               <MoreHorizontal size={16} />
+            </div>
+          </div>
           <button 
             onClick={handleCreatePost} 
             disabled={sending || !newPostText.trim()} 
-            className="w-full sm:w-auto bg-gray-900 text-white px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl hover:bg-black hover:-translate-y-1 active:translate-y-0 transition-all disabled:opacity-30"
+            className="w-full sm:w-auto bg-gray-950 text-white px-14 py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-4 shadow-2xl hover:bg-black hover:-translate-y-2 active:translate-y-0 transition-all disabled:opacity-30 disabled:translate-y-0"
           >
-            {sending ? <Loader2 className="animate-spin" /> : <Send size={18} />} Publier l'Onde
+            {sending ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />} 
+            {sending ? "Diffusion..." : "Publier l'Onde"}
           </button>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="flex justify-between items-center mb-10 px-6">
-           <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">Récents</h3>
-           <button onClick={fetchPosts} className="p-3 bg-white border border-gray-100 rounded-xl hover:text-blue-600 transition-all"><RefreshCw size={18} className={loading ? 'animate-spin' : ''} /></button>
+        <div className="flex justify-between items-center mb-12 px-6">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">Chronologie Citoyenne</h3>
+           <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-blue-600 hover:border-blue-100 hover:shadow-lg transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
         </div>
         
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-6">
-             <Loader2 className="animate-spin text-blue-600 w-16 h-16" />
+          <div className="flex flex-col items-center justify-center py-32 gap-8 opacity-50">
+             <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Consultation des archives...</p>
           </div>
         ) : posts.length > 0 ? (
           posts.map(p => <PostCard key={p.id} post={p} currentUser={user} />)
         ) : (
-          <div className="bg-white border-4 border-dashed border-gray-50 rounded-[4rem] p-24 text-center text-gray-400 font-bold">
-             Aucune onde détectée.
+          <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
+             <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />
+             <p className="italic text-lg">Aucune onde n'a encore été détectée dans l'éther.</p>
           </div>
         )}
       </div>
