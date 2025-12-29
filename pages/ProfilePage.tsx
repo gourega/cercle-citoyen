@@ -4,7 +4,8 @@ import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, RefreshCw, CheckCircle,
-  Award, Medal, Star, ShieldCheck, Zap, X, Camera, Upload
+  Award, Medal, Star, ShieldCheck, Zap, X, Camera, Upload, 
+  Flame, Handshake, Heart, ShieldAlert, Sparkles
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -41,6 +42,23 @@ const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; class
     </div>
   );
 };
+
+const Badge: React.FC<{ icon: React.ReactNode, label: string, color: string, description: string }> = ({ icon, label, color, description }) => (
+  <div className="group relative flex flex-col items-center">
+    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 border-4 border-white shadow-lg ${color} group-hover:scale-110 group-hover:-rotate-12`}>
+      {icon}
+    </div>
+    <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 transition-colors">{label}</span>
+    
+    {/* Tooltip */}
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-40 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50">
+      <div className="bg-gray-900 text-white p-3 rounded-xl text-[9px] font-bold text-center leading-relaxed shadow-2xl">
+        {description}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+      </div>
+    </div>
+  </div>
+);
 
 const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; onProfileUpdate?: (updates: Partial<User>) => void }> = ({ currentUser, onLogout, onProfileUpdate }) => {
   const { id } = useParams<{ id: string }>();
@@ -162,6 +180,15 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isGuardian = profile?.role === Role.SUPER_ADMIN || profile?.role === 'Gardien';
   const impactScore = profile?.impact_score || 0;
 
+  // Calcul des badges basés sur le score ou le rôle
+  const badges = [
+    { icon: <ShieldCheck size={24} />, label: "Pionnier", color: "bg-emerald-500 text-white", description: "Fait partie des 100 premiers membres fondateurs du Cercle." },
+    { icon: <Medal size={24} />, label: "Acteur", color: "bg-blue-500 text-white", description: "A complété plus de 5 quêtes sur le terrain." },
+    ...(impactScore >= 5000 ? [{ icon: <Flame size={24} />, label: "Impactant", color: "bg-orange-500 text-white", description: "A généré un impact social certifié majeur." }] : []),
+    ...(isGuardian ? [{ icon: <Crown size={24} />, label: "Gardien", color: "bg-amber-500 text-white", description: "Détenteur de la Sagesse et garant de la cohésion." }] : []),
+    { icon: <Heart size={24} />, label: "Solidaire", color: "bg-rose-500 text-white", description: "A effectué au moins un don via le Marché de Solidarité." }
+  ];
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
@@ -243,6 +270,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           </div>
 
           <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-3 gap-16">
+            {/* Colonne Gauche : Bio */}
             <div className="lg:col-span-2 space-y-12">
                 <section>
                   <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6 px-1">Présentation</h3>
@@ -254,20 +282,38 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                       placeholder="Décrivez votre vision pour la cité..."
                     />
                   ) : (
-                    <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100/50">
+                    <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100/50 min-h-[200px]">
                       {profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}
                     </p>
                   )}
                 </section>
             </div>
 
-            <aside>
+            {/* Colonne Droite : Impact & Badges (Toujours visible) */}
+            <aside className="space-y-10">
               <div className="p-10 bg-gray-950 text-white rounded-[3rem] text-center shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:scale-125 transition-transform duration-700">
+                  <Zap size={80} />
+                </div>
                 <h3 className="font-black text-[10px] uppercase tracking-[0.4em] mb-6 text-blue-400 relative z-10">INDICE D'IMPACT</h3>
                 <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white">
                   {impactScore.toLocaleString()}
                 </div>
                 <p className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] relative z-10">POINTS CITOYENS</p>
+              </div>
+
+              {/* Section Badges Repositionnée sous l'Impact */}
+              <div className="bg-gray-50/50 border border-gray-100 p-8 rounded-[3rem]">
+                <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-gray-400 mb-8 text-center px-1">DÉCORATIONS CITOYENNES</h3>
+                <div className="grid grid-cols-3 gap-y-8 gap-x-2">
+                  {badges.map((b, i) => (
+                    <Badge key={i} {...b} />
+                  ))}
+                </div>
+                
+                {badges.length === 0 && (
+                  <p className="text-[10px] text-gray-400 italic text-center py-4">Aucune décoration pour le moment.</p>
+                )}
               </div>
             </aside>
           </div>
