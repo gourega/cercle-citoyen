@@ -269,12 +269,14 @@ const AdminDashboard: React.FC = () => {
                 <button onClick={() => addToast("Accès restreint à l'Esprit.", "info")} className="p-4 bg-white/10 rounded-2xl hover:bg-white/20 transition-all"><Copy size={20} /></button>
              </div>
              <div className="bg-black/40 p-8 rounded-[2rem] border border-white/10 font-mono text-[11px] leading-relaxed flex-1">
-                <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap">-- CONSOLE DE GOUVERNANCE V3.8 --
+                <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap">
+                  {`-- CONSOLE DE GOUVERNANCE V3.8 --
 > system_check: status_ok
 > active_guardians: 1
 > database_integrity: verified
 > encryption_level: quantum_ready
-> citizenship_flow: stable</pre>
+> citizenship_flow: stable`}
+                </pre>
              </div>
           </section>
         </div>
