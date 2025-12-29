@@ -16,11 +16,9 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
-  const SQL_SCHEMA = `-- 1. COPIEZ CE CODE
--- 2. COLLEZ-LE DANS LE "SQL EDITOR" DE SUPABASE (Icône >_ en bas à gauche)
--- 3. CLIQUEZ SUR "RUN"
+  const SQL_SCHEMA = `-- CLIQUEZ SUR "COPY" ET COLLEZ DANS LE SQL EDITOR DE SUPABASE
 
--- Création de la table profiles si elle n'existe pas
+-- 1. TABLE DES PROFILS
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY,
     name TEXT,
@@ -33,19 +31,70 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Activation de RLS (Row Level Security)
+-- 2. TABLE DES PUBLICATIONS (FIL D'ÉVEIL)
+CREATE TABLE IF NOT EXISTS public.posts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    author_id UUID REFERENCES public.profiles(id),
+    content TEXT NOT NULL,
+    circle_type TEXT,
+    image_url TEXT,
+    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
+    is_majestic BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. TABLE DES ÉDITS (GOUVERNANCE)
+CREATE TABLE IF NOT EXISTS public.edicts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    proposer_id UUID REFERENCES public.profiles(id),
+    status TEXT DEFAULT 'voting',
+    votes_count INTEGER DEFAULT 0,
+    threshold INTEGER DEFAULT 100,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. TABLE DES VOTES
+CREATE TABLE IF NOT EXISTS public.votes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id),
+    edict_id UUID REFERENCES public.edicts(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, edict_id)
+);
+
+-- 5. TABLE DU MARCHÉ (RESSOURCES)
+CREATE TABLE IF NOT EXISTS public.resource_gifts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    donor_id UUID REFERENCES public.profiles(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    status TEXT DEFAULT 'available',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. FONCTION POUR LES VOTES ATOMIQUES
+CREATE OR REPLACE FUNCTION increment_edict_votes(row_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.edicts
+  SET votes_count = votes_count + 1
+  WHERE id = row_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ACTIVATION RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 
--- Politiques de sécurité simples
-CREATE POLICY "Tout le monde peut voir les profils" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Chaque citoyen peut modifier son propre profil" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-
--- Ajout des colonnes si la table existe déjà
-ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS avatar_url TEXT,
-ADD COLUMN IF NOT EXISTS impact_score INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS email TEXT,
-ADD COLUMN IF NOT EXISTS pseudonym TEXT;
+-- POLITIQUES (EXEMPLES SIMPLES)
+CREATE POLICY "Public read access" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Public read access posts" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Auth insert posts" ON public.posts FOR INSERT WITH CHECK (true);
 `;
 
   const initDiagnostic = async () => {
@@ -75,19 +124,6 @@ ADD COLUMN IF NOT EXISTS pseudonym TEXT;
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-500">
       
-      {!isRealSupabase && (
-        <div className="mb-12 bg-rose-50 border-2 border-rose-200 p-8 rounded-[2.5rem] flex items-start gap-6 shadow-xl">
-          <Key className="w-12 h-12 text-rose-600 shrink-0" />
-          <div>
-            <h2 className="text-xl font-bold text-rose-900 mb-2">Clé API Incorrecte détectée</h2>
-            <p className="text-rose-700 font-medium">
-              Vérifiez que vous utilisez la clé <b>anon / public</b> (ou <b>publishable</b>). <br/>
-              Les clés commençant par <b>sb_secret_</b> sont interdites dans le navigateur.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12 mb-16">
         <div className="flex items-center gap-8">
            <div className="w-20 h-20 rounded-3xl bg-gray-900 flex items-center justify-center shadow-xl">
@@ -124,11 +160,11 @@ ADD COLUMN IF NOT EXISTS pseudonym TEXT;
              <div className="space-y-4">
                 <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                    <span className="text-[10px] font-black uppercase text-gray-400">URL API</span>
-                   <span className="font-mono text-[10px] font-bold">https://nfsskgcpqbccnwacsplc.supabase.co</span>
+                   <span className="font-mono text-[10px] font-bold">nfsskgcpqbccnwacsplc.supabase.co</span>
                 </div>
                 <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                    <span className="text-[10px] font-black uppercase text-gray-400">Clé Publique</span>
-                   <span className="font-mono text-[10px] font-bold">{isRealSupabase ? 'DÉTECTÉE ✅' : 'INVALIDE ❌'}</span>
+                   <span className="font-mono text-[10px] font-bold">{isRealSupabase ? 'CONFIGURÉE ✅' : 'NON DÉTECTÉE ❌'}</span>
                 </div>
              </div>
           </section>
@@ -137,7 +173,7 @@ ADD COLUMN IF NOT EXISTS pseudonym TEXT;
              <h3 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3 text-blue-400"><Terminal /> SQL Editor</h3>
              <p className="text-slate-400 text-sm mb-8 leading-relaxed">Exécutez ce script sur Supabase pour préparer la structure de votre base.</p>
              <div className="bg-black/40 p-6 rounded-2xl border border-white/10 relative font-mono text-[10px] leading-relaxed mb-8">
-                <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap">{SQL_SCHEMA}</pre>
+                <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap max-h-80">{SQL_SCHEMA}</pre>
                 <button onClick={() => copyToClipboard(SQL_SCHEMA)} className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-xl"><Copy size={18} /></button>
              </div>
           </section>
