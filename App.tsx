@@ -1,5 +1,5 @@
 
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -15,7 +15,10 @@ import {
   ShoppingBag,
   Crown,
   Mic,
-  Bell
+  Bell,
+  ChevronDown,
+  LayoutGrid,
+  Users
 } from 'lucide-react';
 
 // Pages
@@ -64,6 +67,49 @@ const ScrollToTop = () => {
   return null;
 };
 
+const NavDropdown = ({ label, icon, items }: { label: string, icon: React.ReactNode, items: { to: string, icon: React.ReactNode, label: string }[] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = window.setTimeout(() => setIsOpen(false), 200);
+  };
+
+  return (
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isOpen ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900'}`}>
+        {icon} {label} <ChevronDown size={12} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-200 z-[110] backdrop-blur-xl bg-white/95">
+          {items.map((item) => (
+            <NavLink 
+              key={item.to} 
+              to={item.to}
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-blue-600 transition-colors">
+                {/* Fix: cast element to React.ReactElement<any> to allow 'size' prop in TypeScript */}
+                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 14 })}
+              </div>
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -75,16 +121,22 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
 
   const isGuardian = user?.role === Role.SUPER_ADMIN;
 
-  const navItems = [
-    { to: "/feed", icon: <Home size={16} />, label: "Fil" },
-    { to: "/chat", icon: <MessageSquare size={16} />, label: "Palabre" },
-    { to: "/live", icon: <Mic size={16} />, label: "Assemblée" },
-    { to: "/map", icon: <MapIcon size={16} />, label: "Carte" },
-    { to: "/governance", icon: <Gavel size={16} />, label: "Édits" },
-    { to: "/quests", icon: <Target size={16} />, label: "Sentiers" },
-    { to: "/griot", icon: <Sparkles size={16} />, label: "Griot" },
-    { to: "/impact", icon: <Zap size={16} />, label: "Studio" },
-    { to: "/exchange", icon: <ShoppingBag size={16} />, label: "Marché" },
+  const spacesItems = [
+    { to: "/feed", icon: <Home />, label: "Fil d'Éveil" },
+    { to: "/chat", icon: <MessageSquare />, label: "Salle des Palabres" },
+    { to: "/live", icon: <Mic />, label: "L'Assemblée Directe" },
+  ];
+
+  const engagementItems = [
+    { to: "/map", icon: <MapIcon />, label: "Empreinte Territoriale" },
+    { to: "/governance", icon: <Gavel />, label: "Palais des Édits" },
+    { to: "/quests", icon: <Target />, label: "Sentiers d'Impact" },
+  ];
+
+  const creationItems = [
+    { to: "/griot", icon: <Sparkles />, label: "Griot Studio" },
+    { to: "/impact", icon: <Zap />, label: "Studio Visuel" },
+    { to: "/exchange", icon: <ShoppingBag />, label: "Marché Solidaire" },
   ];
 
   return (
@@ -99,17 +151,9 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
         <div className="hidden lg:flex items-center gap-1">
           {user ? (
             <>
-              {navItems.map((item) => (
-                <NavLink 
-                  key={item.to} 
-                  to={item.to} 
-                  className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                    isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {item.icon} {item.label}
-                </NavLink>
-              ))}
+              <NavDropdown label="Espaces" icon={<Users size={16} />} items={spacesItems} />
+              <NavDropdown label="Engagement" icon={<MapIcon size={16} />} items={engagementItems} />
+              <NavDropdown label="Outils" icon={<LayoutGrid size={16} />} items={creationItems} />
               
               <div className="h-6 w-px bg-gray-100 mx-3"></div>
               
@@ -166,33 +210,34 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
       )}
 
       {isOpen && (
-        <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
+        <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300 max-h-[80vh] overflow-y-auto">
           {user ? (
             <>
-              {navItems.map((item) => (
-                <NavLink 
-                  key={item.to} 
-                  to={item.to} 
-                  onClick={() => setIsOpen(false)} 
-                  className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                  }`}
-                >
+              <p className="px-4 py-2 text-[8px] font-black text-gray-400 uppercase tracking-widest">Espaces</p>
+              {spacesItems.map((item) => (
+                <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600">
                   {item.icon} {item.label}
                 </NavLink>
               ))}
+              <p className="px-4 py-2 mt-2 text-[8px] font-black text-gray-400 uppercase tracking-widest">Engagement</p>
+              {engagementItems.map((item) => (
+                <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600">
+                  {item.icon} {item.label}
+                </NavLink>
+              ))}
+              <p className="px-4 py-2 mt-2 text-[8px] font-black text-gray-400 uppercase tracking-widest">Outils</p>
+              {creationItems.map((item) => (
+                <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600">
+                  {item.icon} {item.label}
+                </NavLink>
+              ))}
+              <div className="h-px bg-gray-100 my-4"></div>
               {isGuardian && (
-                <NavLink 
-                  to="/admin" 
-                  onClick={() => setIsOpen(false)} 
-                  className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                    isActive ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                  }`}
-                >
-                  <Crown size={16} /> Conseil
+                <NavLink to="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 text-amber-600 font-black text-[10px] uppercase tracking-widest">
+                  <Crown size={16} /> Conseil du Gardien
                 </NavLink>
               )}
-              <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 mt-2 font-black text-[10px] uppercase tracking-widest text-left">
+              <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] uppercase tracking-widest text-left">
                 Déconnexion
               </button>
             </>

@@ -12,7 +12,8 @@ import {
   ArrowRight, 
   Loader2, 
   CheckCircle2,
-  LayoutGrid
+  LayoutGrid,
+  MapPin
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
@@ -220,6 +221,48 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             </Link>
           </div>
         </div>
+
+        {/* SECTION CARTE D'IMPACT TERRITORIAL */}
+        <section className="w-full mb-40 animate-in fade-in duration-1000 delay-400">
+           <div className="flex flex-col items-center mb-16 text-center">
+              <div className="inline-flex items-center gap-3 bg-blue-50 px-6 py-2 rounded-full mb-8 border border-blue-100">
+                <MapPin size={14} className="text-blue-600" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-700">L'Empreinte de la Nation</span>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6">Impact Territorial Réel.</h2>
+              <p className="text-gray-400 max-w-xl text-lg font-medium leading-relaxed mb-12">
+                Le Cercle n'est pas qu'un espace virtuel. C'est un radar d'action qui s'illumine partout où les citoyens s'unissent pour construire.
+              </p>
+              
+              <div className="w-full max-w-4xl bg-white border border-gray-100 rounded-[4rem] p-4 shadow-prestige relative overflow-hidden aspect-[16/9] md:aspect-[21/9]">
+                {/* Carte stylisée (Placeholder SVG majestueux) */}
+                <div className="absolute inset-0 bg-gray-50 flex items-center justify-center">
+                  <svg className="w-full h-full opacity-10" viewBox="0 0 800 400" fill="none">
+                    <path d="M300 50 Q 350 20, 400 50 T 500 80 Q 550 110, 520 160 T 480 240 Q 450 280, 400 260 T 320 220 Q 280 180, 300 120 T 300 50" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  
+                  {/* Points d'impact réels (Simulés pour le Radar) */}
+                  <PulsePoint x="45%" y="75%" city="Abidjan" action="Solidarité Lagunaire" color="bg-blue-600" />
+                  <PulsePoint x="42%" y="45%" city="Yamoussoukro" action="Sentier de l'Éducation" color="bg-emerald-600" />
+                  <PulsePoint x="38%" y="30%" city="Bouaké" action="Palabre de Cohésion" color="bg-amber-600" />
+                  <PulsePoint x="15%" y="85%" city="San Pedro" action="Marché Souverain" color="bg-rose-600" />
+                </div>
+                
+                <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-white via-white/80 to-transparent flex flex-col items-center">
+                   <p className="text-xs font-bold text-gray-500 mb-6 flex items-center gap-2">
+                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                     Visualisez l'activité citoyenne en temps réel sur tout le territoire.
+                   </p>
+                   <Link 
+                    to="/map" 
+                    className="px-10 py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3"
+                   >
+                     Explorer la Carte Interactive <ArrowRight size={16} />
+                   </Link>
+                </div>
+              </div>
+           </div>
+        </section>
 
         <section className="w-full mb-40 animate-in fade-in duration-1000 delay-500">
            <div className="flex flex-col items-center mb-20">
