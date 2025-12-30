@@ -33,14 +33,12 @@ const PostCard: React.FC<{
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [commentInput, setCommentInput] = useState('');
-  const [replyTo, setReplyTo] = useState<string | null>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,7 +65,7 @@ const PostCard: React.FC<{
 
   const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
     const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
-    const shareText = `Onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
+    const shareText = `Onde citoyenne : "${post.content.substring(0, 100)}..."`;
 
     if (platform === 'linkedin') {
       window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
@@ -107,7 +105,7 @@ const PostCard: React.FC<{
       id: Date.now().toString(),
       author: currentUser.name,
       avatar: currentUser.avatar,
-      content: replyTo ? `@${replyTo} ${commentInput}` : commentInput,
+      content: commentInput,
       created_at: new Date().toISOString()
     };
     try {
@@ -115,7 +113,6 @@ const PostCard: React.FC<{
       if (isRealSupabase && supabase) await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
       post.comments = updatedComments;
       setCommentInput('');
-      setReplyTo(null);
       addToast("Palabre ajoutée.", "success");
       onUpdate();
     } catch (e) { addToast("Erreur sauvegarde.", "error"); }
@@ -127,7 +124,6 @@ const PostCard: React.FC<{
   const isOwner = currentUser?.id === post.author_id;
   const isGuardian = currentUser?.role === Role.SUPER_ADMIN;
   const canDelete = isOwner || isGuardian;
-  const isLongContent = post.content.length > 450;
 
   return (
     <article 
@@ -173,7 +169,7 @@ const PostCard: React.FC<{
                <div className="h-px bg-gray-100 my-1"></div>
                <button onClick={() => handleShare()} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors">
                   <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center"><LinkIcon size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">Copier le lien</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">Lien direct</span>
                </button>
             </div>
           )}
@@ -314,7 +310,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée !", "success");
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Mode démo : Sauvegarde locale.", "success");
+        addToast("Mode démo : Sauvegarde locale.", "info");
       }
       setNewPostText('');
       fetchPosts();

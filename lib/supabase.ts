@@ -1,20 +1,18 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const getEnv = (key: string) => {
-  // Priorité absolue aux variables injectées par Vite
-  return (process.env as any)?.[key] || null;
-};
+// Utilisation d'accès statiques pour permettre le remplacement par Vite/Cloudflare
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
-
-// On vérifie que les clés ne sont pas juste des chaînes "undefined" ou vides
+// Validation stricte pour déterminer si on est en mode "Réel" ou "Démo"
 export const isRealSupabase = 
   !!supabaseUrl && 
-  supabaseUrl !== 'undefined' &&
+  supabaseUrl !== 'undefined' && 
+  supabaseUrl !== '' &&
   !!supabaseAnonKey && 
-  supabaseAnonKey !== 'undefined' &&
+  supabaseAnonKey !== 'undefined' && 
+  supabaseAnonKey !== '' &&
   (supabaseAnonKey.startsWith('eyJ') || supabaseAnonKey.startsWith('sb_publishable_')); 
 
 export const supabase = isRealSupabase
@@ -23,11 +21,12 @@ export const supabase = isRealSupabase
 
 export const db = {
   async checkConnection() {
-    if (!supabase) return { ok: false, message: "Variables d'environnement non détectées." };
+    if (!supabase) return { ok: false, message: "Mode Démo : Aucune liaison Cloud détectée." };
     try {
+      // Test de lecture simple sur la table profiles
       const { error } = await supabase.from('profiles').select('id').limit(1);
       if (error && error.code !== 'PGRST116' && !error.message.includes('relation')) {
-        return { ok: false, message: `Erreur base : ${error.message}` };
+        return { ok: false, message: `Erreur Supabase : ${error.message}` };
       }
       return { ok: true, message: "Liaison avec la base souveraine établie." };
     } catch (e: any) {
