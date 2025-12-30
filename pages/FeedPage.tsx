@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
@@ -6,10 +5,11 @@ import {
   ShieldCheck, Share2, MessageCircle, RefreshCw, 
   Info, LogIn, Bold, Italic, Underline, Smile, 
   Pencil, Save, X, ChevronDown, ChevronUp, Trash2, AlertTriangle,
-  Linkedin, MessageSquare as WhatsAppIcon, Link as LinkIcon, Crown
+  Linkedin, MessageSquare as WhatsAppIcon, Link as LinkIcon, Crown,
+  TrendingUp, Users, Heart, ChevronRight
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
-import { supabase, isRealSupabase } from '../lib/supabase';
+import { supabase, isRealSupabase, db } from '../lib/supabase';
 import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
 import { useToast } from '../App';
@@ -52,31 +52,6 @@ const PostCard: React.FC<{
     };
     fetchAuthor();
   }, [post.author_id]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
-        setShowShareMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
-    const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
-    const shareText = `Onde citoyenne : "${post.content.substring(0, 100)}..."`;
-
-    if (platform === 'linkedin') {
-      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
-    } else if (platform === 'whatsapp') {
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      addToast("Lien copié.", "success");
-    }
-    setShowShareMenu(false);
-  };
 
   const handleUpdatePost = async () => {
     if (!editContent.trim()) return;
@@ -129,49 +104,31 @@ const PostCard: React.FC<{
     <article 
       className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col 
         ${isHighlighted ? 'ring-8 ring-amber-500/10 border-amber-200' : 'border-gray-100'} 
-        ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50' : ''}`}
+        ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 bg-amber-50/5' : ''}`}
     >
       <div className="p-8 pb-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-300' : ''}`} alt="" />
+          <Link to={`/profile/${post.author_id}`} className="relative group">
+            <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-105 ${isMajestic ? 'ring-2 ring-amber-300' : ''}`} alt="" />
             {isMajestic && <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-1 rounded-lg shadow-lg border-2 border-white"><Crown size={10} /></div>}
-          </div>
+          </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900 text-lg">{author.name}</span>
-              {author.role === Role.SUPER_ADMIN && <ShieldCheck size={18} className="text-amber-600" />}
+              <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-lg hover:text-blue-600 transition-colors">{author.name}</Link>
+              {/* Wrapped ShieldCheck in a span with title to fix TS error: property 'title' does not exist on LucideProps */}
+              {author.role === Role.SUPER_ADMIN && <span title="Gardien Certifié"><ShieldCheck size={18} className="text-amber-600" /></span>}
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-              {new Date(post.created_at).toLocaleDateString()} • <span className="text-blue-600">{post.circle_type}</span>
+              {new Date(post.created_at).toLocaleDateString()} • <Link to={`/circle/${encodeURIComponent(post.circle_type)}`} className="text-blue-600 hover:underline">{post.circle_type}</Link>
             </p>
           </div>
         </div>
-        <div className="flex gap-2 relative" ref={shareMenuRef}>
+        <div className="flex gap-2">
           {isOwner && !isEditing && (
             <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all"><Pencil size={18} /></button>
           )}
           {canDelete && (
-            <button onClick={() => setShowDeleteConfirm(true)} className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} title={isGuardian && !isOwner ? "Modération Suprême" : "Supprimer"}><Trash2 size={18} /></button>
-          )}
-          <button onClick={() => setShowShareMenu(!showShareMenu)} className={`p-4 rounded-2xl transition-all ${showShareMenu ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:text-blue-600'}`}><Share2 size={20} /></button>
-          
-          {showShareMenu && (
-            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-[100] animate-in zoom-in duration-200">
-               <button onClick={() => handleShare('linkedin')} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-colors">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center"><Linkedin size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">LinkedIn</span>
-               </button>
-               <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 rounded-xl transition-colors">
-                  <div className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"><WhatsAppIcon size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">WhatsApp</span>
-               </button>
-               <div className="h-px bg-gray-100 my-1"></div>
-               <button onClick={() => handleShare()} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                  <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center"><LinkIcon size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">Lien direct</span>
-               </button>
-            </div>
+            <button onClick={() => setShowDeleteConfirm(true)} className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} title={isGuardian && !isOwner ? "Action Souveraine" : "Supprimer"}><Trash2 size={18} /></button>
           )}
         </div>
       </div>
@@ -186,32 +143,19 @@ const PostCard: React.FC<{
             </div>
           </div>
         ) : (
-          <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`}>
+          <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-6' : 'text-lg font-medium'}`}>
             <div dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
           </div>
         )}
       </div>
 
-      {showDeleteConfirm && (
-        <div className={`px-8 py-6 border-y ${isGuardian && !isOwner ? 'bg-slate-900 border-slate-800 text-white' : 'bg-rose-50 border-rose-100'}`}>
-          <div className="flex items-center gap-4 mb-4">
-             <AlertTriangle size={20} className="text-rose-500" />
-             <p className="font-bold">{isGuardian && !isOwner ? 'Retrait Souverain du Gardien' : 'Supprimer cette publication ?'}</p>
-          </div>
-          <div className="flex justify-end gap-3">
-             <button onClick={() => setShowDeleteConfirm(false)} className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-gray-200">Annuler</button>
-             <button onClick={handleDeletePost} className="px-6 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Confirmer</button>
-          </div>
-        </div>
-      )}
-
       <div className="bg-gray-50/50 p-6 flex items-center justify-between border-t border-gray-100 mt-4">
         <div className="flex items-center gap-2">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-blue-600 shadow-sm transition-all hover:bg-blue-600 hover:text-white"><ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span></button>
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-emerald-600 shadow-sm transition-all hover:bg-emerald-600 hover:text-white"><Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span></button>
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-amber-600 shadow-sm transition-all hover:bg-amber-600 hover:text-white"><Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span></button>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-blue-600 shadow-sm transition-all hover:scale-105 active:scale-95"><ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span></button>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-emerald-600 shadow-sm transition-all hover:scale-105 active:scale-95"><Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span></button>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-amber-600 shadow-sm transition-all hover:scale-105 active:scale-95"><Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span></button>
         </div>
-        <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase transition-all ${showComments ? 'bg-gray-900 text-white' : 'bg-white border border-gray-100 text-gray-500'}`}>Palabres ({post.comments?.length || 0})</button>
+        <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase transition-all ${showComments ? 'bg-gray-900 text-white shadow-lg' : 'bg-white border border-gray-100 text-gray-500 hover:border-gray-300'}`}>Palabres ({post.comments?.length || 0})</button>
       </div>
 
       {showComments && (
@@ -229,8 +173,8 @@ const PostCard: React.FC<{
           </div>
           {currentUser && (
             <form onSubmit={handleAddComment} className="flex gap-3">
-              <input value={commentInput} onChange={e => setCommentInput(e.target.value)} placeholder="Ajouter une pierre..." className="flex-1 bg-gray-50 px-6 py-3 rounded-xl outline-none border border-gray-100 focus:bg-white" />
-              <button disabled={!commentInput.trim()} className="bg-blue-600 text-white p-3 rounded-xl shadow-lg disabled:opacity-20"><Send size={18} /></button>
+              <input value={commentInput} onChange={e => setCommentInput(e.target.value)} placeholder="Ajouter une pierre à la palabre..." className="flex-1 bg-gray-50 px-6 py-3 rounded-xl outline-none border border-gray-100 focus:bg-white transition-all" />
+              <button disabled={!commentInput.trim()} className="bg-blue-600 text-white p-3 rounded-xl shadow-lg disabled:opacity-20 active:scale-95"><Send size={18} /></button>
             </form>
           )}
         </div>
@@ -248,13 +192,14 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const [newPostText, setNewPostText] = useState('');
   const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
   const [sending, setSending] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const emojis = ["🤝", "💡", "✊", "🇨🇮", "🐘", "🌟", "🌍", "🕊️", "🔥", "📣", "🙏", "⚡"];
 
   const fetchPosts = async () => {
     setLoading(true);
+    const status = await db.checkConnection();
+    setConnStatus(status);
+    
     if (isRealSupabase && supabase) { 
       try {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
@@ -266,29 +211,6 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   useEffect(() => { fetchPosts(); }, []);
-
-  const injectFormat = (tag: string) => {
-    if (!textareaRef.current) return;
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const text = newPostText;
-    const before = text.substring(0, start);
-    const selection = text.substring(start, end);
-    const after = text.substring(end);
-    
-    let newText = "";
-    if (tag === 'bold') newText = `${before}**${selection}**${after}`;
-    if (tag === 'italic') newText = `${before}_${selection}_${after}`;
-    if (tag === 'underline') newText = `${before}__${selection}__${after}`;
-    
-    setNewPostText(newText);
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(start + 2, end + 2);
-      }
-    }, 0);
-  };
 
   const handleCreatePost = async () => {
     if (!newPostText.trim() || !user) return;
@@ -307,91 +229,133 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('posts').insert([postData]);
         if (error) throw error;
-        addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée !", "success");
+        addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée avec succès !", "success");
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Mode démo : Variables de connexion absentes.", "info");
+        addToast("Mode démo : Variables de connexion invalides dans Cloudflare.", "info");
       }
       setNewPostText('');
       fetchPosts();
-    } catch (e: any) { addToast("Échec de diffusion. Vérifiez vos droits.", "error"); }
+    } catch (e: any) { addToast("Échec de diffusion. Vérifiez vos accès.", "error"); }
     finally { setSending(false); }
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
-      <div className="mb-12">
-        <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6 border border-blue-100 shadow-sm">
-          <Sparkles className="text-blue-600 w-4 h-4" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Flux de la Cité</span>
-        </div>
-        <h2 className="text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Le Fil d'Éveil</h2>
-        <p className="text-gray-500 font-medium italic text-lg">Pensez, Reliez, Agissez ensemble.</p>
-      </div>
-
-      {user ? (
-        <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50/50' : 'border-gray-100'}`}>
-          <div className="flex items-center gap-2 mb-6 border-b border-gray-50 pb-4">
-            <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Gras"><Bold size={18} /></button>
-            <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Italique"><Italic size={18} /></button>
-            <button onClick={() => injectFormat('underline')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Souligné"><Underline size={18} /></button>
-            <div className="w-px h-6 bg-gray-200 mx-2"></div>
-            <div className="relative">
-              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-amber-500" title="Émojis"><Smile size={18} /></button>
-              {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-2xl flex flex-wrap gap-3 z-[100] animate-in zoom-in duration-200 w-64">
-                  {emojis.map(e => (
-                    <button key={e} onClick={() => { setNewPostText(prev => prev + e); setShowEmojiPicker(false); }} className="text-2xl hover:scale-125 transition-transform">{e}</button>
-                  ))}
-                </div>
-              )}
+    <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Sidebar Gauche */}
+        <aside className="lg:col-span-3 space-y-8 hidden lg:block">
+          <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm sticky top-24">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-6 px-2">État de la Cité</h3>
+            <div className={`p-4 rounded-2xl flex items-center gap-3 mb-6 ${connStatus?.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+              <div className={`w-2 h-2 rounded-full ${connStatus?.ok ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+              <span className="text-[10px] font-black uppercase">{connStatus?.ok ? 'Souveraine' : 'Mode Démo'}</span>
+            </div>
+            {!connStatus?.ok && (
+              <p className="text-[9px] font-medium text-rose-600 bg-white border border-rose-100 p-3 rounded-xl mb-6">
+                {connStatus?.message}
+              </p>
+            )}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs font-bold text-gray-500">
+                <span className="flex items-center gap-2"><Users size={14} /> Citoyens</span>
+                <span>{posts.length * 3 + 12}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-bold text-gray-500">
+                <span className="flex items-center gap-2"><TrendingUp size={14} /> Ondes</span>
+                <span>{posts.length}</span>
+              </div>
             </div>
           </div>
+        </aside>
 
-          <textarea 
-            ref={textareaRef}
-            value={newPostText} 
-            onChange={e => setNewPostText(e.target.value)} 
-            placeholder={user.role === Role.SUPER_ADMIN ? "Gardien, déposez votre édit souverain..." : "Déposez une pierre à l'édifice..."} 
-            className="w-full h-56 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
-          />
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100">
-              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
-            </select>
-            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl transition-all disabled:opacity-30 ${user.role === Role.SUPER_ADMIN ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-950 hover:bg-black text-white'}`}>
-              {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
-              {user.role === Role.SUPER_ADMIN ? "Publier l'Édit Suprême" : "Diffuser l'Onde"}
-            </button>
+        {/* Flux Central */}
+        <main className="lg:col-span-6 space-y-12">
+          <div className="mb-12">
+            <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6 border border-blue-100 shadow-sm">
+              <Sparkles className="text-blue-600 w-4 h-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Le pouls de la Nation</span>
+            </div>
+            <h2 className="text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Le Fil d'Éveil</h2>
+            <p className="text-gray-500 font-medium italic text-lg">Dialogue mature pour un avenir souverain.</p>
           </div>
-        </div>
-      ) : (
-        <div className="bg-gray-900 rounded-[3rem] p-8 mb-16 text-white shadow-2xl flex items-center justify-between overflow-hidden relative">
-          <div><h3 className="text-xl font-serif font-bold mb-2">Dialogue Citoyen</h3><p className="opacity-60 text-sm">Inscrivez-vous pour agir.</p></div>
-          <Link to="/auth" className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">Rejoindre le Cercle</Link>
-          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><Sparkles size={120} /></div>
-        </div>
-      )}
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center mb-10 px-6">
-           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">Archives de l'Éveil</h3>
-           <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-blue-600 transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
-        </div>
-        
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 opacity-50">
-             <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Interrogation...</p>
+          {user ? (
+            <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-16 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50' : 'border-gray-100'}`}>
+              <textarea 
+                ref={textareaRef}
+                value={newPostText} 
+                onChange={e => setNewPostText(e.target.value)} 
+                placeholder={user.role === Role.SUPER_ADMIN ? "Gardien, déposez votre édit souverain ici..." : "Déposez une pierre à l'édifice de la cité..."} 
+                className="w-full h-44 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
+              />
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+                <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-white transition-colors">
+                  {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
+                </select>
+                <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl transition-all active:scale-95 disabled:opacity-30 ${user.role === Role.SUPER_ADMIN ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-950 hover:bg-black text-white'}`}>
+                  {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
+                  {user.role === Role.SUPER_ADMIN ? "Publier l'Édit" : "Diffuser l'Onde"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-900 rounded-[3rem] p-10 mb-16 text-white shadow-2xl flex items-center justify-between overflow-hidden relative">
+              <div className="relative z-10">
+                <h3 className="text-2xl font-serif font-bold mb-2">Participez à l'Éveil</h3>
+                <p className="opacity-60 text-sm font-medium">Rejoignez le Cercle pour influencer le destin du territoire.</p>
+              </div>
+              <Link to="/auth" className="relative z-10 bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl">Rejoindre la Cité</Link>
+              <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><Sparkles size={120} /></div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center mb-10 px-6">
+               <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">Archives de l'Impact</h3>
+               <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-blue-600 hover:shadow-lg transition-all active:rotate-180 duration-500"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
+            </div>
+            
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-32 opacity-50">
+                 <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-6"></div>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Consultation des annales...</p>
+              </div>
+            ) : posts.length > 0 ? (
+              posts.map(p => <PostCard key={p.id} post={p} currentUser={user} isHighlighted={highlightPostId === String(p.id)} onUpdate={fetchPosts} />)
+            ) : (
+              <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-300">
+                 <Info className="w-16 h-16 mx-auto mb-6 opacity-20" />
+                 <p className="italic text-lg font-medium">Le fil attend votre première étincelle.</p>
+              </div>
+            )}
           </div>
-        ) : posts.length > 0 ? (
-          posts.map(p => <PostCard key={p.id} post={p} currentUser={user} isHighlighted={highlightPostId === String(p.id)} onUpdate={fetchPosts} />)
-        ) : (
-          <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
-             <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />
-             <p className="italic text-lg">Le silence règne sur le fil.</p>
+        </main>
+
+        {/* Sidebar Droite */}
+        <aside className="lg:col-span-3 space-y-8 hidden lg:block">
+          <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm sticky top-24">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-8 px-2 flex items-center gap-2"><Crown size={14} className="text-amber-500" /> Paroles du Gardien</h3>
+            <div className="space-y-6">
+              {posts.filter(p => p.is_majestic).slice(0, 3).map(p => (
+                <div key={p.id} className="border-l-4 border-amber-200 pl-4 py-1">
+                  <p className="text-[13px] text-gray-600 italic line-clamp-2 leading-relaxed font-medium">"{p.content}"</p>
+                  <p className="text-[8px] font-black uppercase text-amber-600 mt-2">{new Date(p.created_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+            <Link to="/governance" className="mt-10 w-full py-4 bg-gray-50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-center gap-2">
+              Voir le Palais des Édits <ChevronRight size={14} />
+            </Link>
           </div>
-        )}
+          
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Heart size={80} /></div>
+            <h3 className="text-xl font-serif font-bold mb-4">Soutenir le Cercle</h3>
+            <p className="text-xs text-blue-100 leading-relaxed mb-6 font-medium">Financez la souveraineté numérique du pays par vos dons via Wave.</p>
+            <Link to="/impact" className="block w-full py-4 bg-white text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-lg hover:bg-blue-50 transition-all">Accéder au Studio</Link>
+          </div>
+        </aside>
       </div>
     </div>
   );
