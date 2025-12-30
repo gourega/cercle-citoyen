@@ -13,7 +13,8 @@ import {
   Loader2, 
   CheckCircle2,
   LayoutGrid,
-  MapPin
+  MapPin,
+  Sparkles
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
@@ -28,11 +29,10 @@ const PulsePoint = ({ x, y, city, action, color = "bg-blue-400" }: { x: string, 
     <div className={`absolute -inset-2 rounded-full ${color} opacity-20 animate-ping`}></div>
     <div className={`w-3 h-3 ${color} rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)] cursor-pointer transition-transform group-hover:scale-150`}></div>
     
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-56 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto translate-y-2 group-hover:translate-y-0">
-      <div className="bg-gray-900 border border-white/10 p-4 rounded-2xl shadow-2xl backdrop-blur-md text-left">
-        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{city}</p>
-        <p className="text-white text-[11px] leading-relaxed font-medium">{action}</p>
-        <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 border-r border-b border-white/10 rotate-45 -mt-1"></div>
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto translate-y-2 group-hover:translate-y-0">
+      <div className="bg-gray-900 border border-white/10 p-3 rounded-2xl shadow-2xl backdrop-blur-md text-left">
+        <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">{city}</p>
+        <p className="text-white text-[10px] leading-tight font-medium">{action}</p>
       </div>
     </div>
   </div>
@@ -142,7 +142,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         </div>
 
         <div id="login-section" className="w-full max-w-[540px] mb-32 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-          <div className="bg-white rounded-[4rem] shadow-[0_48px_96px_-24px_rgba(0,0,0,0.12)] border border-gray-100 p-10 md:p-16 mb-10">
+          <div className="bg-white rounded-[4rem] shadow-prestige border border-gray-100 p-10 md:p-16 mb-10">
             <div className="text-left mb-12">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">Accès au Cercle</h2>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">Saisissez vos identifiants citoyens</p>
@@ -222,42 +222,35 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           </div>
         </div>
 
-        {/* SECTION CARTE D'IMPACT TERRITORIAL */}
+        {/* RADAR D'IMPACT (VERSION CONDENSÉE) */}
         <section className="w-full mb-40 animate-in fade-in duration-1000 delay-400">
-           <div className="flex flex-col items-center mb-16 text-center">
+           <div className="flex flex-col items-center text-center">
               <div className="inline-flex items-center gap-3 bg-blue-50 px-6 py-2 rounded-full mb-8 border border-blue-100">
-                <MapPin size={14} className="text-blue-600" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-700">L'Empreinte de la Nation</span>
+                <Globe size={14} className="text-blue-600" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-700">Le Radar de la Nation</span>
               </div>
-              <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6">Impact Territorial Réel.</h2>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Empreinte Territoriale.</h2>
               <p className="text-gray-400 max-w-xl text-lg font-medium leading-relaxed mb-12">
-                Le Cercle n'est pas qu'un espace virtuel. C'est un radar d'action qui s'illumine partout où les citoyens s'unissent pour construire.
+                Le Cercle s'illumine partout où les citoyens s'unissent. Aperçu des ondes de changement en cours.
               </p>
               
-              <div className="w-full max-w-4xl bg-white border border-gray-100 rounded-[4rem] p-4 shadow-prestige relative overflow-hidden aspect-[16/9] md:aspect-[21/9]">
-                {/* Carte stylisée (Placeholder SVG majestueux) */}
-                <div className="absolute inset-0 bg-gray-50 flex items-center justify-center">
-                  <svg className="w-full h-full opacity-10" viewBox="0 0 800 400" fill="none">
-                    <path d="M300 50 Q 350 20, 400 50 T 500 80 Q 550 110, 520 160 T 480 240 Q 450 280, 400 260 T 320 220 Q 280 180, 300 120 T 300 50" stroke="currentColor" strokeWidth="2" />
+              <div className="w-full max-w-4xl bg-white border border-gray-100 rounded-[4rem] p-4 shadow-prestige relative overflow-hidden aspect-[21/9]">
+                <div className="absolute inset-0 bg-gray-50/50 flex items-center justify-center opacity-60">
+                  <svg className="w-full h-full p-10" viewBox="0 0 800 400" fill="none">
+                    <path d="M320 60 Q 370 30, 420 60 T 520 90 Q 570 120, 540 170 T 500 250 Q 470 290, 420 270 T 340 230 Q 300 190, 320 130 T 320 60" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-blue-200" />
                   </svg>
                   
-                  {/* Points d'impact réels (Simulés pour le Radar) */}
-                  <PulsePoint x="45%" y="75%" city="Abidjan" action="Solidarité Lagunaire" color="bg-blue-600" />
-                  <PulsePoint x="42%" y="45%" city="Yamoussoukro" action="Sentier de l'Éducation" color="bg-emerald-600" />
-                  <PulsePoint x="38%" y="30%" city="Bouaké" action="Palabre de Cohésion" color="bg-amber-600" />
-                  <PulsePoint x="15%" y="85%" city="San Pedro" action="Marché Souverain" color="bg-rose-600" />
+                  {/* Points du radar sur l'accueil */}
+                  <PulsePoint x="48%" y="70%" city="Abidjan" action="Solidarité Active" color="bg-blue-600" />
+                  <PulsePoint x="40%" y="30%" city="Bouaké" action="Éveil Citoyen" color="bg-amber-600" />
                 </div>
                 
-                <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-white via-white/80 to-transparent flex flex-col items-center">
-                   <p className="text-xs font-bold text-gray-500 mb-6 flex items-center gap-2">
-                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                     Visualisez l'activité citoyenne en temps réel sur tout le territoire.
-                   </p>
+                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent flex flex-col items-center justify-end pb-10">
                    <Link 
                     to="/map" 
-                    className="px-10 py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3"
+                    className="px-12 py-5 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3 active:scale-95"
                    >
-                     Explorer la Carte Interactive <ArrowRight size={16} />
+                     Explorer l'Empreinte Complète <ArrowRight size={16} />
                    </Link>
                 </div>
               </div>
