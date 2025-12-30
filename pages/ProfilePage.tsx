@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
-  Flame, Heart, Sparkles, Medal
+  Flame, Heart, Sparkles, Medal, Shield
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -177,6 +177,11 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         
         <div className={`h-64 relative overflow-hidden ${isGuardian ? 'bg-gradient-to-r from-amber-600 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>
+           {isGuardian && (
+             <div className="absolute inset-0 flex items-center justify-center opacity-10">
+               <Shield size={300} className="text-white" />
+             </div>
+           )}
         </div>
 
         <div className="px-10 pb-12 -mt-24 relative z-10">
@@ -187,7 +192,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 name={profile.name} 
                 isEditing={isEditing}
                 onUploadClick={() => fileInputRef.current?.click()}
-                className="ring-8 ring-white" 
+                className={`ring-8 ring-white ${isGuardian ? 'shadow-amber-200/50' : ''}`} 
               />
               <div className="pb-4 flex-1">
                 {isEditing ? (
@@ -264,15 +269,38 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             </div>
 
             <aside className="lg:sticky lg:top-24 space-y-10 self-start">
-              <div className="p-10 bg-gray-950 text-white rounded-[3rem] text-center shadow-2xl relative overflow-hidden group border border-white/5">
-                <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:scale-125 transition-transform duration-700">
-                  <Zap size={80} />
+              {/* CARTE D'IMPACT SOUVERAINE POUR LE GARDIEN */}
+              <div className={`p-10 rounded-[3rem] text-center shadow-2xl relative overflow-hidden group border transition-all duration-700 ${
+                isGuardian 
+                  ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 text-white border-amber-400/30' 
+                  : 'bg-gray-950 text-white border-white/5'
+              }`}>
+                {isGuardian && (
+                  <div className="absolute inset-0 pointer-events-none">
+                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(251,191,36,0.3)_0%,_transparent_70%)] animate-pulse"></div>
+                  </div>
+                )}
+                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-125 transition-transform duration-700">
+                  {isGuardian ? <Crown size={100} /> : <Zap size={80} />}
                 </div>
-                <h3 className="font-black text-[10px] uppercase tracking-[0.4em] mb-6 text-blue-400 relative z-10">INDICE D'IMPACT</h3>
+                <h3 className={`font-black text-[10px] uppercase tracking-[0.4em] mb-6 relative z-10 ${isGuardian ? 'text-amber-200' : 'text-blue-400'}`}>
+                  {isGuardian ? "Autorité Fondatrice" : "INDICE D'IMPACT"}
+                </h3>
                 <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white animate-in zoom-in">
                   {impactScore.toLocaleString()}
                 </div>
-                <p className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] relative z-10">POINTS CITOYENS</p>
+                <p className={`text-[9px] font-black uppercase tracking-[0.3em] relative z-10 ${isGuardian ? 'text-white/60' : 'text-gray-500'}`}>
+                  POINTS CITOYENS
+                </p>
+                
+                {isGuardian && (
+                  <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
+                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20">
+                        <Sparkles size={12} className="text-amber-300" />
+                        <span className="text-[8px] font-black uppercase tracking-widest">Impact Historique Certifié</span>
+                     </div>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white border border-gray-100 p-10 rounded-[3rem] shadow-sm">
