@@ -5,7 +5,7 @@ import {
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
   ShieldCheck, Share2, MessageCircle, RefreshCw, 
   Info, LogIn, Bold, Italic, Underline, Smile, 
-  Pencil, Save, X
+  Pencil, Save, X, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
@@ -32,6 +32,7 @@ const PostCard: React.FC<{
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
@@ -59,7 +60,7 @@ const PostCard: React.FC<{
       }
       post.content = editContent;
       setIsEditing(false);
-      addToast("Onde mise à jour avec succès.", "success");
+      addToast("Onde mise à jour.", "success");
       onUpdate();
     } catch (e) {
       addToast("Erreur lors de la mise à jour.", "error");
@@ -90,7 +91,7 @@ const PostCard: React.FC<{
       addToast("Palabre ajoutée.", "success");
       onUpdate();
     } catch (e) {
-      addToast("Impossible d'ajouter le commentaire.", "error");
+      addToast("Erreur de sauvegarde.", "error");
     }
   };
 
@@ -100,12 +101,13 @@ const PostCard: React.FC<{
       return;
     }
     setReactions((prev: any) => ({ ...prev, [type]: prev[type] + 1 }));
-    addToast("Impact enregistré.", "success");
   };
 
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
+  
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
+  const isLongContent = post.content.length > 450;
 
   return (
     <article 
@@ -129,20 +131,20 @@ const PostCard: React.FC<{
         </div>
         <div className="flex gap-2">
           {isOwner && !isEditing && (
-            <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all">
+            <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all" title="Modifier">
               <Pencil size={18} />
             </button>
           )}
           <button onClick={() => {
             navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
-            addToast("Lien copié.", "success");
+            addToast("Lien de l'onde copié.", "success");
           }} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all">
             <Share2 size={20} />
           </button>
         </div>
       </div>
 
-      <div className="px-8 md:px-12 py-6">
+      <div className="px-8 md:px-12 py-4 relative">
         {isEditing ? (
           <div className="space-y-4">
             <textarea 
@@ -158,11 +160,36 @@ const PostCard: React.FC<{
             </div>
           </div>
         ) : (
-          <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`} dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
+          <>
+            <div 
+              className={`text-gray-800 leading-relaxed transition-all duration-500 overflow-hidden relative
+                ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}
+                ${isLongContent && !isExpanded ? 'max-h-60' : 'max-h-[5000px]'}`}
+            >
+              <div dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
+              
+              {isLongContent && !isExpanded && (
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+              )}
+            </div>
+
+            {isLongContent && (
+              <button 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                {isExpanded ? (
+                  <><ChevronUp size={14} /> Réduire la lecture</>
+                ) : (
+                  <><ChevronDown size={14} /> Lire la suite de l'onde...</>
+                )}
+              </button>
+            )}
+          </>
         )}
       </div>
 
-      <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100">
+      <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100 mt-4">
         <div className="flex items-center gap-2 md:gap-4">
           <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm group">
             <ThumbsUp size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.useful}</span>
@@ -279,10 +306,15 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     if (tag === 'underline') newText = `${before}__${selection}__${after}`;
     
     setNewPostText(newText);
-    textareaRef.current.focus();
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(start + 2, end + 2);
+      }
+    }, 0);
   };
 
-  const emojis = ["🤝", "💡", "✊", "🇨🇮", "🐘", "🌟", "🌍", "🕊️", "🔥", "📣"];
+  const emojis = ["🤝", "💡", "✊", "🇨🇮", "🐘", "🌟", "🌍", "🕊️", "🔥", "📣", "🙏", "⚡"];
 
   const handleCreatePost = async () => {
     if (!newPostText.trim()) return;
@@ -310,14 +342,14 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       } else {
         const localPost = { ...postData, id: 'local-' + Date.now() };
         setPosts(prev => [localPost as Post, ...prev]);
-        addToast("Onde enregistrée localement.", "success");
+        addToast("Sauvegarde locale effectuée.", "success");
       }
       
       setNewPostText('');
       fetchPosts();
     } catch (e: any) { 
       console.error(e);
-      addToast(`Échec de la diffusion cloud. Sauvegarde locale...`, "error");
+      addToast(`Échec réseau. Tentative de sauvegarde locale...`, "error");
       const localPost = { ...postData, id: 'local-' + Date.now() };
       setPosts(prev => [localPost as Post, ...prev]);
     } finally { 
@@ -339,16 +371,16 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       {user ? (
         <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group">
           <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-4">
-            <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-50 rounded-xl transition-colors" title="Gras"><Bold size={16} /></button>
-            <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-50 rounded-xl transition-colors" title="Italique"><Italic size={16} /></button>
-            <button onClick={() => injectFormat('underline')} className="p-3 hover:bg-gray-50 rounded-xl transition-colors" title="Souligné"><Underline size={16} /></button>
-            <div className="w-px h-6 bg-gray-100 mx-2"></div>
+            <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Gras"><Bold size={16} /></button>
+            <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Italique"><Italic size={16} /></button>
+            <button onClick={() => injectFormat('underline')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Souligné"><Underline size={16} /></button>
+            <div className="w-px h-6 bg-gray-200 mx-2"></div>
             <div className="relative">
-              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 hover:bg-gray-50 rounded-xl transition-colors text-amber-500" title="Émojis"><Smile size={16} /></button>
+              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-amber-500" title="Émojis"><Smile size={16} /></button>
               {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-100 rounded-2xl shadow-2xl flex gap-2 z-50 animate-in zoom-in duration-200">
+                <div className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-2xl flex flex-wrap gap-3 z-[100] animate-in zoom-in duration-200 w-64">
                   {emojis.map(e => (
-                    <button key={e} onClick={() => { setNewPostText(prev => prev + e); setShowEmojiPicker(false); }} className="text-xl hover:scale-125 transition-transform">{e}</button>
+                    <button key={e} onClick={() => { setNewPostText(prev => prev + e); setShowEmojiPicker(false); }} className="text-2xl hover:scale-125 transition-transform">{e}</button>
                   ))}
                 </div>
               )}
