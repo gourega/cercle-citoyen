@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
@@ -115,7 +116,6 @@ const PostCard: React.FC<{
           <div>
             <div className="flex items-center gap-2">
               <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-lg hover:text-blue-600 transition-colors">{author.name}</Link>
-              {/* Wrapped ShieldCheck in a span with title to fix TS error: property 'title' does not exist on LucideProps */}
               {author.role === Role.SUPER_ADMIN && <span title="Gardien Certifié"><ShieldCheck size={18} className="text-amber-600" /></span>}
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -252,7 +252,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
               <span className="text-[10px] font-black uppercase">{connStatus?.ok ? 'Souveraine' : 'Mode Démo'}</span>
             </div>
             {!connStatus?.ok && (
-              <p className="text-[9px] font-medium text-rose-600 bg-white border border-rose-100 p-3 rounded-xl mb-6">
+              <p className="text-[10px] font-bold text-rose-600 bg-rose-50 p-4 rounded-2xl mb-6 leading-relaxed border border-rose-100">
                 {connStatus?.message}
               </p>
             )}
