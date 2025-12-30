@@ -49,18 +49,34 @@ const PostCard: React.FC<{
         setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+      const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
       setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
     };
     fetchAuthor();
   }, [post.author_id]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
+        setShowShareMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
     const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
-    const shareText = `Onde citoyenne : "${post.content.substring(0, 100)}..."`;
-    if (platform === 'linkedin') window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
-    else if (platform === 'whatsapp') window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
-    else { navigator.clipboard.writeText(shareUrl); addToast("Lien copié.", "success"); }
+    const shareText = `Découvrez cette onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
+
+    if (platform === 'linkedin') {
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
+    } else if (platform === 'whatsapp') {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      addToast("Lien de l'onde copié.", "success");
+    }
     setShowShareMenu(false);
   };
 
@@ -78,9 +94,9 @@ const PostCard: React.FC<{
   const handleDeletePost = async () => {
     try {
       if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
-      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération souveraine." : "Onde retirée.", "success");
+      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération effectuée." : "Onde retirée.", "success");
       onUpdate();
-    } catch (e) { addToast("Échec retrait.", "error"); }
+    } catch (e) { addToast("Échec suppression.", "error"); }
     finally { setShowDeleteConfirm(false); }
   };
 
@@ -135,14 +151,32 @@ const PostCard: React.FC<{
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 relative" ref={shareMenuRef}>
           {isOwner && !isEditing && (
             <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all"><Pencil size={18} /></button>
           )}
           {canDelete && (
-            <button onClick={() => setShowDeleteConfirm(true)} className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`}><Trash2 size={18} /></button>
+            <button onClick={() => setShowDeleteConfirm(true)} className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} title={isGuardian && !isOwner ? "Modération Suprême" : "Supprimer"}><Trash2 size={18} /></button>
           )}
-          <button onClick={() => setShowShareMenu(!showShareMenu)} className="p-4 rounded-2xl bg-gray-50 text-gray-400 hover:text-blue-600 transition-all"><Share2 size={20} /></button>
+          <button onClick={() => setShowShareMenu(!showShareMenu)} className={`p-4 rounded-2xl transition-all ${showShareMenu ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:text-blue-600'}`}><Share2 size={20} /></button>
+          
+          {showShareMenu && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-[100] animate-in zoom-in duration-200">
+               <button onClick={() => handleShare('linkedin')} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-colors">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center"><Linkedin size={14} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">LinkedIn</span>
+               </button>
+               <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 rounded-xl transition-colors">
+                  <div className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"><WhatsAppIcon size={14} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">WhatsApp</span>
+               </button>
+               <div className="h-px bg-gray-100 my-1"></div>
+               <button onClick={() => handleShare()} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center"><LinkIcon size={14} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">Copier le lien</span>
+               </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -177,15 +211,15 @@ const PostCard: React.FC<{
 
       <div className="bg-gray-50/50 p-6 flex items-center justify-between border-t border-gray-100 mt-4">
         <div className="flex items-center gap-2">
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-blue-600 shadow-sm"><ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span></button>
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-emerald-600 shadow-sm"><Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span></button>
-          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-amber-600 shadow-sm"><Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span></button>
+          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-blue-600 shadow-sm transition-all hover:bg-blue-600 hover:text-white"><ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span></button>
+          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-emerald-600 shadow-sm transition-all hover:bg-emerald-600 hover:text-white"><Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span></button>
+          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-amber-600 shadow-sm transition-all hover:bg-amber-600 hover:text-white"><Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span></button>
         </div>
-        <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase bg-gray-900 text-white">Palabres ({post.comments?.length || 0})</button>
+        <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase transition-all ${showComments ? 'bg-gray-900 text-white' : 'bg-white border border-gray-100 text-gray-500'}`}>Palabres ({post.comments?.length || 0})</button>
       </div>
 
       {showComments && (
-        <div className="p-8 bg-white border-t border-gray-100">
+        <div className="p-8 bg-white border-t border-gray-100 animate-in slide-in-from-top-4 duration-300">
           <div className="space-y-4 mb-8">
             {post.comments?.map((c, i) => (
               <div key={i} className="flex gap-4">
@@ -218,7 +252,10 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const [newPostText, setNewPostText] = useState('');
   const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
   const [sending, setSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const emojis = ["🤝", "💡", "✊", "🇨🇮", "🐘", "🌟", "🌍", "🕊️", "🔥", "📣", "🙏", "⚡"];
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -233,6 +270,29 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   useEffect(() => { fetchPosts(); }, []);
+
+  const injectFormat = (tag: string) => {
+    if (!textareaRef.current) return;
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = newPostText;
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end);
+    
+    let newText = "";
+    if (tag === 'bold') newText = `${before}**${selection}**${after}`;
+    if (tag === 'italic') newText = `${before}_${selection}_${after}`;
+    if (tag === 'underline') newText = `${before}__${selection}__${after}`;
+    
+    setNewPostText(newText);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(start + 2, end + 2);
+      }
+    }, 0);
+  };
 
   const handleCreatePost = async () => {
     if (!newPostText.trim() || !user) return;
@@ -275,6 +335,23 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
       {user ? (
         <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50/50' : 'border-gray-100'}`}>
+          <div className="flex items-center gap-2 mb-6 border-b border-gray-50 pb-4">
+            <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Gras"><Bold size={18} /></button>
+            <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Italique"><Italic size={18} /></button>
+            <button onClick={() => injectFormat('underline')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Souligné"><Underline size={18} /></button>
+            <div className="w-px h-6 bg-gray-200 mx-2"></div>
+            <div className="relative">
+              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-amber-500" title="Émojis"><Smile size={18} /></button>
+              {showEmojiPicker && (
+                <div className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-2xl flex flex-wrap gap-3 z-[100] animate-in zoom-in duration-200 w-64">
+                  {emojis.map(e => (
+                    <button key={e} onClick={() => { setNewPostText(prev => prev + e); setShowEmojiPicker(false); }} className="text-2xl hover:scale-125 transition-transform">{e}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <textarea 
             ref={textareaRef}
             value={newPostText} 
