@@ -50,80 +50,43 @@ const PostCard: React.FC<{
         return;
       }
       const { data, error } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-      if (error) console.error("Erreur profil:", error);
       setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
     };
     fetchAuthor();
   }, [post.author_id]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
-        setShowShareMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
     const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
-    const shareText = `Onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
-
-    if (!platform && navigator.share) {
-      try {
-        await navigator.share({ title: 'Cercle Citoyen', text: shareText, url: shareUrl });
-        addToast("Partage réussi.", "success");
-        return;
-      } catch (e) { /* silent */ }
-    }
-
-    if (platform === 'linkedin') {
-      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
-    } else if (platform === 'whatsapp') {
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      addToast("Lien copié.", "success");
-    }
+    const shareText = `Onde citoyenne : "${post.content.substring(0, 100)}..."`;
+    if (platform === 'linkedin') window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
+    else if (platform === 'whatsapp') window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+    else { navigator.clipboard.writeText(shareUrl); addToast("Lien copié.", "success"); }
     setShowShareMenu(false);
   };
 
   const handleUpdatePost = async () => {
     if (!editContent.trim()) return;
     try {
-      if (isRealSupabase && supabase) {
-        const { error } = await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
-        if (error) throw error;
-      }
+      if (isRealSupabase && supabase) await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
       post.content = editContent;
       setIsEditing(false);
       addToast("Onde mise à jour.", "success");
       onUpdate();
-    } catch (e) {
-      addToast("Erreur lors de la mise à jour.", "error");
-    }
+    } catch (e) { addToast("Erreur mise à jour.", "error"); }
   };
 
   const handleDeletePost = async () => {
     try {
-      if (isRealSupabase && supabase) {
-        const { error } = await supabase.from('posts').delete().eq('id', post.id);
-        if (error) throw error;
-      }
-      addToast(currentUser?.role === Role.SUPER_ADMIN && currentUser.id !== post.author_id ? "Action de modération souveraine effectuée." : "Onde retirée du fil.", "success");
+      if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
+      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération souveraine." : "Onde retirée.", "success");
       onUpdate();
-    } catch (e) {
-      addToast("Échec du retrait.", "error");
-    } finally {
-      setShowDeleteConfirm(false);
-    }
+    } catch (e) { addToast("Échec retrait.", "error"); }
+    finally { setShowDeleteConfirm(false); }
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentInput.trim() || !currentUser) return;
-
     const newComment: Comment = {
       id: Date.now().toString(),
       author: currentUser.name,
@@ -131,34 +94,15 @@ const PostCard: React.FC<{
       content: replyTo ? `@${replyTo} ${commentInput}` : commentInput,
       created_at: new Date().toISOString()
     };
-
     try {
       const updatedComments = [...(post.comments || []), newComment];
-      if (isRealSupabase && supabase) {
-        const { error } = await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
-        if (error) throw error;
-      }
+      if (isRealSupabase && supabase) await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
       post.comments = updatedComments;
       setCommentInput('');
       setReplyTo(null);
       addToast("Palabre ajoutée.", "success");
       onUpdate();
-    } catch (e) {
-      addToast("Erreur de sauvegarde.", "error");
-    }
-  };
-
-  const handleReaction = async (type: string) => {
-    if (!currentUser) {
-      addToast("Rejoignez le Cercle pour réagir.", "info");
-      return;
-    }
-    const newReactions = { ...reactions, [type]: (reactions as any)[type] + 1 };
-    setReactions(newReactions);
-    
-    if (isRealSupabase && supabase) {
-      await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
-    }
+    } catch (e) { addToast("Erreur sauvegarde.", "error"); }
   };
 
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
@@ -166,205 +110,97 @@ const PostCard: React.FC<{
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
   const isGuardian = currentUser?.role === Role.SUPER_ADMIN;
-  const isAdmin = currentUser?.role === Role.ADMIN || isGuardian;
-  const canDelete = isOwner || isGuardian || isAdmin;
+  const canDelete = isOwner || isGuardian;
   const isLongContent = post.content.length > 450;
 
   return (
     <article 
-      id={`post-${post.id}`} 
       className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col 
-        ${isHighlighted ? 'ring-8 ring-amber-500/10 border-amber-200 animate-pulse' : 'border-gray-100'} 
-        ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : ''}`}
+        ${isHighlighted ? 'ring-8 ring-amber-500/10 border-amber-200' : 'border-gray-100'} 
+        ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50' : ''}`}
     >
       <div className="p-8 pb-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-200' : ''}`} alt="" />
+            <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-300' : ''}`} alt="" />
             {isMajestic && <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-1 rounded-lg shadow-lg border-2 border-white"><Crown size={10} /></div>}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-gray-900 text-lg">{author.name}</span>
-              {(author.role === Role.SUPER_ADMIN || author.role === Role.ADMIN) && <ShieldCheck size={18} className="text-blue-600" />}
+              {author.role === Role.SUPER_ADMIN && <ShieldCheck size={18} className="text-amber-600" />}
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
               {new Date(post.created_at).toLocaleDateString()} • <span className="text-blue-600">{post.circle_type}</span>
             </p>
           </div>
         </div>
-        <div className="flex gap-2 relative" ref={shareMenuRef}>
+        <div className="flex gap-2">
           {isOwner && !isEditing && (
-            <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all" title="Modifier">
-              <Pencil size={18} />
-            </button>
+            <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all"><Pencil size={18} /></button>
           )}
           {canDelete && (
-            <button 
-              onClick={() => setShowDeleteConfirm(true)} 
-              className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} 
-              title={isGuardian && !isOwner ? "Modération Suprême" : "Supprimer"}
-            >
-              <Trash2 size={18} />
-            </button>
+            <button onClick={() => setShowDeleteConfirm(true)} className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`}><Trash2 size={18} /></button>
           )}
-          <button 
-            onClick={() => setShowShareMenu(!showShareMenu)} 
-            className={`p-4 rounded-2xl transition-all shadow-sm ${showShareMenu ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-blue-50 hover:text-blue-600'}`}
-          >
-            <Share2 size={20} />
-          </button>
-          
-          {showShareMenu && (
-            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-[100] animate-in zoom-in duration-200">
-               <button onClick={() => handleShare('linkedin')} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-colors">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center"><Linkedin size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">LinkedIn</span>
-               </button>
-               <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 rounded-xl transition-colors">
-                  <div className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"><WhatsAppIcon size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">WhatsApp</span>
-               </button>
-               <div className="h-px bg-gray-100 my-1"></div>
-               <button onClick={() => handleShare('copy')} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                  <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center"><LinkIcon size={14} /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">Copier le lien</span>
-               </button>
-            </div>
-          )}
+          <button onClick={() => setShowShareMenu(!showShareMenu)} className="p-4 rounded-2xl bg-gray-50 text-gray-400 hover:text-blue-600 transition-all"><Share2 size={20} /></button>
         </div>
       </div>
 
-      <div className="px-8 md:px-12 py-4 relative">
+      <div className="px-8 md:px-12 py-4">
         {isEditing ? (
           <div className="space-y-4">
-            <textarea 
-              value={editContent} 
-              onChange={e => setEditContent(e.target.value)}
-              className="w-full h-40 bg-gray-50 p-6 rounded-2xl outline-none border-2 border-amber-100 font-medium text-lg focus:bg-white"
-            />
+            <textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="w-full h-40 bg-gray-50 p-6 rounded-2xl outline-none border-2 border-amber-100 font-medium text-lg focus:bg-white" />
             <div className="flex justify-end gap-3">
               <button onClick={() => setIsEditing(false)} className="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest">Annuler</button>
-              <button onClick={handleUpdatePost} className="px-6 py-3 bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2">
-                <Save size={14} /> Sauvegarder
-              </button>
+              <button onClick={handleUpdatePost} className="px-6 py-3 bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2"><Save size={14} /> Sauvegarder</button>
             </div>
           </div>
         ) : (
-          <>
-            <div 
-              className={`text-gray-800 leading-relaxed transition-all duration-500 overflow-hidden relative
-                ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}
-                ${isLongContent && !isExpanded ? 'max-h-60' : 'max-h-[5000px]'}`}
-            >
-              <div dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
-              
-              {isLongContent && !isExpanded && (
-                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-              )}
-            </div>
-
-            {isLongContent && (
-              <button 
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                {isExpanded ? (
-                  <><ChevronUp size={14} /> Réduire la lecture</>
-                ) : (
-                  <><ChevronDown size={14} /> Lire la suite...</>
-                )}
-              </button>
-            )}
-          </>
+          <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`}>
+            <div dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
+          </div>
         )}
       </div>
 
       {showDeleteConfirm && (
-        <div className={`px-8 py-6 border-y animate-in slide-in-from-top-2 ${isGuardian && !isOwner ? 'bg-slate-900 border-slate-800' : 'bg-rose-50 border-rose-100'}`}>
+        <div className={`px-8 py-6 border-y ${isGuardian && !isOwner ? 'bg-slate-900 border-slate-800 text-white' : 'bg-rose-50 border-rose-100'}`}>
           <div className="flex items-center gap-4 mb-4">
-             <div className={`p-3 rounded-xl ${isGuardian && !isOwner ? 'bg-amber-500 text-white' : 'bg-rose-100 text-rose-600'}`}><AlertTriangle size={20} /></div>
-             <div>
-               <p className={`font-bold ${isGuardian && !isOwner ? 'text-white' : 'text-rose-900'}`}>
-                 {isGuardian && !isOwner ? 'Retrait Souverain du Gardien' : 'Supprimer cette publication ?'}
-               </p>
-               <p className={`text-xs ${isGuardian && !isOwner ? 'text-slate-400' : 'text-rose-600'}`}>
-                 {isGuardian && !isOwner ? 'En tant que Gardien, vous exercez votre droit de modération suprême.' : 'Cette action est irréversible.'}
-               </p>
-             </div>
+             <AlertTriangle size={20} className="text-rose-500" />
+             <p className="font-bold">{isGuardian && !isOwner ? 'Retrait Souverain du Gardien' : 'Supprimer cette publication ?'}</p>
           </div>
           <div className="flex justify-end gap-3">
-             <button onClick={() => setShowDeleteConfirm(false)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${isGuardian && !isOwner ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-white text-gray-500 border-rose-200'}`}>Annuler</button>
-             <button onClick={handleDeletePost} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg ${isGuardian && !isOwner ? 'bg-amber-600 text-white' : 'bg-rose-600 text-white'}`}>Confirmer</button>
+             <button onClick={() => setShowDeleteConfirm(false)} className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-gray-200">Annuler</button>
+             <button onClick={handleDeletePost} className="px-6 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Confirmer</button>
           </div>
         </div>
       )}
 
-      <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100 mt-4">
-        <div className="flex items-center gap-2 md:gap-4">
-          <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm group">
-            <ThumbsUp size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.useful}</span>
-          </button>
-          <button onClick={() => handleReaction('relevant')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm group">
-            <Lightbulb size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.relevant}</span>
-          </button>
-          <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm group">
-            <Sparkles size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.inspiring}</span>
-          </button>
+      <div className="bg-gray-50/50 p-6 flex items-center justify-between border-t border-gray-100 mt-4">
+        <div className="flex items-center gap-2">
+          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-blue-600 shadow-sm"><ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span></button>
+          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-emerald-600 shadow-sm"><Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span></button>
+          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-amber-600 shadow-sm"><Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span></button>
         </div>
-        
-        <button 
-          onClick={() => setShowComments(!showComments)} 
-          className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all font-black text-[11px] uppercase tracking-widest ${showComments ? 'bg-gray-900 text-white' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'}`}
-        >
-          <MessageCircle size={18} /> <span>Palabres ({post.comments?.length || 0})</span>
-        </button>
+        <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase bg-gray-900 text-white">Palabres ({post.comments?.length || 0})</button>
       </div>
 
       {showComments && (
-        <div className="p-8 bg-white border-t border-gray-100 animate-in slide-in-from-top-4 duration-300">
-          <div className="space-y-6 mb-8">
-            {post.comments?.length ? post.comments.map((c: Comment, i: number) => (
-              <div key={i} className="flex gap-4 group">
-                <img src={c.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
-                <div className="flex-1">
-                   <div className="bg-gray-50 p-5 rounded-2xl relative">
-                      <p className="text-[10px] font-black uppercase text-gray-400 mb-1">{c.author}</p>
-                      <p className="text-sm text-gray-700 font-medium">{c.content}</p>
-                      <button 
-                        onClick={() => {
-                          setReplyTo(c.author);
-                          document.getElementById(`comment-field-${post.id}`)?.focus();
-                        }} 
-                        className="absolute bottom-2 right-4 text-[9px] font-black uppercase text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        Répondre
-                      </button>
-                   </div>
+        <div className="p-8 bg-white border-t border-gray-100">
+          <div className="space-y-4 mb-8">
+            {post.comments?.map((c, i) => (
+              <div key={i} className="flex gap-4">
+                <img src={c.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
+                <div className="bg-gray-50 p-4 rounded-2xl flex-1">
+                  <p className="text-[10px] font-black uppercase text-gray-400 mb-1">{c.author}</p>
+                  <p className="text-sm text-gray-700 font-medium">{c.content}</p>
                 </div>
               </div>
-            )) : <p className="text-center py-4 text-gray-400 italic text-sm">Le silence règne sur cette palabre.</p>}
+            ))}
           </div>
-
           {currentUser && (
-            <form onSubmit={handleAddComment} className="flex gap-3 items-end">
-              <div className="flex-1 relative">
-                {replyTo && (
-                  <div className="absolute -top-6 left-0 flex items-center gap-2 text-[9px] font-black uppercase text-blue-600">
-                    En réponse à @{replyTo} <X size={10} className="cursor-pointer" onClick={() => setReplyTo(null)} />
-                  </div>
-                )}
-                <input 
-                  id={`comment-field-${post.id}`}
-                  value={commentInput} 
-                  onChange={e => setCommentInput(e.target.value)}
-                  placeholder="Apporter votre pierre..."
-                  className="w-full bg-gray-50 px-6 py-4 rounded-2xl outline-none border border-gray-100 focus:bg-white focus:border-blue-100 font-medium text-sm"
-                />
-              </div>
-              <button disabled={!commentInput.trim()} className="bg-blue-600 text-white p-4 rounded-2xl shadow-lg disabled:opacity-20 active:scale-95 transition-all">
-                <Send size={18} />
-              </button>
+            <form onSubmit={handleAddComment} className="flex gap-3">
+              <input value={commentInput} onChange={e => setCommentInput(e.target.value)} placeholder="Ajouter une pierre..." className="flex-1 bg-gray-50 px-6 py-3 rounded-xl outline-none border border-gray-100 focus:bg-white" />
+              <button disabled={!commentInput.trim()} className="bg-blue-600 text-white p-3 rounded-xl shadow-lg disabled:opacity-20"><Send size={18} /></button>
             </form>
           )}
         </div>
@@ -377,13 +213,11 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const [searchParams] = useSearchParams();
   const highlightPostId = searchParams.get('post');
   const { addToast } = useToast();
-  
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPostText, setNewPostText] = useState('');
   const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
   const [sending, setSending] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchPosts = async () => {
@@ -393,53 +227,17 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         setPosts(data || []);
-      } catch (e) { 
-        console.error("Fetch error:", e);
-        setPosts(MOCK_POSTS); 
-      }
-    } else {
-      setPosts(MOCK_POSTS);
-    }
+      } catch (e) { setPosts(MOCK_POSTS); }
+    } else { setPosts(MOCK_POSTS); }
     setLoading(false); 
   };
 
   useEffect(() => { fetchPosts(); }, []);
 
-  const injectFormat = (tag: string) => {
-    if (!textareaRef.current) return;
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
-    const text = newPostText;
-    const before = text.substring(0, start);
-    const selection = text.substring(start, end);
-    const after = text.substring(end);
-    
-    let newText = "";
-    if (tag === 'bold') newText = `${before}**${selection}**${after}`;
-    if (tag === 'italic') newText = `${before}_${selection}_${after}`;
-    if (tag === 'underline') newText = `${before}__${selection}__${after}`;
-    
-    setNewPostText(newText);
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(start + 2, end + 2);
-      }
-    }, 0);
-  };
-
-  const emojis = ["🤝", "💡", "✊", "🇨🇮", "🐘", "🌟", "🌍", "🕊️", "🔥", "📣", "🙏", "⚡"];
-
   const handleCreatePost = async () => {
-    if (!newPostText.trim()) return;
-    if (!user) {
-      addToast("Identifiez-vous pour diffuser une onde.", "error");
-      return;
-    }
+    if (!newPostText.trim() || !user) return;
     setSending(true);
-
     const isGuardian = user.role === Role.SUPER_ADMIN;
-
     const postData = { 
       author_id: user.id, 
       content: newPostText, 
@@ -449,7 +247,6 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       comments: [],
       created_at: new Date().toISOString()
     };
-
     try {
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('posts').insert([postData]);
@@ -457,22 +254,17 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée !", "success");
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Sauvegarde locale (Mode démo).", "success");
+        addToast("Mode démo : Sauvegarde locale.", "success");
       }
-      
       setNewPostText('');
       fetchPosts();
-    } catch (e: any) { 
-      console.error(e);
-      addToast(`Échec de l'enregistrement. Vérifiez vos droits.`, "error");
-    } finally { 
-      setSending(false); 
-    }
+    } catch (e: any) { addToast("Échec de diffusion. Vérifiez vos droits.", "error"); }
+    finally { setSending(false); }
   };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
-      <div className="mb-12 text-center md:text-left">
+      <div className="mb-12">
         <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6 border border-blue-100 shadow-sm">
           <Sparkles className="text-blue-600 w-4 h-4" />
           <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Flux de la Cité</span>
@@ -483,57 +275,27 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
       {user ? (
         <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50/50' : 'border-gray-100'}`}>
-          <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-4">
-            <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Gras"><Bold size={16} /></button>
-            <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Italique"><Italic size={16} /></button>
-            <button onClick={() => injectFormat('underline')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Souligné"><Underline size={16} /></button>
-            <div className="w-px h-6 bg-gray-200 mx-2"></div>
-            <div className="relative">
-              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-amber-500" title="Émojis"><Smile size={16} /></button>
-              {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-2xl flex flex-wrap gap-3 z-[100] animate-in zoom-in duration-200 w-64">
-                  {emojis.map(e => (
-                    <button key={e} onClick={() => { setNewPostText(prev => prev + e); setShowEmojiPicker(false); }} className="text-2xl hover:scale-125 transition-transform">{e}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
           <textarea 
             ref={textareaRef}
             value={newPostText} 
             onChange={e => setNewPostText(e.target.value)} 
             placeholder={user.role === Role.SUPER_ADMIN ? "Gardien, déposez votre édit souverain..." : "Déposez une pierre à l'édifice..."} 
-            className="w-full h-56 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
+            className="w-full h-56 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
           />
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <select 
-              value={selectedCircle} 
-              onChange={e => setSelectedCircle(e.target.value as any)} 
-              className="w-full sm:w-auto bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100"
-            >
+            <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100">
               {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
             </select>
-            <button 
-              onClick={handleCreatePost} 
-              disabled={sending || !newPostText.trim()} 
-              className={`w-full sm:w-auto px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl transition-all disabled:opacity-30 ${user.role === Role.SUPER_ADMIN ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-950 hover:bg-black text-white'}`}
-            >
+            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl transition-all disabled:opacity-30 ${user.role === Role.SUPER_ADMIN ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-950 hover:bg-black text-white'}`}>
               {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
               {user.role === Role.SUPER_ADMIN ? "Publier l'Édit Suprême" : "Diffuser l'Onde"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-gray-900 rounded-[3rem] p-8 mb-16 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
-          <div className="relative z-10">
-            <h3 className="text-xl font-serif font-bold mb-2">Dialogue Citoyen</h3>
-            <p className="opacity-60 text-sm">Créez un compte pour agir et partager vos ondes.</p>
-          </div>
-          <Link to="/auth" className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-blue-50 transition-all relative z-10">
-            <LogIn size={16} /> Rejoindre le Cercle
-          </Link>
+        <div className="bg-gray-900 rounded-[3rem] p-8 mb-16 text-white shadow-2xl flex items-center justify-between overflow-hidden relative">
+          <div><h3 className="text-xl font-serif font-bold mb-2">Dialogue Citoyen</h3><p className="opacity-60 text-sm">Inscrivez-vous pour agir.</p></div>
+          <Link to="/auth" className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">Rejoindre le Cercle</Link>
           <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><Sparkles size={120} /></div>
         </div>
       )}
@@ -550,15 +312,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Interrogation...</p>
           </div>
         ) : posts.length > 0 ? (
-          posts.map(p => (
-            <PostCard 
-              key={p.id} 
-              post={p} 
-              currentUser={user} 
-              isHighlighted={highlightPostId === String(p.id)} 
-              onUpdate={fetchPosts}
-            />
-          ))
+          posts.map(p => <PostCard key={p.id} post={p} currentUser={user} isHighlighted={highlightPostId === String(p.id)} onUpdate={fetchPosts} />)
         ) : (
           <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
              <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />
