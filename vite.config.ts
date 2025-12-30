@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    // On mappe les noms exacts de votre capture d'écran vers les variables attendues par le code
+    // On mappe les noms exacts de votre capture d'écran Cloudflare vers le code
     'process.env.VITE_SUPABASE_URL': JSON.stringify(
       process.env['Url Supabase'] || 
       process.env.VITE_SUPABASE_URL || 
