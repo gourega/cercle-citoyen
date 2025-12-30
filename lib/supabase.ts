@@ -29,14 +29,14 @@ export const db = {
     if (isStripeKey) {
       return { 
         ok: false, 
-        message: "Attention : La clé détectée est une clé Stripe (sb_...). Utilisez la clé 'anon' de Supabase (eyJ...)." 
+        message: "Clé Stripe détectée ! Utilisez la clé 'anon' de Supabase (eyJ...) dans la variable VITE_SUPABASE_ANON_KEY." 
       };
     }
 
     if (!supabase) {
       return { 
         ok: false, 
-        message: `Mode Démo : Vérifiez que vos variables 'Url Supabase' et 'Clé anon Supabase' sont bien enregistrées ET que vous avez relancé un déploiement.` 
+        message: `Mode Démo : Nommez vos variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans Cloudflare, puis relancez un déploiement.` 
       };
     }
 
@@ -45,10 +45,10 @@ export const db = {
       
       if (error) {
         if (error.code === 'PGRST301' || error.message.includes('JWT')) {
-          return { ok: false, message: "La clé configurée est invalide ou expirée. Copiez la clé 'anon public' depuis Supabase." };
+          return { ok: false, message: "La clé est incorrecte. Copiez bien la clé 'anon' (très longue) depuis Supabase." };
         }
         if (error.message.includes('relation') || error.code === 'PGRST116') {
-          return { ok: true, message: "Base connectée ! (Les tables seront créées à la première inscription)." };
+          return { ok: true, message: "Liaison établie ! Prêt pour le premier citoyen." };
         }
         return { ok: false, message: `Erreur Supabase : ${error.message}` };
       }
