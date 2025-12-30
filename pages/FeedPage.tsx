@@ -3,11 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
-  ShieldCheck, Share2, MessageCircle, RefreshCw, 
-  Info, LogIn, Bold, Italic, Underline, Smile, 
-  Pencil, Save, X, ChevronDown, ChevronUp, Trash2, AlertTriangle,
-  Linkedin, MessageSquare as WhatsAppIcon, Link as LinkIcon, Crown,
-  TrendingUp, Users, Heart, ChevronRight
+  ShieldCheck, MessageCircle, RefreshCw, 
+  Info, Pencil, Save, Trash2, Crown,
+  TrendingUp, Users, Heart, ChevronRight,
+  Flame, Award, Clock
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
 import { supabase, isRealSupabase, db } from '../lib/supabase';
@@ -15,14 +14,25 @@ import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
 import { useToast } from '../App';
 
+const getRelativeTime = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return "À l'instant";
+  if (diffInSeconds < 3600) return `Il y a ${Math.floor(diffInSeconds / 60)} min`;
+  if (diffInSeconds < 86400) return `Il y a ${Math.floor(diffInSeconds / 3600)} h`;
+  return date.toLocaleDateString();
+};
+
+// Fix: Added formatContent utility to handle post text formatting and fix the compilation error
 const formatContent = (content: string) => {
   if (!content) return '';
-  let html = content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
-  html = html.replace(/__(.*?)__/g, '<u style="text-decoration: underline;">$1</u>');
-  html = html.replace(/\n/g, '<br/>');
-  return html;
+  return content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br />');
 };
 
 const PostCard: React.FC<{ 
@@ -34,13 +44,12 @@ const PostCard: React.FC<{
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
-  const [showShareMenu, setShowShareMenu] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [commentInput, setCommentInput] = useState('');
-  const shareMenuRef = useRef<HTMLDivElement>(null);
+  const [isReacting, setIsReacting] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -54,14 +63,34 @@ const PostCard: React.FC<{
     fetchAuthor();
   }, [post.author_id]);
 
+  const handleReaction = async (type: 'useful' | 'relevant' | 'inspiring') => {
+    if (!currentUser || isReacting) return;
+    setIsReacting(type);
+    
+    const newReactions = { ...reactions, [type]: (reactions[type] || 0) + 1 };
+    setReactions(newReactions);
+
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
+        if (error) throw error;
+      }
+      // Animation haptique visuelle réussie
+    } catch (e) {
+      setReactions(reactions); // Rollback
+      addToast("Erreur lors de la réaction.", "error");
+    } finally {
+      setIsReacting(null);
+    }
+  };
+
   const handleUpdatePost = async () => {
     if (!editContent.trim()) return;
     try {
       if (isRealSupabase && supabase) await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
-      post.content = editContent;
       setIsEditing(false);
-      addToast("Onde mise à jour.", "success");
       onUpdate();
+      addToast("Onde mise à jour.", "success");
     } catch (e) { addToast("Erreur mise à jour.", "error"); }
   };
 
@@ -87,10 +116,9 @@ const PostCard: React.FC<{
     try {
       const updatedComments = [...(post.comments || []), newComment];
       if (isRealSupabase && supabase) await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
-      post.comments = updatedComments;
       setCommentInput('');
-      addToast("Palabre ajoutée.", "success");
       onUpdate();
+      addToast("Palabre ajoutée.", "success");
     } catch (e) { addToast("Erreur sauvegarde.", "error"); }
   };
 
@@ -118,8 +146,8 @@ const PostCard: React.FC<{
               <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-lg hover:text-blue-600 transition-colors">{author.name}</Link>
               {author.role === Role.SUPER_ADMIN && <span title="Gardien Certifié"><ShieldCheck size={18} className="text-amber-600" /></span>}
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-              {new Date(post.created_at).toLocaleDateString()} • <Link to={`/circle/${encodeURIComponent(post.circle_type)}`} className="text-blue-600 hover:underline">{post.circle_type}</Link>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+              <Clock size={10} /> {getRelativeTime(post.created_at)} • <Link to={`/circle/${encodeURIComponent(post.circle_type)}`} className="text-blue-600 hover:underline">{post.circle_type}</Link>
             </p>
           </div>
         </div>
@@ -151,9 +179,24 @@ const PostCard: React.FC<{
 
       <div className="bg-gray-50/50 p-6 flex items-center justify-between border-t border-gray-100 mt-4">
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-blue-600 shadow-sm transition-all hover:scale-105 active:scale-95"><ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span></button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-emerald-600 shadow-sm transition-all hover:scale-105 active:scale-95"><Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span></button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-100 text-amber-600 shadow-sm transition-all hover:scale-105 active:scale-95"><Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span></button>
+          <button 
+            onClick={() => handleReaction('useful')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-all hover:scale-105 active:scale-95 ${isReacting === 'useful' ? 'animate-bounce' : ''} bg-white border-gray-100 text-blue-600 hover:bg-blue-50`}
+          >
+            <ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span>
+          </button>
+          <button 
+            onClick={() => handleReaction('relevant')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-all hover:scale-105 active:scale-95 ${isReacting === 'relevant' ? 'animate-bounce' : ''} bg-white border-gray-100 text-emerald-600 hover:bg-emerald-50`}
+          >
+            <Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span>
+          </button>
+          <button 
+            onClick={() => handleReaction('inspiring')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-all hover:scale-105 active:scale-95 ${isReacting === 'inspiring' ? 'animate-bounce' : ''} bg-white border-gray-100 text-amber-600 hover:bg-amber-50`}
+          >
+            <Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span>
+          </button>
         </div>
         <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase transition-all ${showComments ? 'bg-gray-900 text-white shadow-lg' : 'bg-white border border-gray-100 text-gray-500 hover:border-gray-300'}`}>Palabres ({post.comments?.length || 0})</button>
       </div>
@@ -165,7 +208,10 @@ const PostCard: React.FC<{
               <div key={i} className="flex gap-4">
                 <img src={c.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
                 <div className="bg-gray-50 p-4 rounded-2xl flex-1">
-                  <p className="text-[10px] font-black uppercase text-gray-400 mb-1">{c.author}</p>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-[10px] font-black uppercase text-gray-400">{c.author}</p>
+                    <p className="text-[8px] text-gray-300 uppercase font-black">{getRelativeTime(c.created_at)}</p>
+                  </div>
                   <p className="text-sm text-gray-700 font-medium">{c.content}</p>
                 </div>
               </div>
@@ -193,6 +239,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
   const [sending, setSending] = useState(false);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
+  const [trendingCercles, setTrendingCercles] = useState<any[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchPosts = async () => {
@@ -205,6 +252,15 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         setPosts(data || []);
+        
+        // Calculer les cercles tendances
+        const counts = (data || []).reduce((acc: any, p: Post) => {
+          acc[p.circle_type] = (acc[p.circle_type] || 0) + 1;
+          return acc;
+        }, {});
+        const sorted = Object.entries(counts).sort((a: any, b: any) => b[1] - a[1]).slice(0, 4);
+        setTrendingCercles(sorted);
+
       } catch (e) { setPosts(MOCK_POSTS); }
     } else { setPosts(MOCK_POSTS); }
     setLoading(false); 
@@ -251,19 +307,27 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
               <div className={`w-2 h-2 rounded-full ${connStatus?.ok ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
               <span className="text-[10px] font-black uppercase">{connStatus?.ok ? 'Souveraine' : 'Mode Démo'}</span>
             </div>
-            {!connStatus?.ok && (
-              <p className="text-[10px] font-bold text-rose-600 bg-rose-50 p-4 rounded-2xl mb-6 leading-relaxed border border-rose-100">
-                {connStatus?.message}
-              </p>
-            )}
-            <div className="space-y-4">
+            
+            <div className="space-y-6">
               <div className="flex items-center justify-between text-xs font-bold text-gray-500">
                 <span className="flex items-center gap-2"><Users size={14} /> Citoyens</span>
-                <span>{posts.length * 3 + 12}</span>
+                <span className="bg-gray-50 px-3 py-1 rounded-lg">158</span>
               </div>
               <div className="flex items-center justify-between text-xs font-bold text-gray-500">
                 <span className="flex items-center gap-2"><TrendingUp size={14} /> Ondes</span>
-                <span>{posts.length}</span>
+                <span className="bg-gray-50 px-3 py-1 rounded-lg">{posts.length}</span>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-gray-50">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6 px-2">Cercles actifs</h4>
+              <div className="space-y-4">
+                {trendingCercles.map(([name, count]) => (
+                  <Link key={name} to={`/circle/${encodeURIComponent(name)}`} className="flex items-center justify-between group">
+                    <span className="text-[11px] font-bold text-gray-600 group-hover:text-blue-600 transition-colors line-clamp-1 flex-1 pr-2">{name}</span>
+                    <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">{count}</span>
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
@@ -335,24 +399,49 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         {/* Sidebar Droite */}
         <aside className="lg:col-span-3 space-y-8 hidden lg:block">
           <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm sticky top-24">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-8 px-2 flex items-center gap-2"><Crown size={14} className="text-amber-500" /> Paroles du Gardien</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-8 px-2 flex items-center gap-2"><Award size={14} className="text-amber-500" /> Top Citoyens</h3>
             <div className="space-y-6">
-              {posts.filter(p => p.is_majestic).slice(0, 3).map(p => (
-                <div key={p.id} className="border-l-4 border-amber-200 pl-4 py-1">
-                  <p className="text-[13px] text-gray-600 italic line-clamp-2 leading-relaxed font-medium">"{p.content}"</p>
-                  <p className="text-[8px] font-black uppercase text-amber-600 mt-2">{new Date(p.created_at).toLocaleDateString()}</p>
+              {[
+                { name: "Amadou K.", points: "12,4k", role: "Pionnier", avatar: "https://picsum.photos/seed/amadou/80/80" },
+                { name: "Sara Diallo", points: "9,2k", role: "Actrice", avatar: "https://picsum.photos/seed/sara/80/80" },
+                { name: "Dr. Bamba", points: "8,8k", role: "Expert", avatar: "https://picsum.photos/seed/bamba/80/80" }
+              ].map((citizen, i) => (
+                <div key={i} className="flex items-center gap-4 group cursor-pointer">
+                  <img src={citizen.avatar} className="w-10 h-10 rounded-xl object-cover ring-2 ring-transparent group-hover:ring-blue-100 transition-all" alt="" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-gray-900 truncate">{citizen.name}</p>
+                    <p className="text-[8px] font-black uppercase text-gray-400">{citizen.role}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                      <Flame size={10} fill="currentColor" /> {citizen.points}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+            
+            <div className="mt-10 pt-10 border-t border-gray-50">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6 px-2">Édits majeurs</h3>
+              <div className="space-y-6">
+                {posts.filter(p => p.is_majestic).slice(0, 2).map(p => (
+                  <div key={p.id} className="border-l-4 border-amber-200 pl-4 py-1">
+                    <p className="text-[13px] text-gray-600 italic line-clamp-2 leading-relaxed font-medium">"{p.content}"</p>
+                    <p className="text-[8px] font-black uppercase text-amber-600 mt-2">{new Date(p.created_at).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
             <Link to="/governance" className="mt-10 w-full py-4 bg-gray-50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-center gap-2">
-              Voir le Palais des Édits <ChevronRight size={14} />
+              Voir le Palais <ChevronRight size={14} />
             </Link>
           </div>
           
           <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Heart size={80} /></div>
             <h3 className="text-xl font-serif font-bold mb-4">Soutenir le Cercle</h3>
-            <p className="text-xs text-blue-100 leading-relaxed mb-6 font-medium">Financez la souveraineté numérique du pays par vos dons via Wave.</p>
+            <p className="text-xs text-blue-100 leading-relaxed mb-6 font-medium">Contribuez à l'autonomie du territoire par vos dons Wave.</p>
             <Link to="/impact" className="block w-full py-4 bg-white text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-lg hover:bg-blue-50 transition-all">Accéder au Studio</Link>
           </div>
         </aside>
