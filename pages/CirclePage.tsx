@@ -5,28 +5,19 @@ import { User, CircleType, Post, UserCategory } from '../types';
 import { CIRCLES_CONFIG } from '../constants';
 import { 
   ChevronLeft, 
-  Shield, 
   Users, 
   Info, 
   MessageCircle, 
   Sparkles, 
   Loader2, 
   RefreshCw, 
-  Check, 
-  Volume2, 
-  Pause, 
-  Play,
   Library,
   Trophy,
-  ArrowUpRight,
-  ThumbsUp,
-  Lightbulb,
   Bookmark,
   Building2,
   BadgeCheck
 } from 'lucide-react';
-// Fix: Use correct function names exported from lib/gemini.ts
-import { summarizeCircleDiscussions, generateWisdomEcho, decode, decodeAudioData } from '../lib/gemini';
+import { summarizeCircleDiscussions } from '../lib/gemini';
 import { MOCK_POSTS, MOCK_USERS } from '../lib/mocks';
 
 const CirclePage: React.FC<{ user: User }> = ({ user }) => {
@@ -36,16 +27,9 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
   
   const [summary, setSummary] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [isEchoLoading, setIsEchoLoading] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'institutions'>('all');
-  
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Use circle_type instead of circleType
   const allCirclePosts = MOCK_POSTS.filter(p => p.circle_type === circleType);
-  // Use author_id instead of authorId
   const filteredPosts = activeFilter === 'institutions' 
     ? allCirclePosts.filter(p => MOCK_USERS[p.author_id]?.category !== UserCategory.CITIZEN)
     : allCirclePosts;
@@ -64,40 +48,6 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
       console.error(e);
     } finally {
       setIsSummarizing(false);
-    }
-  };
-
-  const handleListenEcho = async () => {
-    if (!summary) return;
-    if (isPlaying) {
-      sourceRef.current?.stop();
-      setIsPlaying(false);
-      return;
-    }
-
-    setIsEchoLoading(true);
-    try {
-      const base64Audio = await generateWisdomEcho(circleType, summary);
-      if (base64Audio) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        }
-        // Fix: Use correct function names exported from lib/gemini.ts
-        const bytes = decode(base64Audio);
-        const buffer = await decodeAudioData(bytes, audioContextRef.current);
-        
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.onended = () => setIsPlaying(false);
-        source.start(0);
-        sourceRef.current = source;
-        setIsPlaying(true);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsEchoLoading(false);
     }
   };
 
@@ -140,7 +90,6 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-12">
           
-          {/* Bibliothèque d'Excellence */}
           <section>
             <div className="flex items-center justify-between mb-8 px-4">
               <h2 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-3">
@@ -151,7 +100,6 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
             <div className="grid grid-cols-1 gap-6">
               {topContributions.length > 0 ? (
                 topContributions.map(post => {
-                  // Use author_id instead of authorId
                   const author = MOCK_USERS[post.author_id];
                   return (
                     <div key={post.id} className="bg-gradient-to-br from-amber-50/30 to-white border border-amber-100 p-8 rounded-[2.5rem] shadow-sm relative group hover:shadow-md transition-all">
@@ -197,7 +145,6 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
           <div className="space-y-6">
             {filteredPosts.length > 0 ? (
               filteredPosts.map(post => {
-                // Use author_id instead of authorId
                 const author = MOCK_USERS[post.author_id];
                 const isOrg = author?.category !== UserCategory.CITIZEN;
                 return (
@@ -209,7 +156,6 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
                           <p className="text-xs font-bold text-gray-900">{author.name}</p>
                           {isOrg && <BadgeCheck className="w-3 h-3 text-teal-500" />}
                         </div>
-                        {/* Use created_at instead of timestamp */}
                         <p className="text-[9px] text-gray-400 uppercase font-black">{post.created_at}</p>
                       </div>
                     </div>
@@ -227,14 +173,13 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
         </div>
 
         <aside className="space-y-8">
-          {/* AI Insights Widget with Wisdom Echo */}
           <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-[2.5rem] p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
               <Sparkles className="w-32 h-32 text-indigo-900" />
             </div>
             <div className="mb-6">
               <h3 className="indigo-900 font-black text-[11px] uppercase tracking-[0.2em] mb-1">Intelligence du Cercle</h3>
-              <p className="text-indigo-700/70 font-medium">Synthèse et Écho des Sages</p>
+              <p className="text-indigo-700/70 font-medium">Synthèse IA des Sages</p>
             </div>
             
             <div className="space-y-4">
@@ -244,23 +189,13 @@ const CirclePage: React.FC<{ user: User }> = ({ user }) => {
                 className="w-full flex items-center justify-center gap-2 px-5 py-4 bg-white text-indigo-600 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all border border-indigo-100/50 disabled:opacity-50"
               >
                 {isSummarizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                Actualiser la synthèse
+                Générer la synthèse textuelle
               </button>
-              {summary && (
-                <button 
-                  onClick={handleListenEcho}
-                  disabled={isEchoLoading}
-                  className={`w-full flex items-center justify-center gap-2 px-5 py-4 ${isPlaying ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600'} rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all border border-indigo-100/50 disabled:opacity-50`}
-                >
-                  {isEchoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  {isPlaying ? "Couper l'écho" : "Écouter l'Écho"}
-                </button>
-              )}
             </div>
             
             {summary && (
-              <div className="mt-6 text-indigo-900/80 text-[13px] leading-relaxed italic bg-white/40 p-4 rounded-xl border border-indigo-100/30">
-                "{summary.slice(0, 150)}..."
+              <div className="mt-6 text-indigo-900/80 text-[13px] leading-relaxed italic bg-white/40 p-4 rounded-xl border border-indigo-100/30 animate-in fade-in">
+                "{summary.slice(0, 300)}..."
               </div>
             )}
           </div>

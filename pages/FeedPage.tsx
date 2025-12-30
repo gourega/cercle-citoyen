@@ -2,12 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
-  ThumbsUp, Lightbulb, Loader2, Volume2, Send, Sparkles, 
-  ShieldCheck, Share2, MessageCircle, MoreHorizontal, RefreshCw, 
-  Info, Pause, LogIn
+  ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
+  ShieldCheck, Share2, MessageCircle, RefreshCw, 
+  Info, LogIn
 } from 'lucide-react';
 import { User, CircleType, Role } from '../types';
-import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
@@ -26,13 +25,8 @@ const formatContent = (content: string) => {
 const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: boolean }> = ({ post, currentUser, isHighlighted }) => {
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
-  
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -44,44 +38,7 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
       setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
     };
     fetchAuthor();
-    return () => { if (sourceRef.current) sourceRef.current.stop(); };
   }, [post.author_id]);
-
-  const toggleAudio = async () => {
-    if (isPlaying) {
-      if (sourceRef.current) sourceRef.current.stop();
-      setIsPlaying(false);
-      return;
-    }
-    setIsLoadingAudio(true);
-    try {
-      const b64 = await getGriotReading(post.content);
-      if (b64) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        }
-        if (audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume();
-        }
-        
-        const bytes = decode(b64);
-        const buffer = await decodeAudioData(bytes, audioContextRef.current, 24000, 1);
-        
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.onended = () => setIsPlaying(false);
-        source.start(0);
-        sourceRef.current = source;
-        setIsPlaying(true);
-      }
-    } catch (e) { 
-      console.error(e); 
-      addToast("La parole du Griot est momentanément indisponible.", "info");
-    } finally { 
-      setIsLoadingAudio(false); 
-    }
-  };
 
   const handleShare = () => {
     const baseUrl = window.location.origin + window.location.pathname;
@@ -131,9 +88,6 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
         <div className="flex gap-2">
           <button onClick={handleShare} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all" title="Partager">
             <Share2 size={20} />
-          </button>
-          <button onClick={toggleAudio} className={`p-4 rounded-2xl transition-all flex items-center gap-2 ${isPlaying ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`} title="Écouter le Griot">
-            {isLoadingAudio ? <Loader2 className="animate-spin" size={20} /> : isPlaying ? <Pause size={20} /> : <Volume2 size={20} />}
           </button>
         </div>
       </div>
@@ -206,7 +160,6 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       }
     }
     
-    // Si la DB est vide, on affiche les messages de genèse (Mocks)
     if (allPosts.length === 0) {
       allPosts = [...MOCK_POSTS];
     }

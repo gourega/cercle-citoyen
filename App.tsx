@@ -18,7 +18,8 @@ import {
   Bell,
   ChevronDown,
   LayoutGrid,
-  Users
+  Users,
+  LogOut
 } from 'lucide-react';
 
 // Pages
@@ -98,7 +99,6 @@ const NavDropdown = ({ label, icon, items }: { label: string, icon: React.ReactN
               }`}
             >
               <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-blue-600 transition-colors">
-                {/* Fix: cast element to React.ReactElement<any> to allow 'size' prop in TypeScript */}
                 {React.cloneElement(item.icon as React.ReactElement<any>, { size: 14 })}
               </div>
               {item.label}
@@ -176,11 +176,20 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
                 </NavLink>
               )}
               
-              <NavLink to="/profile" className={({ isActive }) => `flex items-center group ml-2 rounded-xl overflow-hidden ring-2 transition-all ${isActive ? 'ring-blue-600' : 'ring-transparent hover:ring-blue-200'}`}>
-                 <div className="w-10 h-10 bg-gray-100 overflow-hidden">
-                   <img src={user.avatar} className="w-full h-full object-cover" alt="Profil" />
-                 </div>
-              </NavLink>
+              <div className="flex items-center gap-2 ml-2">
+                <NavLink to="/profile" className={({ isActive }) => `flex items-center group rounded-xl overflow-hidden ring-2 transition-all ${isActive ? 'ring-blue-600' : 'ring-transparent hover:ring-blue-200'}`}>
+                   <div className="w-10 h-10 bg-gray-100 overflow-hidden">
+                     <img src={user.avatar} className="w-full h-full object-cover" alt="Profil" />
+                   </div>
+                </NavLink>
+                <button 
+                  onClick={onLogout}
+                  className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  title="Se déconnecter"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
             </>
           ) : (
             <Link to="/auth" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">
@@ -238,7 +247,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
                 </NavLink>
               )}
               <button onClick={() => { onLogout(); setIsOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] uppercase tracking-widest text-left">
-                Déconnexion
+                <LogOut size={16} /> Déconnexion
               </button>
             </>
           ) : (
