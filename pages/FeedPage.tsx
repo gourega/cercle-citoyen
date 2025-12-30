@@ -310,7 +310,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée !", "success");
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Mode démo : Sauvegarde locale.", "info");
+        addToast("Mode démo : Variables de connexion absentes.", "info");
       }
       setNewPostText('');
       fetchPosts();
