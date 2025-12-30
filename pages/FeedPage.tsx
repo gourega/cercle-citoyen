@@ -75,7 +75,7 @@ const PostCard: React.FC<{
         await navigator.share({ title: 'Cercle Citoyen', text: shareText, url: shareUrl });
         addToast("Partage réussi.", "success");
         return;
-      } catch (e) { /* cancel */ }
+      } catch (e) { /* ignore cancel */ }
     }
 
     if (platform === 'linkedin') {
@@ -111,10 +111,10 @@ const PostCard: React.FC<{
         const { error } = await supabase.from('posts').delete().eq('id', post.id);
         if (error) throw error;
       }
-      addToast(isAdmin ? "Action de modération effectuée." : "Onde retirée du fil.", "success");
+      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération effectuée." : "Onde retirée du fil.", "success");
       onUpdate();
     } catch (e) {
-      addToast("Échec du retrait.", "error");
+      addToast("Échec de la suppression.", "error");
     } finally {
       setShowDeleteConfirm(false);
     }
@@ -456,7 +456,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
           console.error("Erreur insertion:", error);
           throw error;
         }
-        addToast(user.role === Role.SUPER_ADMIN ? "Parole majestueuse diffusée." : "Votre onde se propage !", "success");
+        addToast(user.role === Role.SUPER_ADMIN ? "Édit Suprême diffusé avec succès." : "Votre onde se propage !", "success");
       } else {
         const localPost = { ...postData, id: 'local-' + Date.now() };
         setPosts(prev => [localPost as Post, ...prev]);
@@ -467,7 +467,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       fetchPosts();
     } catch (e: any) { 
       console.error(e);
-      addToast(`Échec de l'enregistrement. Vérifiez votre connexion.`, "error");
+      addToast(`Erreur réseau. Votre compte possède-t-il les droits suffisants ?`, "error");
     } finally { 
       setSending(false); 
     }
@@ -485,7 +485,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       </div>
 
       {user ? (
-        <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50' : 'border-gray-100'}`}>
+        <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50/50' : 'border-gray-100'}`}>
           <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-4">
             <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Gras"><Bold size={16} /></button>
             <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Italique"><Italic size={16} /></button>
@@ -507,7 +507,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
             ref={textareaRef}
             value={newPostText} 
             onChange={e => setNewPostText(e.target.value)} 
-            placeholder={user.role === Role.SUPER_ADMIN ? "Posez une pierre angulaire..." : "Déposez une pierre à l'édifice..."} 
+            placeholder={user.role === Role.SUPER_ADMIN ? "Gardien, déposez votre édit souverain..." : "Déposez une pierre à l'édifice..."} 
             className="w-full h-56 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
           />
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
@@ -524,7 +524,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
               className={`w-full sm:w-auto px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl transition-all disabled:opacity-30 ${user.role === Role.SUPER_ADMIN ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-950 hover:bg-black text-white'}`}
             >
               {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
-              {user.role === Role.SUPER_ADMIN ? "Diffuser l'Édit Suprême" : "Diffuser l'Onde"}
+              {user.role === Role.SUPER_ADMIN ? "Publier l'Édit Suprême" : "Diffuser l'Onde"}
             </button>
           </div>
         </div>
