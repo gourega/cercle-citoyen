@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -50,53 +51,45 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     setError(null);
 
     try {
-      // Fix: Cast crypto.randomUUID() result to any to avoid strict UUID template literal type errors
-      let userId: any = crypto.randomUUID();
-      const avatarUrl = `https://picsum.photos/seed/${formData.pseudonym || userId}/300/300`;
-
-      if (isRealSupabase && supabase) {
-        // 1. Création du compte dans Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.name,
-              pseudonym: formData.pseudonym
-            }
-          }
-        });
-
-        if (authError) throw authError;
-        if (authData.user) userId = authData.user.id;
-
-        // 2. Création du profil public
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: userId,
-            name: formData.name,
-            pseudonym: formData.pseudonym,
-            email: formData.email,
-            bio: "Nouveau citoyen du Cercle.",
-            role: Role.MEMBER,
-            avatar_url: avatarUrl,
-            impact_score: 0
-          }]);
-
-        if (profileError) {
-          if (profileError.message.includes("row-level security policy")) {
-             throw new Error("Erreur de sécurité : Allez dans le menu 'Conseil' (Dashboard Admin) et exécutez le script SQL (V2.7) pour autoriser l'inscription.");
-          }
-          throw profileError;
-        }
-        
-        addToast("Citoyen enregistré avec succès !", "success");
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        addToast("Enregistrement local (Mode Démo)", "info");
+      if (!isRealSupabase || !supabase) {
+        throw new Error("L'infrastructure de souveraineté n'est pas configurée.");
       }
 
+      // 1. Création du compte dans Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            pseudonym: formData.pseudonym
+          }
+        }
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Échec de création du compte.");
+
+      const userId = authData.user.id;
+      const avatarUrl = `https://picsum.photos/seed/${formData.pseudonym || userId}/300/300`;
+
+      // 2. Création du profil public
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: userId,
+          name: formData.name,
+          pseudonym: formData.pseudonym,
+          email: formData.email,
+          bio: "Nouveau citoyen du Cercle.",
+          role: Role.MEMBER,
+          category: formData.category,
+          avatar_url: avatarUrl,
+          impact_score: 0
+        }]);
+
+      if (profileError) throw profileError;
+      
       const newUser: User = {
         id: userId,
         name: formData.name,
@@ -110,6 +103,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
         impactScore: 0
       };
       
+      addToast("Citoyen enregistré avec succès !", "success");
       onLogin(newUser);
       navigate('/welcome');
     } catch (err: any) {

@@ -37,11 +37,11 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
   useEffect(() => {
     const fetchAuthor = async () => {
       if (!isRealSupabase || !supabase) {
-        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: 'Membre' });
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
       const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-      setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: 'Membre' });
+      setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
     };
     fetchAuthor();
     return () => { if (sourceRef.current) sourceRef.current.stop(); };
@@ -77,14 +77,13 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
       }
     } catch (e) { 
       console.error(e); 
-      addToast("La parole du Griot ne peut être portée actuellement.", "info");
+      addToast("La parole du Griot est momentanément indisponible.", "info");
     } finally { 
       setIsLoadingAudio(false); 
     }
   };
 
   const handleShare = () => {
-    // Construction de l'URL respectant le HashRouter de React (/#/feed?post=...)
     const baseUrl = window.location.origin + window.location.pathname;
     const shareUrl = `${baseUrl}#/feed?post=${post.id}`;
     
@@ -116,7 +115,6 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
         ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : ''}`}
     >
       
-      {/* HEADER */}
       <div className="p-8 pb-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-200' : ''}`} alt="" />
@@ -140,10 +138,8 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
         </div>
       </div>
 
-      {/* CONTENT */}
       <div className={`px-8 md:px-12 py-6 text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`} dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
 
-      {/* TOOLBAR */}
       <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100">
         <div className="flex items-center gap-2 md:gap-4">
           <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm group">
@@ -176,7 +172,7 @@ const PostCard: React.FC<{ post: any, currentUser: User | null, isHighlighted?: 
                    <p className="text-sm text-gray-700 font-medium">{c.content}</p>
                 </div>
               </div>
-            )) : <p className="text-center py-8 text-gray-400 italic text-sm">Silence dans cette palabre.</p>}
+            )) : <p className="text-center py-8 text-gray-400 italic text-sm">Le silence règne sur cette palabre.</p>}
           </div>
         </div>
       )}
@@ -197,20 +193,24 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchPosts = async () => {
     setLoading(true);
-    let allPosts: any[] = [...MOCK_POSTS];
+    let allPosts: any[] = [];
     
     if (isRealSupabase && supabase) { 
       try {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (data) {
-          allPosts = [...data, ...MOCK_POSTS];
+          allPosts = data;
         }
       } catch (e) {
         console.error("Fetch error:", e);
       }
     }
     
-    // Tri chronologique strict (plus récent en haut)
+    // Si la DB est vide, on affiche les messages de genèse (Mocks)
+    if (allPosts.length === 0) {
+      allPosts = [...MOCK_POSTS];
+    }
+    
     allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setPosts(allPosts);
     setLoading(false); 
@@ -218,7 +218,6 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   useEffect(() => { fetchPosts(); }, []);
 
-  // Gestion robuste du défilement automatique vers un post partagé
   useEffect(() => {
     if (!loading && highlightPostId && posts.length > 0) {
       const scrollTimer = setTimeout(() => {
@@ -226,7 +225,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 800); // Délai accru pour s'assurer que le rendu est terminé
+      }, 800);
       return () => clearTimeout(scrollTimer);
     }
   }, [loading, highlightPostId, posts]);
@@ -254,9 +253,6 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         addToast("Votre onde se propage !", "success");
         setNewPostText('');
         fetchPosts();
-      } else {
-        addToast("Mode démo : Onde simulée.", "info");
-        setNewPostText('');
       }
     } catch (e: any) { 
       addToast(`Échec de la diffusion : ${e.message}`, "error"); 

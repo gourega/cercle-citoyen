@@ -6,7 +6,6 @@ import {
   MessageSquare, 
   Map as MapIcon, 
   Sparkles, 
-  User as UserIcon, 
   Menu,
   X,
   Gavel,
@@ -14,9 +13,7 @@ import {
   CheckCircle,
   Zap,
   ShoppingBag,
-  Info,
   Crown,
-  ShieldAlert,
   Mic,
   Bell
 } from 'lucide-react';
@@ -46,7 +43,6 @@ import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import NotificationDrawer from './components/NotificationDrawer.tsx';
 import { User, Role, CitizenNotification } from './types.ts';
-import { isRealSupabase } from './lib/supabase.ts';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -98,12 +94,6 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
           <Link to="/feed" className="flex items-center group">
             <Logo size={32} showText={true} />
           </Link>
-          {isRealSupabase && (
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
-               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-               <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Cloud Connecté</span>
-            </div>
-          )}
         </div>
 
         <div className="hidden lg:flex items-center gap-1">
@@ -271,10 +261,7 @@ const App = () => {
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
-              
-              {/* ACCÈS PUBLIC AU FEED POUR LE DEEP LINKING */}
               <Route path="/feed" element={<FeedPage user={user} />} />
-              
               <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
               <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
               <Route path="/live" element={user ? <LiveAssembly /> : <Navigate to="/" />} />
@@ -286,7 +273,6 @@ const App = () => {
               <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
               <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
               <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
-              
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

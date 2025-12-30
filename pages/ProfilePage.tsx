@@ -3,13 +3,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
-  LogOut, Loader2, Save, PenLine, Crown, AtSign, RefreshCw, CheckCircle,
-  Award, Medal, Star, ShieldCheck, Zap, X, Camera, Upload, 
-  Flame, Handshake, Heart, ShieldAlert, Sparkles
+  LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
+  Flame, Heart, Sparkles, Medal
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
-import { MOCK_USERS, ADMIN_ID } from '../lib/mocks';
 
 const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick }) => {
   const [error, setError] = useState(false);
@@ -50,7 +48,6 @@ const Badge: React.FC<{ icon: React.ReactNode, label: string, color: string, des
     </div>
     <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 transition-colors text-center">{label}</span>
     
-    {/* Tooltip */}
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-40 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50">
       <div className="bg-gray-900 text-white p-3 rounded-xl text-[9px] font-bold text-center leading-relaxed shadow-2xl">
         {description}
@@ -79,32 +76,15 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const fetchProfile = async () => {
     setLoading(true);
     const targetId = id || currentUser.id;
-    let currentProfileState = { ...currentUser, avatar_url: currentUser.avatar, impact_score: currentUser.impact_score || currentUser.impactScore || 0 };
-
-    if (targetId === ADMIN_ID && currentProfileState.impact_score === 0) {
-      currentProfileState.impact_score = MOCK_USERS[ADMIN_ID].impact_score;
-    }
-
-    setProfile(currentProfileState);
-    setEditData({
-      name: currentProfileState.name,
-      pseudonym: currentProfileState.pseudonym,
-      bio: currentProfileState.bio,
-      avatar: currentProfileState.avatar
-    });
-
+    
     try {
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         if (data) {
-          const finalScore = (targetId === currentUser.id) 
-            ? Math.max(data.impact_score || 0, currentProfileState.impact_score)
-            : (data.impact_score || 0);
-
           const fetchedProfile = { 
             ...data, 
             avatar: data.avatar_url || data.avatar, 
-            impact_score: finalScore 
+            impact_score: data.impact_score || 0 
           };
           setProfile(fetchedProfile);
           if (targetId === currentUser.id) {
@@ -116,6 +96,8 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             });
           }
         }
+      } else {
+        setProfile({ ...currentUser, impact_score: currentUser.impact_score || 0 });
       }
     } catch (e) {
       console.error(e);
@@ -130,7 +112,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       const reader = new FileReader();
       reader.onloadend = () => {
         setEditData({ ...editData, avatar: reader.result as string });
-        addToast("Nouvelle photo chargée !", "info");
+        addToast("Photo de profil chargée.", "info");
       };
       reader.readAsDataURL(file);
     }
@@ -163,10 +145,10 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         if (onProfileUpdate) onProfileUpdate(updatedProfile);
       }
 
-      addToast("Profil mis à jour avec succès !", "success");
+      addToast("Profil mis à jour !", "success");
       setIsEditing(false);
     } catch (e: any) {
-      addToast(`Erreur : ${e.message}`, "error");
+      addToast(`Erreur de synchronisation : ${e.message}`, "error");
     } finally {
       setSyncing(false);
     }
@@ -177,16 +159,15 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   if (loading && !profile) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>;
 
   const isOwnProfile = profile?.id === currentUser.id;
-  const isGuardian = profile?.role === Role.SUPER_ADMIN || profile?.role === 'Gardien';
+  const isGuardian = profile?.role === Role.SUPER_ADMIN;
   const impactScore = profile?.impact_score || 0;
 
-  // Calcul des badges basés sur le score ou le rôle
   const badges = [
-    { icon: <ShieldCheck size={24} />, label: "Pionnier", color: "bg-emerald-500 text-white", description: "Fait partie des 100 premiers membres fondateurs du Cercle." },
-    { icon: <Medal size={24} />, label: "Acteur", color: "bg-blue-500 text-white", description: "A complété plus de 5 quêtes sur le terrain." },
-    ...(impactScore >= 5000 ? [{ icon: <Flame size={24} />, label: "Impactant", color: "bg-orange-500 text-white", description: "A généré un impact social certifié majeur." }] : []),
-    ...(isGuardian ? [{ icon: <Crown size={24} />, label: "Gardien", color: "bg-amber-500 text-white", description: "Détenteur de la Sagesse et garant de la cohésion." }] : []),
-    { icon: <Heart size={24} />, label: "Solidaire", color: "bg-rose-500 text-white", description: "A effectué au moins un don via le Marché de Solidarité." }
+    { icon: <ShieldCheck size={24} />, label: "Pionnier", color: "bg-emerald-500 text-white", description: "Fait partie des fondateurs du Cercle." },
+    { icon: <Medal size={24} />, label: "Acteur", color: "bg-blue-500 text-white", description: "Engagé sur le terrain pour la cité." },
+    ...(impactScore >= 5000 ? [{ icon: <Flame size={24} />, label: "Impactant", color: "bg-orange-500 text-white", description: "Impact social certifié majeur." }] : []),
+    ...(isGuardian ? [{ icon: <Crown size={24} />, label: "Gardien", color: "bg-amber-500 text-white", description: "Garant de la cohésion citoyenne." }] : []),
+    { icon: <Heart size={24} />, label: "Solidaire", color: "bg-rose-500 text-white", description: "Acteur du Marché de Solidarité." }
   ];
 
   return (
@@ -196,12 +177,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         
         <div className={`h-64 relative overflow-hidden ${isGuardian ? 'bg-gradient-to-r from-amber-600 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>
-           <div className="absolute top-8 left-8 flex items-center gap-3 px-4 py-2 bg-black/20 backdrop-blur-xl rounded-full border border-white/20">
-              <div className={`w-2 h-2 rounded-full ${isRealSupabase ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`}></div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-white">
-                {isRealSupabase ? 'Liaison Cloud Active' : 'Mode Hors-Ligne'}
-              </span>
-           </div>
         </div>
 
         <div className="px-10 pb-12 -mt-24 relative z-10">
@@ -270,7 +245,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           </div>
 
           <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-3 gap-16">
-            {/* Colonne Gauche : Bio */}
             <div className="lg:col-span-2 space-y-12">
                 <section>
                   <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6 px-1">Présentation</h3>
@@ -289,9 +263,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 </section>
             </div>
 
-            {/* Colonne Droite : Impact & Badges (Toujours visible grâce au sticky) */}
             <aside className="lg:sticky lg:top-24 space-y-10 self-start">
-              {/* Carte Impact Score */}
               <div className="p-10 bg-gray-950 text-white rounded-[3rem] text-center shadow-2xl relative overflow-hidden group border border-white/5">
                 <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:scale-125 transition-transform duration-700">
                   <Zap size={80} />
@@ -303,7 +275,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 <p className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] relative z-10">POINTS CITOYENS</p>
               </div>
 
-              {/* Section Badges */}
               <div className="bg-white border border-gray-100 p-10 rounded-[3rem] shadow-sm">
                 <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-gray-400 mb-10 text-center px-1">DÉCORATIONS CITOYENNES</h3>
                 <div className="grid grid-cols-3 gap-y-10 gap-x-2">
@@ -311,11 +282,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                     <Badge key={i} {...b} />
                   ))}
                 </div>
-                
-                {badges.length === 0 && (
-                  <p className="text-[10px] text-gray-400 italic text-center py-6">Aucune décoration pour le moment.</p>
-                )}
-
                 <div className="mt-12 pt-8 border-t border-gray-50 flex flex-col items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Sparkles size={14} className="text-amber-500" />

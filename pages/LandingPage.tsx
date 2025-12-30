@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Mail, 
@@ -8,22 +8,15 @@ import {
   EyeOff, 
   AlertCircle, 
   ShieldCheck, 
-  BookOpen, 
-  Target, 
-  Zap, 
   Globe, 
   ArrowRight, 
   Loader2, 
-  ChevronRight,
   CheckCircle2,
-  Sparkles,
-  LayoutGrid,
-  ShieldAlert
+  LayoutGrid
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
 import { User, Role, UserCategory } from '../types.ts';
-import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 
 const PulsePoint = ({ x, y, city, action, color = "bg-blue-400" }: { x: string, y: string, city: string, action: string, color?: string }) => (
@@ -60,7 +53,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
     try {
       if (isRealSupabase && supabase) {
-        // Authentification réelle via Supabase
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -69,7 +61,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         if (authError) throw authError;
 
         if (authData.user) {
-          // Récupération du profil public associé
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
@@ -85,7 +76,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             email: profile.email,
             bio: profile.bio,
             role: profile.role as Role,
-            category: UserCategory.CITIZEN,
+            category: (profile.category as UserCategory) || UserCategory.CITIZEN,
             interests: [],
             avatar: profile.avatar_url,
             impactScore: profile.impact_score || 0
@@ -98,24 +89,12 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           }, 800);
         }
       } else {
-        // Mode démo (Fallback)
-        setTimeout(() => {
-          if (email === 'cerclecitoyenci@gmail.com') {
-            setSuccess(true);
-            setTimeout(() => {
-              const adminUser = MOCK_USERS[ADMIN_ID];
-              onLogin(adminUser);
-              navigate('/feed');
-            }, 800);
-          } else {
-            setError('Identifiants incorrects ou mode hors-ligne. Utilisez cerclecitoyenci@gmail.com en démo.');
-            setLoading(false);
-          }
-        }, 1200);
+        setError('Le service souverain est momentanément indisponible.');
+        setLoading(false);
       }
     } catch (err: any) {
       console.error("Erreur de connexion:", err);
-      setError(err.message || "Impossible de se connecter. Vérifiez vos identifiants.");
+      setError("Identifiants incorrects. Veuillez vérifier vos accès.");
       setLoading(false);
     }
   };
@@ -280,47 +259,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 </div>
               ))}
            </div>
-        </section>
-
-        <section className="w-full bg-gray-950 rounded-[5rem] p-12 md:p-32 mb-32 text-left relative overflow-hidden shadow-2xl border border-white/5">
-          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px'}}></div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center relative z-10">
-            <div>
-              <div className="inline-flex items-center gap-3 bg-blue-900/30 border border-blue-800/50 px-6 py-2.5 rounded-full mb-10">
-                <Globe size={14} className="text-blue-400" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">Impact Territorial</span>
-              </div>
-              
-              <h2 className="text-5xl md:text-7xl font-serif font-bold text-white mb-10 leading-[1.1]">
-                Votre Éveil <br />
-                <span className="text-blue-400 italic">change</span> la Carte.
-              </h2>
-              
-              <p className="text-gray-400 text-xl mb-14 max-w-md leading-relaxed font-medium">
-                Chaque réflexion partagée allume une lumière. Chaque action certifiée éveille un territoire ivoirien.
-              </p>
-              
-              <Link 
-                to="/manifesto" 
-                className="inline-flex items-center gap-4 bg-white text-gray-900 px-12 py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl group active:scale-95"
-              >
-                Découvrir le Manifeste <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-            
-            <div className="relative aspect-square">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent rounded-full blur-3xl opacity-50 animate-pulse"></div>
-              <div className="w-full h-full bg-gray-900/50 rounded-[4rem] border border-white/10 flex items-center justify-center relative overflow-hidden group shadow-inner">
-                <svg viewBox="0 0 100 100" className="w-4/5 h-4/5 text-gray-800 opacity-40 transition-opacity group-hover:opacity-60 duration-500">
-                  <path d="M25 15 L35 12 L45 10 L60 12 L75 10 L85 15 L88 30 L85 45 L80 60 L85 75 L82 85 L75 90 L60 92 L45 95 L30 92 L20 88 L15 75 L12 60 L15 45 L18 30 L20 20 Z" fill="currentColor" />
-                </svg>
-                <PulsePoint x="72%" y="82%" city="Abidjan" action="Nettoyage collectif de la plage d'Anoumabo" />
-                <PulsePoint x="52%" y="62%" city="Yamoussoukro" action="Installation de lampadaires solaires" color="bg-amber-400" />
-                <PulsePoint x="55%" y="45%" city="Bouaké" action="Inauguration de la bibliothèque citoyenne" color="bg-emerald-400" />
-              </div>
-            </div>
-          </div>
         </section>
       </main>
     </div>
