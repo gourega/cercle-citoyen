@@ -46,10 +46,11 @@ const PostCard: React.FC<{
   useEffect(() => {
     const fetchAuthor = async () => {
       if (!isRealSupabase || !supabase) {
-        setAuthor({ name: author?.name || "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
-      const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+      if (error) console.error("Erreur profil:", error);
       setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
     };
     fetchAuthor();
@@ -74,15 +75,13 @@ const PostCard: React.FC<{
         await navigator.share({ title: 'Cercle Citoyen', text: shareText, url: shareUrl });
         addToast("Partage réussi.", "success");
         return;
-      } catch (e) { /* ignore cancel */ }
+      } catch (e) { /* cancel */ }
     }
 
     if (platform === 'linkedin') {
       window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
-      addToast("Résonance LinkedIn lancée.", "success");
     } else if (platform === 'whatsapp') {
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
-      addToast("Transmission WhatsApp lancée.", "success");
     } else {
       navigator.clipboard.writeText(shareUrl);
       addToast("Lien de l'onde copié.", "success");
@@ -149,12 +148,17 @@ const PostCard: React.FC<{
     }
   };
 
-  const handleReaction = (type: string) => {
+  const handleReaction = async (type: string) => {
     if (!currentUser) {
       addToast("Rejoignez le Cercle pour réagir.", "info");
       return;
     }
-    setReactions((prev: any) => ({ ...prev, [type]: prev[type] + 1 }));
+    const newReactions = { ...reactions, [type]: (reactions as any)[type] + 1 };
+    setReactions(newReactions);
+    
+    if (isRealSupabase && supabase) {
+      await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
+    }
   };
 
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
@@ -192,7 +196,7 @@ const PostCard: React.FC<{
             </button>
           )}
           {canDelete && (
-            <button onClick={() => setShowDeleteConfirm(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all" title="Supprimer (Modération)">
+            <button onClick={() => setShowDeleteConfirm(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all" title="Supprimer">
               <Trash2 size={18} />
             </button>
           )}
@@ -376,10 +380,15 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     if (isRealSupabase && supabase) { 
       try {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
         if (data) allPosts = data;
-      } catch (e) { console.error("Fetch error:", e); }
+      } catch (e) { 
+        console.error("Fetch error:", e);
+        allPosts = [...MOCK_POSTS]; 
+      }
+    } else {
+      allPosts = [...MOCK_POSTS];
     }
-    if (allPosts.length === 0) allPosts = [...MOCK_POSTS];
     setPosts(allPosts);
     setLoading(false); 
   };
@@ -419,7 +428,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     }
     setSending(true);
 
-    const postData: any = { 
+    const postData = { 
       author_id: user.id, 
       content: newPostText, 
       circle_type: selectedCircle, 
@@ -432,21 +441,22 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     try {
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('posts').insert([postData]);
-        if (error) throw error;
+        if (error) {
+          console.error("Erreur insertion:", error);
+          throw error;
+        }
         addToast("Votre onde se propage !", "success");
       } else {
         const localPost = { ...postData, id: 'local-' + Date.now() };
         setPosts(prev => [localPost as Post, ...prev]);
-        addToast("Sauvegarde locale effectuée.", "success");
+        addToast("Sauvegarde locale (Mode démo).", "success");
       }
       
       setNewPostText('');
       fetchPosts();
     } catch (e: any) { 
       console.error(e);
-      addToast(`Échec réseau. Tentative de sauvegarde locale...`, "error");
-      const localPost = { ...postData, id: 'local-' + Date.now() };
-      setPosts(prev => [localPost as Post, ...prev]);
+      addToast(`Échec de l'enregistrement. Vérifiez votre connexion.`, "error");
     } finally { 
       setSending(false); 
     }
