@@ -97,6 +97,15 @@ export interface User {
   civicStats?: { thought: number; link: number; action: number };
 }
 
+export interface Comment {
+  id: string;
+  author: string;
+  avatar: string;
+  content: string;
+  created_at: string;
+  parent_id?: string; // Pour les réponses aux commentaires
+}
+
 export interface Post {
   id: string;
   author_id: string;
@@ -105,10 +114,10 @@ export interface Post {
   created_at: string;
   image_url?: string;
   reactions: { useful: number; relevant: number; inspiring: number };
-  isMajestic?: boolean;
+  is_majestic?: boolean;
   isInstitutional?: boolean;
   isSuccessStory?: boolean;
-  comments?: any[];
+  comments?: Comment[];
 }
 
 export interface Edict {
