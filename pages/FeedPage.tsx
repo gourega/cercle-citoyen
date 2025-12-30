@@ -5,7 +5,8 @@ import {
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
   ShieldCheck, Share2, MessageCircle, RefreshCw, 
   Info, LogIn, Bold, Italic, Underline, Smile, 
-  Pencil, Save, X, ChevronDown, ChevronUp, Trash2, AlertTriangle
+  Pencil, Save, X, ChevronDown, ChevronUp, Trash2, AlertTriangle,
+  Linkedin, MessageSquare as WhatsAppIcon, Link as LinkIcon
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
@@ -33,12 +34,14 @@ const PostCard: React.FC<{
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [commentInput, setCommentInput] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -51,6 +54,41 @@ const PostCard: React.FC<{
     };
     fetchAuthor();
   }, [post.author_id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
+        setShowShareMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
+    const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
+    const shareText = `Découvrez cette onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
+
+    if (!platform && navigator.share) {
+      try {
+        await navigator.share({ title: 'Cercle Citoyen', text: shareText, url: shareUrl });
+        addToast("Partage réussi.", "success");
+        return;
+      } catch (e) { /* ignore cancel */ }
+    }
+
+    if (platform === 'linkedin') {
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
+      addToast("Résonance LinkedIn lancée.", "success");
+    } else if (platform === 'whatsapp') {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
+      addToast("Transmission WhatsApp lancée.", "success");
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      addToast("Lien de l'onde copié.", "success");
+    }
+    setShowShareMenu(false);
+  };
 
   const handleUpdatePost = async () => {
     if (!editContent.trim()) return;
@@ -147,7 +185,7 @@ const PostCard: React.FC<{
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 relative" ref={shareMenuRef}>
           {isOwner && !isEditing && (
             <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all" title="Modifier">
               <Pencil size={18} />
@@ -158,12 +196,30 @@ const PostCard: React.FC<{
               <Trash2 size={18} />
             </button>
           )}
-          <button onClick={() => {
-            navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
-            addToast("Lien de l'onde copié.", "success");
-          }} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all">
+          <button 
+            onClick={() => setShowShareMenu(!showShareMenu)} 
+            className={`p-4 rounded-2xl transition-all shadow-sm ${showShareMenu ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400 hover:bg-blue-50 hover:text-blue-600'}`}
+          >
             <Share2 size={20} />
           </button>
+          
+          {showShareMenu && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-[100] animate-in zoom-in duration-200">
+               <button onClick={() => handleShare('linkedin')} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-colors">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center"><Linkedin size={14} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">LinkedIn</span>
+               </button>
+               <button onClick={() => handleShare('whatsapp')} className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 rounded-xl transition-colors">
+                  <div className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center"><WhatsAppIcon size={14} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">WhatsApp</span>
+               </button>
+               <div className="h-px bg-gray-100 my-1"></div>
+               <button onClick={() => handleShare('copy')} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center"><LinkIcon size={14} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">Copier le lien</span>
+               </button>
+            </div>
+          )}
         </div>
       </div>
 
