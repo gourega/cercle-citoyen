@@ -67,7 +67,7 @@ const PostCard: React.FC<{
 
   const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
     const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
-    const shareText = `Découvrez cette onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
+    const shareText = `Onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
 
     if (platform === 'linkedin') {
       window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
@@ -75,7 +75,7 @@ const PostCard: React.FC<{
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
     } else {
       navigator.clipboard.writeText(shareUrl);
-      addToast("Lien de l'onde copié.", "success");
+      addToast("Lien copié.", "success");
     }
     setShowShareMenu(false);
   };
@@ -94,7 +94,7 @@ const PostCard: React.FC<{
   const handleDeletePost = async () => {
     try {
       if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
-      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération effectuée." : "Onde retirée.", "success");
+      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération souveraine effectuée." : "Onde retirée.", "success");
       onUpdate();
     } catch (e) { addToast("Échec suppression.", "error"); }
     finally { setShowDeleteConfirm(false); }
