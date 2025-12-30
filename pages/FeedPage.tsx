@@ -1,72 +1,428 @@
 
-import { User, Role, UserCategory, Post, CircleType, Contribution, EntityApplication, Edict } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { 
+  ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
+  ShieldCheck, Share2, MessageCircle, RefreshCw, 
+  Info, LogIn, Bold, Italic, Underline, Smile, 
+  Pencil, Save, X
+} from 'lucide-react';
+import { User, CircleType, Role, Post, Comment } from '../types';
+import { supabase, isRealSupabase } from '../lib/supabase';
+import { CIRCLES_CONFIG } from '../constants';
+import { MOCK_POSTS } from '../lib/mocks';
+import { useToast } from '../App';
 
-export { Role, UserCategory, CircleType };
-export type { User, Post, Contribution, EntityApplication, Edict };
-
-// Identifiant réel de Kouassi GOBLE Ouréga
-export const ADMIN_ID = 'cdde4873-dd75-4c09-bcb2-6eb1aa960c12';
-
-export const MOCK_USERS: Record<string, User> = {
-  u1: {
-    id: 'u1',
-    name: 'Amadou Koné',
-    email: 'amadou.kone@citoyen.ci',
-    pseudonym: 'AmadouK',
-    bio: 'Passionné par le développement local et l\'éducation citoyenne en Côte d\'Ivoire.',
-    role: Role.MEMBER,
-    category: UserCategory.CITIZEN,
-    interests: ['Éducation', 'Environnement'],
-    avatar: 'https://picsum.photos/seed/amadou/150/150',
-    impactScore: 120,
-    impact_score: 120,
-    civicStats: { thought: 65, link: 20, action: 15 }
-  },
-  [ADMIN_ID]: {
-    id: ADMIN_ID,
-    name: 'Kouassi GOBLE Ouréga',
-    email: 'cerclecitoyenci@gmail.com',
-    pseudonym: 'GardienSuprême',
-    bio: 'Fondateur et Gardien du Cercle. Citoyen engagé pour la souveraineté numérique et sociale.',
-    role: Role.SUPER_ADMIN,
-    category: UserCategory.CITIZEN,
-    interests: ['Gouvernance', 'Éthique', 'Éducation'],
-    avatar: 'https://picsum.photos/seed/goble/300/300',
-    impactScore: 19740,
-    impact_score: 19740,
-    civicStats: { thought: 40, link: 30, action: 30 }
-  }
+const formatContent = (content: string) => {
+  if (!content) return '';
+  let html = content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+  html = html.replace(/__(.*?)__/g, '<u style="text-decoration: underline;">$1</u>');
+  html = html.replace(/\n/g, '<br/>');
+  return html;
 };
 
-export const MOCK_POSTS: Post[] = [
-  {
-    id: 'announcement-online-tests',
-    author_id: ADMIN_ID,
-    circle_type: CircleType.PEACE,
-    // Fix: isMajestic was replaced by is_majestic to match the Post interface
-    is_majestic: true,
-    image_url: 'https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-512.png',
-    content: "📢 APPEL AU GRAND PALABRE NUMÉRIQUE : LE CERCLE EST PRÊT.\n\nCitoyennes, Citoyens, Frères et Sœurs de vision,\n\nL’heure n’est plus à l’attente, mais à l’expérience. Après des nuits de tissage technologique et de réflexion profonde, l'infrastructure de notre souveraineté numérique est debout. \n\nLe Cercle Citoyen ouvre ses portes pour sa phase de tests massifs en ligne.\n\nCe que nous attendons de vous :\n1. Éveillez votre profil citoyen.\n2. Lancez des étincelles sur le Fil d'Éveil.\n3. Invoquez l'Esprit dans l'Assemblée Directe.\n4. Tracez les sentiers d'impact sur le terrain.\n\nRejoignez-nous. Soyez les pionniers de la souveraineté.\n\nKouassi GOBLE Ouréga\nGardien du Cercle",
-    created_at: new Date().toISOString(),
-    reactions: { useful: 520, relevant: 230, inspiring: 890 },
-    comments: [
-      // Fix: Added required id and created_at to the mock comment
-      { id: 'c1', author: "Amadou Koné", avatar: "https://picsum.photos/seed/amadou/50/50", content: "Enfin ! Une fierté pour notre nation.", created_at: new Date().toISOString() }
-    ]
-  },
-  {
-    id: 'majestic-1',
-    author_id: ADMIN_ID,
-    circle_type: CircleType.GARDEN,
-    // Fix: isMajestic was replaced by is_majestic to match the Post interface
-    is_majestic: true,
-    content: "L'éveil citoyen n'est pas une destination, c'est une pratique quotidienne. Chaque dialogue responsable est une pierre à l'édifice de notre souveraineté.",
-    created_at: new Date(Date.now() - 86400000).toISOString(), 
-    reactions: { useful: 245, relevant: 110, inspiring: 420 },
-    comments: []
-  }
-];
+const PostCard: React.FC<{ 
+  post: Post, 
+  currentUser: User | null, 
+  isHighlighted?: boolean,
+  onUpdate: () => void 
+}> = ({ post, currentUser, isHighlighted, onUpdate }) => {
+  const { addToast } = useToast();
+  const [author, setAuthor] = useState<any>(null);
+  const [showComments, setShowComments] = useState(false);
+  const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [commentInput, setCommentInput] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
 
-export const MOCK_CONTRIBUTIONS: Contribution[] = [];
-export const MOCK_EDICTS: Edict[] = [];
-export const MOCK_APPLICATIONS: EntityApplication[] = [];
+  useEffect(() => {
+    const fetchAuthor = async () => {
+      if (!isRealSupabase || !supabase) {
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        return;
+      }
+      const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+      setAuthor(data || { name: "Citoyen Anonyme", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+    };
+    fetchAuthor();
+  }, [post.author_id]);
+
+  const handleUpdatePost = async () => {
+    if (!editContent.trim()) return;
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
+        if (error) throw error;
+      }
+      post.content = editContent;
+      setIsEditing(false);
+      addToast("Onde mise à jour avec succès.", "success");
+      onUpdate();
+    } catch (e) {
+      addToast("Erreur lors de la mise à jour.", "error");
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentInput.trim() || !currentUser) return;
+
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      author: currentUser.name,
+      avatar: currentUser.avatar,
+      content: replyTo ? `@${replyTo} ${commentInput}` : commentInput,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const updatedComments = [...(post.comments || []), newComment];
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
+        if (error) throw error;
+      }
+      post.comments = updatedComments;
+      setCommentInput('');
+      setReplyTo(null);
+      addToast("Palabre ajoutée.", "success");
+      onUpdate();
+    } catch (e) {
+      addToast("Impossible d'ajouter le commentaire.", "error");
+    }
+  };
+
+  const handleReaction = (type: string) => {
+    if (!currentUser) {
+      addToast("Rejoignez le Cercle pour réagir.", "info");
+      return;
+    }
+    setReactions((prev: any) => ({ ...prev, [type]: prev[type] + 1 }));
+    addToast("Impact enregistré.", "success");
+  };
+
+  if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
+  const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
+  const isOwner = currentUser?.id === post.author_id;
+
+  return (
+    <article 
+      id={`post-${post.id}`} 
+      className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col 
+        ${isHighlighted ? 'ring-8 ring-amber-500/10 border-amber-200 animate-pulse' : 'border-gray-100'} 
+        ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 shadow-amber-50' : ''}`}
+    >
+      <div className="p-8 pb-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-200' : ''}`} alt="" />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-gray-900 text-lg">{author.name}</span>
+              {(author.role === Role.SUPER_ADMIN || author.role === Role.ADMIN) && <ShieldCheck size={18} className="text-blue-600" />}
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+              {new Date(post.created_at).toLocaleDateString()} • <span className="text-blue-600">{post.circle_type}</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {isOwner && !isEditing && (
+            <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all">
+              <Pencil size={18} />
+            </button>
+          )}
+          <button onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
+            addToast("Lien copié.", "success");
+          }} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all">
+            <Share2 size={20} />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-8 md:px-12 py-6">
+        {isEditing ? (
+          <div className="space-y-4">
+            <textarea 
+              value={editContent} 
+              onChange={e => setEditContent(e.target.value)}
+              className="w-full h-40 bg-gray-50 p-6 rounded-2xl outline-none border-2 border-amber-100 font-medium text-lg focus:bg-white"
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setIsEditing(false)} className="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest">Annuler</button>
+              <button onClick={handleUpdatePost} className="px-6 py-3 bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2">
+                <Save size={14} /> Sauvegarder
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-4' : 'text-lg font-medium'}`} dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
+        )}
+      </div>
+
+      <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100">
+        <div className="flex items-center gap-2 md:gap-4">
+          <button onClick={() => handleReaction('useful')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm group">
+            <ThumbsUp size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.useful}</span>
+          </button>
+          <button onClick={() => handleReaction('relevant')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm group">
+            <Lightbulb size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.relevant}</span>
+          </button>
+          <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-amber-100 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm group">
+            <Sparkles size={18} className="group-hover:scale-110 transition-transform" /> <span className="text-[11px] font-black">{reactions.inspiring}</span>
+          </button>
+        </div>
+        
+        <button 
+          onClick={() => setShowComments(!showComments)} 
+          className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all font-black text-[11px] uppercase tracking-widest ${showComments ? 'bg-gray-900 text-white' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'}`}
+        >
+          <MessageCircle size={18} /> <span>Palabres ({post.comments?.length || 0})</span>
+        </button>
+      </div>
+
+      {showComments && (
+        <div className="p-8 bg-white border-t border-gray-100 animate-in slide-in-from-top-4 duration-300">
+          <div className="space-y-6 mb-8">
+            {post.comments?.length ? post.comments.map((c: Comment, i: number) => (
+              <div key={i} className="flex gap-4 group">
+                <img src={c.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
+                <div className="flex-1">
+                   <div className="bg-gray-50 p-5 rounded-2xl relative">
+                      <p className="text-[10px] font-black uppercase text-gray-400 mb-1">{c.author}</p>
+                      <p className="text-sm text-gray-700 font-medium">{c.content}</p>
+                      <button 
+                        onClick={() => {
+                          setReplyTo(c.author);
+                          document.getElementById(`comment-field-${post.id}`)?.focus();
+                        }} 
+                        className="absolute bottom-2 right-4 text-[9px] font-black uppercase text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Répondre
+                      </button>
+                   </div>
+                </div>
+              </div>
+            )) : <p className="text-center py-4 text-gray-400 italic text-sm">Le silence règne sur cette palabre.</p>}
+          </div>
+
+          {currentUser && (
+            <form onSubmit={handleAddComment} className="flex gap-3 items-end">
+              <div className="flex-1 relative">
+                {replyTo && (
+                  <div className="absolute -top-6 left-0 flex items-center gap-2 text-[9px] font-black uppercase text-blue-600">
+                    En réponse à @{replyTo} <X size={10} className="cursor-pointer" onClick={() => setReplyTo(null)} />
+                  </div>
+                )}
+                <input 
+                  id={`comment-field-${post.id}`}
+                  value={commentInput} 
+                  onChange={e => setCommentInput(e.target.value)}
+                  placeholder="Apporter votre pierre..."
+                  className="w-full bg-gray-50 px-6 py-4 rounded-2xl outline-none border border-gray-100 focus:bg-white focus:border-blue-100 font-medium text-sm"
+                />
+              </div>
+              <button disabled={!commentInput.trim()} className="bg-blue-600 text-white p-4 rounded-2xl shadow-lg disabled:opacity-20 active:scale-95 transition-all">
+                <Send size={18} />
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+    </article>
+  );
+};
+
+const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
+  const [searchParams] = useSearchParams();
+  const highlightPostId = searchParams.get('post');
+  const { addToast } = useToast();
+  
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newPostText, setNewPostText] = useState('');
+  const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
+  const [sending, setSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const fetchPosts = async () => {
+    setLoading(true);
+    let allPosts: Post[] = [];
+    if (isRealSupabase && supabase) { 
+      try {
+        const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (data) allPosts = data;
+      } catch (e) { console.error("Fetch error:", e); }
+    }
+    if (allPosts.length === 0) allPosts = [...MOCK_POSTS];
+    setPosts(allPosts);
+    setLoading(false); 
+  };
+
+  useEffect(() => { fetchPosts(); }, []);
+
+  const injectFormat = (tag: string) => {
+    if (!textareaRef.current) return;
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = newPostText;
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end);
+    
+    let newText = "";
+    if (tag === 'bold') newText = `${before}**${selection}**${after}`;
+    if (tag === 'italic') newText = `${before}_${selection}_${after}`;
+    if (tag === 'underline') newText = `${before}__${selection}__${after}`;
+    
+    setNewPostText(newText);
+    textareaRef.current.focus();
+  };
+
+  const emojis = ["🤝", "💡", "✊", "🇨🇮", "🐘", "🌟", "🌍", "🕊️", "🔥", "📣"];
+
+  const handleCreatePost = async () => {
+    if (!newPostText.trim()) return;
+    if (!user) {
+      addToast("Identifiez-vous pour diffuser une onde.", "error");
+      return;
+    }
+    setSending(true);
+
+    const postData: any = { 
+      author_id: user.id, 
+      content: newPostText, 
+      circle_type: selectedCircle, 
+      is_majestic: user.role === Role.SUPER_ADMIN,
+      reactions: { useful: 0, relevant: 0, inspiring: 0 },
+      comments: [],
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').insert([postData]);
+        if (error) throw error;
+        addToast("Votre onde se propage !", "success");
+      } else {
+        const localPost = { ...postData, id: 'local-' + Date.now() };
+        setPosts(prev => [localPost as Post, ...prev]);
+        addToast("Onde enregistrée localement.", "success");
+      }
+      
+      setNewPostText('');
+      fetchPosts();
+    } catch (e: any) { 
+      console.error(e);
+      addToast(`Échec de la diffusion cloud. Sauvegarde locale...`, "error");
+      const localPost = { ...postData, id: 'local-' + Date.now() };
+      setPosts(prev => [localPost as Post, ...prev]);
+    } finally { 
+      setSending(false); 
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
+      <div className="mb-12 text-center md:text-left">
+        <div className="inline-flex items-center gap-3 bg-blue-50 px-5 py-2 rounded-full mb-6 border border-blue-100 shadow-sm">
+          <Sparkles className="text-blue-600 w-4 h-4" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Flux de la Cité</span>
+        </div>
+        <h2 className="text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Le Fil d'Éveil</h2>
+        <p className="text-gray-500 font-medium italic text-lg">Pensez, Reliez, Agissez ensemble.</p>
+      </div>
+
+      {user ? (
+        <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group">
+          <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-4">
+            <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-50 rounded-xl transition-colors" title="Gras"><Bold size={16} /></button>
+            <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-50 rounded-xl transition-colors" title="Italique"><Italic size={16} /></button>
+            <button onClick={() => injectFormat('underline')} className="p-3 hover:bg-gray-50 rounded-xl transition-colors" title="Souligné"><Underline size={16} /></button>
+            <div className="w-px h-6 bg-gray-100 mx-2"></div>
+            <div className="relative">
+              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 hover:bg-gray-50 rounded-xl transition-colors text-amber-500" title="Émojis"><Smile size={16} /></button>
+              {showEmojiPicker && (
+                <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-100 rounded-2xl shadow-2xl flex gap-2 z-50 animate-in zoom-in duration-200">
+                  {emojis.map(e => (
+                    <button key={e} onClick={() => { setNewPostText(prev => prev + e); setShowEmojiPicker(false); }} className="text-xl hover:scale-125 transition-transform">{e}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <textarea 
+            ref={textareaRef}
+            value={newPostText} 
+            onChange={e => setNewPostText(e.target.value)} 
+            placeholder="Déposez une pierre à l'édifice..." 
+            className="w-full h-56 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
+          />
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+            <select 
+              value={selectedCircle} 
+              onChange={e => setSelectedCircle(e.target.value as any)} 
+              className="w-full sm:w-auto bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100"
+            >
+              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
+            </select>
+            <button 
+              onClick={handleCreatePost} 
+              disabled={sending || !newPostText.trim()} 
+              className="w-full sm:w-auto bg-gray-950 text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl hover:bg-black transition-all disabled:opacity-30"
+            >
+              {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
+              Diffuser l'Onde
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-900 rounded-[3rem] p-8 mb-16 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+          <div className="relative z-10">
+            <h3 className="text-xl font-serif font-bold mb-2">Rejoignez le dialogue citoyen</h3>
+            <p className="opacity-60 text-sm">Créez un compte pour agir et partager vos ondes.</p>
+          </div>
+          <Link to="/auth" className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-blue-50 transition-all relative z-10">
+            <LogIn size={16} /> Rejoindre le Cercle
+          </Link>
+          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><Sparkles size={120} /></div>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-10 px-6">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-300">Archives de l'Éveil</h3>
+           <button onClick={fetchPosts} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-blue-600 transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
+        </div>
+        
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-32 opacity-50">
+             <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Interrogation de l'éther...</p>
+          </div>
+        ) : posts.length > 0 ? (
+          posts.map(p => (
+            <PostCard 
+              key={p.id} 
+              post={p} 
+              currentUser={user} 
+              isHighlighted={highlightPostId === String(p.id)} 
+              onUpdate={fetchPosts}
+            />
+          ))
+        ) : (
+          <div className="bg-white border-4 border-dashed border-gray-50 rounded-[5rem] p-32 text-center text-gray-400 font-bold">
+             <Info className="w-16 h-16 mx-auto mb-6 opacity-10" />
+             <p className="italic text-lg">Le silence règne sur le fil.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default FeedPage;

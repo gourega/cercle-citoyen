@@ -229,7 +229,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 {isEditing ? (
                   <>
                     <button onClick={handleSave} disabled={syncing} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl">
-                      {syncing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Enregistrer
+                      {syncing ? <Loader2 className="animate-spin" /> : <Save size={16} />} Enregistrer
                     </button>
                     <button onClick={() => setIsEditing(false)} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">
                       Annuler
