@@ -68,14 +68,14 @@ const PostCard: React.FC<{
 
   const handleShare = async (platform?: 'linkedin' | 'whatsapp' | 'copy') => {
     const shareUrl = `${window.location.origin}/#/feed?post=${post.id}`;
-    const shareText = `Découvrez cette onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
+    const shareText = `Onde citoyenne sur le Cercle : "${post.content.substring(0, 100)}..."`;
 
     if (!platform && navigator.share) {
       try {
         await navigator.share({ title: 'Cercle Citoyen', text: shareText, url: shareUrl });
         addToast("Partage réussi.", "success");
         return;
-      } catch (e) { /* ignore cancel */ }
+      } catch (e) { /* silent */ }
     }
 
     if (platform === 'linkedin') {
@@ -84,7 +84,7 @@ const PostCard: React.FC<{
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
     } else {
       navigator.clipboard.writeText(shareUrl);
-      addToast("Lien de l'onde copié.", "success");
+      addToast("Lien copié.", "success");
     }
     setShowShareMenu(false);
   };
@@ -111,10 +111,10 @@ const PostCard: React.FC<{
         const { error } = await supabase.from('posts').delete().eq('id', post.id);
         if (error) throw error;
       }
-      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération effectuée." : "Onde retirée du fil.", "success");
+      addToast(currentUser?.role === Role.SUPER_ADMIN && currentUser.id !== post.author_id ? "Action de modération souveraine effectuée." : "Onde retirée du fil.", "success");
       onUpdate();
     } catch (e) {
-      addToast("Échec de la suppression.", "error");
+      addToast("Échec du retrait.", "error");
     } finally {
       setShowDeleteConfirm(false);
     }
@@ -165,8 +165,9 @@ const PostCard: React.FC<{
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
-  const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.SUPER_ADMIN;
-  const canDelete = isOwner || isAdmin;
+  const isGuardian = currentUser?.role === Role.SUPER_ADMIN;
+  const isAdmin = currentUser?.role === Role.ADMIN || isGuardian;
+  const canDelete = isOwner || isGuardian || isAdmin;
   const isLongContent = post.content.length > 450;
 
   return (
@@ -201,8 +202,8 @@ const PostCard: React.FC<{
           {canDelete && (
             <button 
               onClick={() => setShowDeleteConfirm(true)} 
-              className={`p-4 rounded-2xl transition-all ${isAdmin && !isOwner ? 'bg-rose-50 text-rose-400 hover:text-rose-600' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} 
-              title={isAdmin && !isOwner ? "Action de Modération" : "Supprimer"}
+              className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} 
+              title={isGuardian && !isOwner ? "Modération Suprême" : "Supprimer"}
             >
               <Trash2 size={18} />
             </button>
@@ -271,7 +272,7 @@ const PostCard: React.FC<{
                 {isExpanded ? (
                   <><ChevronUp size={14} /> Réduire la lecture</>
                 ) : (
-                  <><ChevronDown size={14} /> Lire la suite de l'onde...</>
+                  <><ChevronDown size={14} /> Lire la suite...</>
                 )}
               </button>
             )}
@@ -280,21 +281,21 @@ const PostCard: React.FC<{
       </div>
 
       {showDeleteConfirm && (
-        <div className={`px-8 py-6 border-y animate-in slide-in-from-top-2 ${isAdmin && !isOwner ? 'bg-slate-900 border-slate-800' : 'bg-rose-50 border-rose-100'}`}>
+        <div className={`px-8 py-6 border-y animate-in slide-in-from-top-2 ${isGuardian && !isOwner ? 'bg-slate-900 border-slate-800' : 'bg-rose-50 border-rose-100'}`}>
           <div className="flex items-center gap-4 mb-4">
-             <div className={`p-3 rounded-xl ${isAdmin && !isOwner ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-600'}`}><AlertTriangle size={20} /></div>
+             <div className={`p-3 rounded-xl ${isGuardian && !isOwner ? 'bg-amber-500 text-white' : 'bg-rose-100 text-rose-600'}`}><AlertTriangle size={20} /></div>
              <div>
-               <p className={`font-bold ${isAdmin && !isOwner ? 'text-white' : 'text-rose-900'}`}>
-                 {isAdmin && !isOwner ? 'Droit de Modération Suprême' : 'Supprimer cette publication ?'}
+               <p className={`font-bold ${isGuardian && !isOwner ? 'text-white' : 'text-rose-900'}`}>
+                 {isGuardian && !isOwner ? 'Retrait Souverain du Gardien' : 'Supprimer cette publication ?'}
                </p>
-               <p className={`text-xs ${isAdmin && !isOwner ? 'text-slate-400' : 'text-rose-600'}`}>
-                 {isAdmin && !isOwner ? 'En tant que Gardien/Admin, vous retirez cette onde pour non-respect du Manifeste.' : 'Cette action est irréversible.'}
+               <p className={`text-xs ${isGuardian && !isOwner ? 'text-slate-400' : 'text-rose-600'}`}>
+                 {isGuardian && !isOwner ? 'En tant que Gardien, vous exercez votre droit de modération suprême.' : 'Cette action est irréversible.'}
                </p>
              </div>
           </div>
           <div className="flex justify-end gap-3">
-             <button onClick={() => setShowDeleteConfirm(false)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${isAdmin && !isOwner ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-white text-gray-500 border-rose-200'}`}>Annuler</button>
-             <button onClick={handleDeletePost} className="px-6 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Confirmer le retrait</button>
+             <button onClick={() => setShowDeleteConfirm(false)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${isGuardian && !isOwner ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-white text-gray-500 border-rose-200'}`}>Annuler</button>
+             <button onClick={handleDeletePost} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg ${isGuardian && !isOwner ? 'bg-amber-600 text-white' : 'bg-rose-600 text-white'}`}>Confirmer</button>
           </div>
         </div>
       )}
@@ -387,20 +388,18 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchPosts = async () => {
     setLoading(true);
-    let allPosts: Post[] = [];
     if (isRealSupabase && supabase) { 
       try {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        if (data) allPosts = data;
+        setPosts(data || []);
       } catch (e) { 
         console.error("Fetch error:", e);
-        allPosts = [...MOCK_POSTS]; 
+        setPosts(MOCK_POSTS); 
       }
     } else {
-      allPosts = [...MOCK_POSTS];
+      setPosts(MOCK_POSTS);
     }
-    setPosts(allPosts);
     setLoading(false); 
   };
 
@@ -439,11 +438,13 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     }
     setSending(true);
 
+    const isGuardian = user.role === Role.SUPER_ADMIN;
+
     const postData = { 
       author_id: user.id, 
       content: newPostText, 
       circle_type: selectedCircle, 
-      is_majestic: user.role === Role.SUPER_ADMIN,
+      is_majestic: isGuardian,
       reactions: { useful: 0, relevant: 0, inspiring: 0 },
       comments: [],
       created_at: new Date().toISOString()
@@ -452,14 +453,10 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     try {
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('posts').insert([postData]);
-        if (error) {
-          console.error("Erreur insertion:", error);
-          throw error;
-        }
-        addToast(user.role === Role.SUPER_ADMIN ? "Édit Suprême diffusé avec succès." : "Votre onde se propage !", "success");
+        if (error) throw error;
+        addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée !", "success");
       } else {
-        const localPost = { ...postData, id: 'local-' + Date.now() };
-        setPosts(prev => [localPost as Post, ...prev]);
+        setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
         addToast("Sauvegarde locale (Mode démo).", "success");
       }
       
@@ -467,7 +464,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       fetchPosts();
     } catch (e: any) { 
       console.error(e);
-      addToast(`Erreur réseau. Votre compte possède-t-il les droits suffisants ?`, "error");
+      addToast(`Échec de l'enregistrement. Vérifiez vos droits.`, "error");
     } finally { 
       setSending(false); 
     }
@@ -531,7 +528,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       ) : (
         <div className="bg-gray-900 rounded-[3rem] p-8 mb-16 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
           <div className="relative z-10">
-            <h3 className="text-xl font-serif font-bold mb-2">Rejoignez le dialogue citoyen</h3>
+            <h3 className="text-xl font-serif font-bold mb-2">Dialogue Citoyen</h3>
             <p className="opacity-60 text-sm">Créez un compte pour agir et partager vos ondes.</p>
           </div>
           <Link to="/auth" className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-blue-50 transition-all relative z-10">
@@ -550,7 +547,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 opacity-50">
              <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Interrogation de l'éther...</p>
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Interrogation...</p>
           </div>
         ) : posts.length > 0 ? (
           posts.map(p => (
