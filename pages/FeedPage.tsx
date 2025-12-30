@@ -6,7 +6,8 @@ import {
   ShieldCheck, MessageCircle, RefreshCw, 
   Info, Pencil, Save, Trash2, Crown,
   TrendingUp, Users, Heart, ChevronRight,
-  Flame, Award, Clock
+  Flame, Award, Clock, Share2, ChevronDown, ChevronUp,
+  Facebook, Linkedin, Copy, Check, Bold, Italic, Smile
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
 import { supabase, isRealSupabase, db } from '../lib/supabase';
@@ -14,6 +15,9 @@ import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
 import { useToast } from '../App';
 
+/**
+ * Calcule le temps relatif de façon lisible
+ */
 const getRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -25,13 +29,17 @@ const getRelativeTime = (dateString: string) => {
   return date.toLocaleDateString();
 };
 
-// Fix: Added formatContent utility to handle post text formatting and fix the compilation error
+/**
+ * Formate le contenu avec support Markdown basique (Gras, Italique)
+ */
 const formatContent = (content: string) => {
   if (!content) return '';
   return content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\n/g, '<br />');
 };
 
@@ -46,10 +54,21 @@ const PostCard: React.FC<{
   const [showComments, setShowComments] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [commentInput, setCommentInput] = useState('');
   const [isReacting, setIsReacting] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const TEXT_LIMIT = 280;
+  const isLongText = post.content.length > TEXT_LIMIT;
+  const displayedContent = (isLongText && !isExpanded) 
+    ? post.content.slice(0, TEXT_LIMIT) 
+    : post.content;
+
+  const postUrl = `${window.location.origin}${window.location.pathname}#/feed?post=${post.id}`;
+  const shareText = `Découvrez cette onde sur le Cercle Citoyen : "${post.content.slice(0, 50)}..."`;
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -75,13 +94,31 @@ const PostCard: React.FC<{
         const { error } = await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
         if (error) throw error;
       }
-      // Animation haptique visuelle réussie
     } catch (e) {
-      setReactions(reactions); // Rollback
+      setReactions(reactions); 
       addToast("Erreur lors de la réaction.", "error");
     } finally {
       setIsReacting(null);
     }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(postUrl);
+    setCopied(true);
+    addToast("Lien copié !", "success");
+    setTimeout(() => setCopied(false), 2000);
+    setShowShareMenu(false);
+  };
+
+  const shareSocial = (platform: 'wa' | 'fb' | 'in') => {
+    let url = '';
+    switch(platform) {
+      case 'wa': url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + postUrl)}`; break;
+      case 'fb': url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`; break;
+      case 'in': url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`; break;
+    }
+    window.open(url, '_blank');
+    setShowShareMenu(false);
   };
 
   const handleUpdatePost = async () => {
@@ -95,12 +132,12 @@ const PostCard: React.FC<{
   };
 
   const handleDeletePost = async () => {
+    if (!window.confirm("Voulez-vous vraiment retirer cette onde de la cité ?")) return;
     try {
       if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
-      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Action de modération souveraine effectuée." : "Onde retirée.", "success");
+      addToast(currentUser?.role === Role.SUPER_ADMIN ? "Modération souveraine effectuée." : "Onde retirée.", "success");
       onUpdate();
     } catch (e) { addToast("Échec suppression.", "error"); }
-    finally { setShowDeleteConfirm(false); }
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
@@ -115,11 +152,15 @@ const PostCard: React.FC<{
     };
     try {
       const updatedComments = [...(post.comments || []), newComment];
-      if (isRealSupabase && supabase) await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
+      if (isRealSupabase && supabase) {
+        await supabase.from('posts').update({ comments: updatedComments }).eq('id', post.id);
+      } else {
+        post.comments = updatedComments; // Fallback pour démo
+      }
       setCommentInput('');
       onUpdate();
       addToast("Palabre ajoutée.", "success");
-    } catch (e) { addToast("Erreur sauvegarde.", "error"); }
+    } catch (e) { addToast("Erreur sauvegarde commentaire.", "error"); }
   };
 
   if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
@@ -131,11 +172,13 @@ const PostCard: React.FC<{
 
   return (
     <article 
-      className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col 
-        ${isHighlighted ? 'ring-8 ring-amber-500/10 border-amber-200' : 'border-gray-100'} 
+      id={`post-${post.id}`}
+      className={`bg-white border rounded-[3rem] shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden flex flex-col group/card
+        ${isHighlighted ? 'ring-8 ring-blue-500/10 border-blue-200 bg-blue-50/5' : 'border-gray-100'} 
         ${isMajestic ? 'border-amber-200 ring-4 ring-amber-50 bg-amber-50/5' : ''}`}
     >
-      <div className="p-8 pb-4 flex justify-between items-center">
+      {/* Header */}
+      <div className="p-8 pb-4 flex justify-between items-start">
         <div className="flex items-center gap-4">
           <Link to={`/profile/${post.author_id}`} className="relative group">
             <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-105 ${isMajestic ? 'ring-2 ring-amber-300' : ''}`} alt="" />
@@ -151,16 +194,45 @@ const PostCard: React.FC<{
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          {isOwner && !isEditing && (
-            <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all"><Pencil size={18} /></button>
-          )}
-          {canDelete && (
-            <button onClick={() => setShowDeleteConfirm(true)} className={`p-4 rounded-2xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} title={isGuardian && !isOwner ? "Action Souveraine" : "Supprimer"}><Trash2 size={18} /></button>
+        <div className="flex gap-2 relative">
+          <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+            {isOwner && !isEditing && (
+              <button onClick={() => setIsEditing(true)} className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-amber-50 hover:text-amber-600 transition-all" title="Modifier"><Pencil size={16} /></button>
+            )}
+            {canDelete && (
+              <button onClick={handleDeletePost} className={`p-3 rounded-xl transition-all ${isGuardian && !isOwner ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} title="Supprimer"><Trash2 size={16} /></button>
+            )}
+          </div>
+          <button 
+            onClick={() => setShowShareMenu(!showShareMenu)} 
+            className={`p-3 rounded-xl transition-all ${showShareMenu ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-blue-50 hover:text-blue-600 opacity-0 group-hover/card:opacity-100'}`} 
+            title="Partager"
+          >
+            <Share2 size={16} />
+          </button>
+          
+          {showShareMenu && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <button onClick={() => shareSocial('wa')} className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 text-gray-700 hover:text-emerald-600 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest">
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center"><Send size={14} /></div> WhatsApp
+              </button>
+              <button onClick={() => shareSocial('fb')} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"><Facebook size={14} /></div> Facebook
+              </button>
+              <button onClick={() => shareSocial('in')} className="w-full flex items-center gap-3 p-3 hover:bg-indigo-50 text-gray-700 hover:text-indigo-600 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest">
+                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center"><Linkedin size={14} /></div> LinkedIn
+              </button>
+              <div className="h-px bg-gray-50 my-1"></div>
+              <button onClick={copyToClipboard} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 text-gray-700 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest">
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">{copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}</div> 
+                {copied ? 'Copié !' : 'Copier le lien'}
+              </button>
+            </div>
           )}
         </div>
       </div>
 
+      {/* Content */}
       <div className="px-8 md:px-12 py-4">
         {isEditing ? (
           <div className="space-y-4">
@@ -171,40 +243,60 @@ const PostCard: React.FC<{
             </div>
           </div>
         ) : (
-          <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-6' : 'text-lg font-medium'}`}>
-            <div dangerouslySetInnerHTML={{ __html: formatContent(post.content) }} />
+          <div className="relative">
+            <div className={`text-gray-800 leading-relaxed transition-all duration-500 overflow-hidden relative ${isMajestic ? 'text-2xl font-serif italic border-l-8 border-amber-200 pl-10 my-6' : 'text-lg font-medium'}`}>
+              <div dangerouslySetInnerHTML={{ __html: formatContent(displayedContent) }} />
+              {isLongText && !isExpanded && (
+                <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+              )}
+            </div>
+            {isLongText && (
+              <button 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="mt-2 flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:text-blue-800 transition-colors py-2"
+              >
+                {isExpanded ? <><ChevronUp size={14} /> Lire moins</> : <><ChevronDown size={14} /> Lire la suite...</>}
+              </button>
+            )}
           </div>
         )}
       </div>
 
+      {/* Toolbar / Actions */}
       <div className="bg-gray-50/50 p-6 flex items-center justify-between border-t border-gray-100 mt-4">
         <div className="flex items-center gap-2">
           <button 
             onClick={() => handleReaction('useful')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-all hover:scale-105 active:scale-95 ${isReacting === 'useful' ? 'animate-bounce' : ''} bg-white border-gray-100 text-blue-600 hover:bg-blue-50`}
+            title="Utile"
           >
             <ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span>
           </button>
           <button 
             onClick={() => handleReaction('relevant')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-all hover:scale-105 active:scale-95 ${isReacting === 'relevant' ? 'animate-bounce' : ''} bg-white border-gray-100 text-emerald-600 hover:bg-emerald-50`}
+            title="Pertinent"
           >
             <Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span>
           </button>
           <button 
             onClick={() => handleReaction('inspiring')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-all hover:scale-105 active:scale-95 ${isReacting === 'inspiring' ? 'animate-bounce' : ''} bg-white border-gray-100 text-amber-600 hover:bg-amber-50`}
+            title="Inspirant"
           >
             <Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span>
           </button>
         </div>
-        <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase transition-all ${showComments ? 'bg-gray-900 text-white shadow-lg' : 'bg-white border border-gray-100 text-gray-500 hover:border-gray-300'}`}>Palabres ({post.comments?.length || 0})</button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black text-[10px] uppercase transition-all ${showComments ? 'bg-gray-900 text-white shadow-lg' : 'bg-white border border-gray-100 text-gray-500 hover:border-gray-300'}`}>Palabres ({post.comments?.length || 0})</button>
+        </div>
       </div>
 
+      {/* Comments section */}
       {showComments && (
         <div className="p-8 bg-white border-t border-gray-100 animate-in slide-in-from-top-4 duration-300">
           <div className="space-y-4 mb-8">
-            {post.comments?.map((c, i) => (
+            {post.comments && post.comments.length > 0 ? post.comments.map((c, i) => (
               <div key={i} className="flex gap-4">
                 <img src={c.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
                 <div className="bg-gray-50 p-4 rounded-2xl flex-1">
@@ -215,7 +307,9 @@ const PostCard: React.FC<{
                   <p className="text-sm text-gray-700 font-medium">{c.content}</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-center text-xs text-gray-400 italic py-4">Aucune palabre sur cette onde. Soyez le premier à poser une pierre.</p>
+            )}
           </div>
           {currentUser && (
             <form onSubmit={handleAddComment} className="flex gap-3">
@@ -240,7 +334,10 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const [sending, setSending] = useState(false);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
   const [trendingCercles, setTrendingCercles] = useState<any[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const QUICK_EMOJIS = ["🇨🇮", "📢", "✊", "🤝", "💡", "⚖️", "🌳", "🏗️", "✨", "❤️"];
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -253,7 +350,6 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         if (error) throw error;
         setPosts(data || []);
         
-        // Calculer les cercles tendances
         const counts = (data || []).reduce((acc: any, p: Post) => {
           acc[p.circle_type] = (acc[p.circle_type] || 0) + 1;
           return acc;
@@ -266,7 +362,34 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     setLoading(false); 
   };
 
-  useEffect(() => { fetchPosts(); }, []);
+  useEffect(() => { 
+    fetchPosts(); 
+  }, []);
+
+  const insertText = (before: string, after: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    
+    setNewPostText(newText);
+    
+    // Rétablir le focus et la sélection
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + before.length + selectedText.length + after.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    insertText(emoji);
+    setShowEmojiPicker(false);
+  };
 
   const handleCreatePost = async () => {
     if (!newPostText.trim() || !user) return;
@@ -288,11 +411,11 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         addToast(isGuardian ? "Parole souveraine diffusée." : "Onde propagée avec succès !", "success");
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Mode démo : Variables de connexion invalides dans Cloudflare.", "info");
+        addToast("Mode démo activé.", "info");
       }
       setNewPostText('');
       fetchPosts();
-    } catch (e: any) { addToast("Échec de diffusion. Vérifiez vos accès.", "error"); }
+    } catch (e: any) { addToast("Échec de diffusion.", "error"); }
     finally { setSending(false); }
   };
 
@@ -346,6 +469,24 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
           {user ? (
             <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-16 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50' : 'border-gray-100'}`}>
+              
+              {/* Toolbar de mise en forme */}
+              <div className="flex items-center gap-2 mb-4 px-4 py-2 bg-gray-50/50 rounded-2xl w-fit">
+                <button onClick={() => insertText('**', '**')} className="p-2 hover:bg-white hover:text-blue-600 rounded-lg transition-all" title="Gras"><Bold size={16} /></button>
+                <button onClick={() => insertText('*', '*')} className="p-2 hover:bg-white hover:text-blue-600 rounded-lg transition-all" title="Italique"><Italic size={16} /></button>
+                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="relative">
+                  <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`p-2 hover:bg-white hover:text-amber-600 rounded-lg transition-all ${showEmojiPicker ? 'bg-white text-amber-600' : ''}`} title="Émojis"><Smile size={16} /></button>
+                  {showEmojiPicker && (
+                    <div className="absolute left-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl p-3 grid grid-cols-5 gap-2 z-50 animate-in zoom-in-95">
+                      {QUICK_EMOJIS.map(e => (
+                        <button key={e} onClick={() => insertEmoji(e)} className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 rounded-lg transition-all text-lg">{e}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <textarea 
                 ref={textareaRef}
                 value={newPostText} 
@@ -353,6 +494,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
                 placeholder={user.role === Role.SUPER_ADMIN ? "Gardien, déposez votre édit souverain ici..." : "Déposez une pierre à l'édifice de la cité..."} 
                 className="w-full h-44 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
               />
+              
               <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                 <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest outline-none border border-gray-100 hover:bg-white transition-colors">
                   {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
