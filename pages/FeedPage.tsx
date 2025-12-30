@@ -5,7 +5,7 @@ import {
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
   ShieldCheck, Share2, MessageCircle, RefreshCw, 
   Info, LogIn, Bold, Italic, Underline, Smile, 
-  Pencil, Save, X, ChevronDown, ChevronUp
+  Pencil, Save, X, ChevronDown, ChevronUp, Trash2, AlertTriangle
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
@@ -35,6 +35,7 @@ const PostCard: React.FC<{
   const [isExpanded, setIsExpanded] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [commentInput, setCommentInput] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -42,7 +43,7 @@ const PostCard: React.FC<{
   useEffect(() => {
     const fetchAuthor = async () => {
       if (!isRealSupabase || !supabase) {
-        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor({ name: author?.name || "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
       const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
@@ -64,6 +65,21 @@ const PostCard: React.FC<{
       onUpdate();
     } catch (e) {
       addToast("Erreur lors de la mise à jour.", "error");
+    }
+  };
+
+  const handleDeletePost = async () => {
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').delete().eq('id', post.id);
+        if (error) throw error;
+      }
+      addToast("Onde retirée du fil.", "success");
+      onUpdate();
+    } catch (e) {
+      addToast("Échec de la suppression.", "error");
+    } finally {
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -107,6 +123,8 @@ const PostCard: React.FC<{
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
+  const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.SUPER_ADMIN;
+  const canDelete = isOwner || isAdmin;
   const isLongContent = post.content.length > 450;
 
   return (
@@ -133,6 +151,11 @@ const PostCard: React.FC<{
           {isOwner && !isEditing && (
             <button onClick={() => setIsEditing(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all" title="Modifier">
               <Pencil size={18} />
+            </button>
+          )}
+          {canDelete && (
+            <button onClick={() => setShowDeleteConfirm(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all" title="Supprimer (Modération)">
+              <Trash2 size={18} />
             </button>
           )}
           <button onClick={() => {
@@ -188,6 +211,22 @@ const PostCard: React.FC<{
           </>
         )}
       </div>
+
+      {showDeleteConfirm && (
+        <div className="px-8 py-6 bg-rose-50 border-y border-rose-100 animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-4 mb-4">
+             <div className="p-3 bg-rose-100 text-rose-600 rounded-xl"><AlertTriangle size={20} /></div>
+             <div>
+               <p className="font-bold text-rose-900">Supprimer cette publication ?</p>
+               <p className="text-xs text-rose-600">Cette action est irréversible et conforme au Manifeste.</p>
+             </div>
+          </div>
+          <div className="flex justify-end gap-3">
+             <button onClick={() => setShowDeleteConfirm(false)} className="px-6 py-2 bg-white text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-rose-200">Annuler</button>
+             <button onClick={handleDeletePost} className="px-6 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Confirmer le retrait</button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-gray-50/50 p-6 md:p-8 flex flex-wrap items-center justify-between gap-6 border-t border-gray-100 mt-4">
         <div className="flex items-center gap-2 md:gap-4">
