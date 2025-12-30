@@ -6,7 +6,7 @@ import {
   ShieldCheck, Share2, MessageCircle, RefreshCw, 
   Info, LogIn, Bold, Italic, Underline, Smile, 
   Pencil, Save, X, ChevronDown, ChevronUp, Trash2, AlertTriangle,
-  Linkedin, MessageSquare as WhatsAppIcon, Link as LinkIcon
+  Linkedin, MessageSquare as WhatsAppIcon, Link as LinkIcon, Crown
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
@@ -111,10 +111,10 @@ const PostCard: React.FC<{
         const { error } = await supabase.from('posts').delete().eq('id', post.id);
         if (error) throw error;
       }
-      addToast("Onde retirée du fil.", "success");
+      addToast(isAdmin ? "Action de modération effectuée." : "Onde retirée du fil.", "success");
       onUpdate();
     } catch (e) {
-      addToast("Échec de la suppression.", "error");
+      addToast("Échec du retrait.", "error");
     } finally {
       setShowDeleteConfirm(false);
     }
@@ -178,7 +178,10 @@ const PostCard: React.FC<{
     >
       <div className="p-8 pb-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-200' : ''}`} alt="" />
+          <div className="relative">
+            <img src={author.avatar_url || author.avatar} className={`w-14 h-14 rounded-2xl object-cover shadow-sm ${isMajestic ? 'ring-2 ring-amber-200' : ''}`} alt="" />
+            {isMajestic && <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-1 rounded-lg shadow-lg border-2 border-white"><Crown size={10} /></div>}
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-gray-900 text-lg">{author.name}</span>
@@ -196,7 +199,11 @@ const PostCard: React.FC<{
             </button>
           )}
           {canDelete && (
-            <button onClick={() => setShowDeleteConfirm(true)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all" title="Supprimer">
+            <button 
+              onClick={() => setShowDeleteConfirm(true)} 
+              className={`p-4 rounded-2xl transition-all ${isAdmin && !isOwner ? 'bg-rose-50 text-rose-400 hover:text-rose-600' : 'bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-600'}`} 
+              title={isAdmin && !isOwner ? "Action de Modération" : "Supprimer"}
+            >
               <Trash2 size={18} />
             </button>
           )}
@@ -273,16 +280,20 @@ const PostCard: React.FC<{
       </div>
 
       {showDeleteConfirm && (
-        <div className="px-8 py-6 bg-rose-50 border-y border-rose-100 animate-in slide-in-from-top-2">
+        <div className={`px-8 py-6 border-y animate-in slide-in-from-top-2 ${isAdmin && !isOwner ? 'bg-slate-900 border-slate-800' : 'bg-rose-50 border-rose-100'}`}>
           <div className="flex items-center gap-4 mb-4">
-             <div className="p-3 bg-rose-100 text-rose-600 rounded-xl"><AlertTriangle size={20} /></div>
+             <div className={`p-3 rounded-xl ${isAdmin && !isOwner ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-600'}`}><AlertTriangle size={20} /></div>
              <div>
-               <p className="font-bold text-rose-900">Supprimer cette publication ?</p>
-               <p className="text-xs text-rose-600">Cette action est irréversible et conforme au Manifeste.</p>
+               <p className={`font-bold ${isAdmin && !isOwner ? 'text-white' : 'text-rose-900'}`}>
+                 {isAdmin && !isOwner ? 'Droit de Modération Suprême' : 'Supprimer cette publication ?'}
+               </p>
+               <p className={`text-xs ${isAdmin && !isOwner ? 'text-slate-400' : 'text-rose-600'}`}>
+                 {isAdmin && !isOwner ? 'En tant que Gardien/Admin, vous retirez cette onde pour non-respect du Manifeste.' : 'Cette action est irréversible.'}
+               </p>
              </div>
           </div>
           <div className="flex justify-end gap-3">
-             <button onClick={() => setShowDeleteConfirm(false)} className="px-6 py-2 bg-white text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-rose-200">Annuler</button>
+             <button onClick={() => setShowDeleteConfirm(false)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${isAdmin && !isOwner ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-white text-gray-500 border-rose-200'}`}>Annuler</button>
              <button onClick={handleDeletePost} className="px-6 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Confirmer le retrait</button>
           </div>
         </div>
@@ -445,7 +456,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
           console.error("Erreur insertion:", error);
           throw error;
         }
-        addToast("Votre onde se propage !", "success");
+        addToast(user.role === Role.SUPER_ADMIN ? "Parole majestueuse diffusée." : "Votre onde se propage !", "success");
       } else {
         const localPost = { ...postData, id: 'local-' + Date.now() };
         setPosts(prev => [localPost as Post, ...prev]);
@@ -474,7 +485,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       </div>
 
       {user ? (
-        <div className="bg-white rounded-[4rem] border border-gray-100 p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group">
+        <div className={`bg-white rounded-[4rem] border p-8 md:p-12 shadow-prestige mb-20 relative overflow-hidden group ${user.role === Role.SUPER_ADMIN ? 'border-amber-200 ring-4 ring-amber-50' : 'border-gray-100'}`}>
           <div className="flex items-center gap-2 mb-4 border-b border-gray-50 pb-4">
             <button onClick={() => injectFormat('bold')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Gras"><Bold size={16} /></button>
             <button onClick={() => injectFormat('italic')} className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Italique"><Italic size={16} /></button>
@@ -496,7 +507,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
             ref={textareaRef}
             value={newPostText} 
             onChange={e => setNewPostText(e.target.value)} 
-            placeholder="Déposez une pierre à l'édifice..." 
+            placeholder={user.role === Role.SUPER_ADMIN ? "Posez une pierre angulaire..." : "Déposez une pierre à l'édifice..."} 
             className="w-full h-56 bg-gray-50/80 p-8 rounded-[3rem] outline-none mb-8 font-serif text-xl focus:bg-white focus:ring-8 focus:ring-blue-50/50 transition-all resize-none border-2 border-transparent focus:border-blue-100 shadow-inner" 
           />
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
@@ -510,10 +521,10 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
             <button 
               onClick={handleCreatePost} 
               disabled={sending || !newPostText.trim()} 
-              className="w-full sm:w-auto bg-gray-950 text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl hover:bg-black transition-all disabled:opacity-30"
+              className={`w-full sm:w-auto px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-4 shadow-2xl transition-all disabled:opacity-30 ${user.role === Role.SUPER_ADMIN ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-950 hover:bg-black text-white'}`}
             >
               {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} 
-              Diffuser l'Onde
+              {user.role === Role.SUPER_ADMIN ? "Diffuser l'Édit Suprême" : "Diffuser l'Onde"}
             </button>
           </div>
         </div>
