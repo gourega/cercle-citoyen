@@ -108,6 +108,14 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     }
   };
 
+  const handleExploreMap = () => {
+    if (user) {
+      navigate('/map');
+    } else {
+      navigate('/manifesto');
+    }
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
       
@@ -222,7 +230,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           </div>
         </div>
 
-        {/* RADAR D'IMPACT (VERSION CONDENSÉE) */}
+        {/* RADAR D'IMPACT (VERSION CONDENSÉE AVEC REDIRECTION INTELLIGENTE) */}
         <section className="w-full mb-40 animate-in fade-in duration-1000 delay-400">
            <div className="flex flex-col items-center text-center">
               <div className="inline-flex items-center gap-3 bg-blue-50 px-6 py-2 rounded-full mb-8 border border-blue-100">
@@ -231,7 +239,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               </div>
               <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Empreinte Territoriale.</h2>
               <p className="text-gray-400 max-w-xl text-lg font-medium leading-relaxed mb-12">
-                Le Cercle s'illumine partout où les citoyens s'unissent. Aperçu des ondes de changement en cours.
+                Le Cercle s'illumine partout où les citoyens s'unissent. Aperçu des ondes de changement en cours sur le territoire.
               </p>
               
               <div className="w-full max-w-4xl bg-white border border-gray-100 rounded-[4rem] p-4 shadow-prestige relative overflow-hidden aspect-[21/9]">
@@ -240,18 +248,23 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     <path d="M320 60 Q 370 30, 420 60 T 520 90 Q 570 120, 540 170 T 500 250 Q 470 290, 420 270 T 340 230 Q 300 190, 320 130 T 320 60" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-blue-200" />
                   </svg>
                   
-                  {/* Points du radar sur l'accueil */}
+                  {/* Points du radar sur l'accueil - Teasing */}
                   <PulsePoint x="48%" y="70%" city="Abidjan" action="Solidarité Active" color="bg-blue-600" />
                   <PulsePoint x="40%" y="30%" city="Bouaké" action="Éveil Citoyen" color="bg-amber-600" />
                 </div>
                 
                 <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent flex flex-col items-center justify-end pb-10">
-                   <Link 
-                    to="/map" 
-                    className="px-12 py-5 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3 active:scale-95"
+                   <button 
+                    onClick={handleExploreMap} 
+                    className="px-12 py-5 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3 active:scale-95 group"
                    >
-                     Explorer l'Empreinte Complète <ArrowRight size={16} />
-                   </Link>
+                     Explorer l'Empreinte Complète <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                   </button>
+                   {!user && (
+                     <p className="mt-4 text-[9px] font-black uppercase text-gray-400 tracking-widest animate-pulse">
+                       Inscription requise pour la vue complète
+                     </p>
+                   )}
                 </div>
               </div>
            </div>
