@@ -29,14 +29,14 @@ export const db = {
     if (isStripeKey) {
       return { 
         ok: false, 
-        message: "Attention : Vous avez utilisé une clé Stripe (sb_...) au lieu de la clé Supabase (eyJ...). Allez dans Settings > API sur Supabase." 
+        message: "Attention : La clé détectée est une clé Stripe (sb_...). Utilisez la clé 'anon' de Supabase (eyJ...)." 
       };
     }
 
     if (!supabase) {
       return { 
         ok: false, 
-        message: "Mode Démo : Les variables 'Url Supabase' ou 'Clé public Supabase' sont absentes dans Cloudflare." 
+        message: `Mode Démo : Vérifiez que vos variables 'Url Supabase' et 'Clé anon Supabase' sont bien enregistrées ET que vous avez relancé un déploiement.` 
       };
     }
 
@@ -45,16 +45,16 @@ export const db = {
       
       if (error) {
         if (error.code === 'PGRST301' || error.message.includes('JWT')) {
-          return { ok: false, message: "La clé configurée est invalide. Vérifiez qu'il s'agit bien de la clé 'anon/public' (commençant par eyJ)." };
+          return { ok: false, message: "La clé configurée est invalide ou expirée. Copiez la clé 'anon public' depuis Supabase." };
         }
         if (error.message.includes('relation') || error.code === 'PGRST116') {
-          return { ok: true, message: "Base connectée (Prête pour création des tables)." };
+          return { ok: true, message: "Base connectée ! (Les tables seront créées à la première inscription)." };
         }
         return { ok: false, message: `Erreur Supabase : ${error.message}` };
       }
       return { ok: true, message: "Liaison souveraine établie." };
     } catch (e: any) {
-      return { ok: false, message: `Échec réseau : Vérifiez l'URL de l'API (${finalUrl}).` };
+      return { ok: false, message: `Échec réseau : Impossible de contacter ${finalUrl}.` };
     }
   }
 };
