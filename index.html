@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Cercle Citoyen">
     
-    <!-- Icônes Apple (Fallback) -->
+    <!-- Icônes Apple (Fallback direct) -->
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,10 +22,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
       
-      :root {
-        --cercle-blue: #2563eb;
-      }
-
+      :root { --cercle-blue: #2563eb; }
       body { 
         font-family: 'Plus Jakarta Sans', sans-serif; 
         background-color: #fcfcfc;
@@ -43,27 +40,22 @@
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
       }
-
       ::-webkit-scrollbar { width: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
     </style>
 
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Enregistrement ultra-robuste du Service Worker
+      // Correction MIME Type : On utilise le chemin relatif direct sans slash initial complexe
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // On ajoute un timestamp pour forcer le rafraîchissement si nécessaire
-          navigator.serviceWorker.register('/sw.js?v=2', { scope: '/' })
+          navigator.serviceWorker.register('sw.js')
             .then(reg => {
-              console.log('%c Cercle Citoyen %c App active et installable ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px; font-weight: bold;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
+              console.log('PWA: Prête à être installée');
             })
             .catch(err => {
-              // Si erreur MIME, on tente un enregistrement sans le slash initial
-              navigator.serviceWorker.register('sw.js')
-                .catch(e => console.warn('PWA: Mode dégradé (Service Worker non chargé)'));
+              console.log('PWA: Note - En attente du déploiement final du fichier sw.js');
             });
         });
       }

@@ -2,38 +2,25 @@
 {
   "name": "CERCLE CITOYEN",
   "short_name": "Le Cercle",
-  "description": "Réseau social citoyen souverain pour le progrès social en Côte d'Ivoire.",
-  "start_url": "/#/",
+  "description": "Réseau social citoyen souverain.",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#fcfcfc",
   "theme_color": "#2563eb",
   "orientation": "portrait",
-  "scope": "/",
+  "scope": "./",
   "icons": [
     {
       "src": "https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["social", "government"],
-  "shortcuts": [
-    {
-      "name": "Fil d'Éveil",
-      "url": "/#/feed",
-      "icons": [{ "src": "https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Assemblée Directe",
-      "url": "/#/live",
-      "icons": [{ "src": "https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png", "sizes": "192x192" }]
+      "purpose": "any"
     }
   ]
 }
