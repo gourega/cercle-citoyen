@@ -84,7 +84,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           const fetchedProfile = { 
             ...data, 
             avatar: data.avatar_url || data.avatar, 
-            impact_score: data.impact_score || 0 
+            impact_score: data.impact_score ?? data.impactScore ?? 0 
           };
           setProfile(fetchedProfile);
           if (targetId === currentUser.id) {
@@ -97,7 +97,11 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           }
         }
       } else {
-        setProfile({ ...currentUser, impact_score: currentUser.impact_score || 0 });
+        // Fallback démo
+        setProfile({ 
+          ...currentUser, 
+          impact_score: currentUser.impact_score ?? currentUser.impactScore ?? 0 
+        });
       }
     } catch (e) {
       console.error(e);
@@ -160,12 +164,13 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   const isOwnProfile = profile?.id === currentUser.id;
   const isGuardian = profile?.role === Role.SUPER_ADMIN;
-  const impactScore = profile?.impact_score || 0;
+  // Robustesse : vérifie les deux noms de propriété possibles
+  const impactScoreValue = profile?.impact_score ?? profile?.impactScore ?? 0;
 
   const badges = [
     { icon: <ShieldCheck size={24} />, label: "Pionnier", color: "bg-emerald-500 text-white", description: "Fait partie des fondateurs du Cercle." },
     { icon: <Medal size={24} />, label: "Acteur", color: "bg-blue-500 text-white", description: "Engagé sur le terrain pour la cité." },
-    ...(impactScore >= 5000 ? [{ icon: <Flame size={24} />, label: "Impactant", color: "bg-orange-500 text-white", description: "Impact social certifié majeur." }] : []),
+    ...(impactScoreValue >= 5000 ? [{ icon: <Flame size={24} />, label: "Impactant", color: "bg-orange-500 text-white", description: "Impact social certifié majeur." }] : []),
     ...(isGuardian ? [{ icon: <Crown size={24} />, label: "Gardien", color: "bg-amber-500 text-white", description: "Garant de la cohésion citoyenne." }] : []),
     { icon: <Heart size={24} />, label: "Solidaire", color: "bg-rose-500 text-white", description: "Acteur du Marché de Solidarité." }
   ];
@@ -287,7 +292,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                   {isGuardian ? "Autorité Fondatrice" : "INDICE D'IMPACT"}
                 </h3>
                 <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white animate-in zoom-in">
-                  {impactScore.toLocaleString()}
+                  {impactScoreValue.toLocaleString()}
                 </div>
                 <p className={`text-[9px] font-black uppercase tracking-[0.3em] relative z-10 ${isGuardian ? 'text-white/60' : 'text-gray-500'}`}>
                   POINTS CITOYENS

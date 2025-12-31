@@ -80,7 +80,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             category: (profile.category as UserCategory) || UserCategory.CITIZEN,
             interests: [],
             avatar: profile.avatar_url,
-            impactScore: profile.impact_score || 0
+            impactScore: profile.impact_score || 0,
+            impact_score: profile.impact_score || 0
           };
 
           setSuccess(true);
