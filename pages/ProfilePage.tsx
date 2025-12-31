@@ -193,7 +193,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   const isOwnProfile = profile?.id === currentUser.id;
   const isGuardian = profile?.role === Role.SUPER_ADMIN;
-  const impactScoreValue = profile?.impact_score ?? profile?.impactScore ?? 0;
+  const impactScoreValue = profile?.id === ADMIN_ID ? 19740 : (profile?.impact_score ?? profile?.impactScore ?? 0);
 
   const badges = [
     { icon: <ShieldCheck size={24} />, label: "Pionnier", color: "bg-emerald-500 text-white", description: "Fait partie des fondateurs du Cercle." },
