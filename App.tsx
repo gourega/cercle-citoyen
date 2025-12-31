@@ -68,6 +68,14 @@ const ScrollToTop = () => {
   return null;
 };
 
+/**
+ * HOC de protection des routes
+ */
+const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: User | null }) => {
+  if (!user) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 const NavDropdown = ({ label, icon, items }: { label: string, icon: React.ReactNode, items: { to: string, icon: React.ReactNode, label: string }[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<number | null>(null);
@@ -88,7 +96,7 @@ const NavDropdown = ({ label, icon, items }: { label: string, icon: React.ReactN
       </button>
       
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-200 z-[110] backdrop-blur-xl bg-white/95">
+        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-[110] backdrop-blur-xl bg-white/95 animate-in fade-in slide-in-from-top-2">
           {items.map((item) => (
             <NavLink 
               key={item.to} 
@@ -143,7 +151,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6 shadow-sm">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
         <div className="flex items-center gap-6">
-          <Link to="/feed" className="flex items-center group">
+          <Link to="/" className="flex items-center group">
             <Logo size={32} showText={true} />
           </Link>
         </div>
@@ -310,23 +318,27 @@ const App = () => {
           <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
+              {/* Route Racine : La Landing Page est l'entrée obligatoire */}
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
               <Route path="/legal" element={<LegalPage />} />
-              <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
-              <Route path="/feed" element={<FeedPage user={user} />} />
-              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/feed" />} />
-              <Route path="/chat" element={user ? <ChatPage user={user} /> : <Navigate to="/" />} />
-              <Route path="/live" element={user ? <LiveAssembly /> : <Navigate to="/" />} />
-              <Route path="/map" element={user ? <ActionMap /> : <Navigate to="/" />} />
-              <Route path="/governance" element={user ? <GovernancePage user={user} /> : <Navigate to="/" />} />
-              <Route path="/quests" element={user ? <QuestsPage /> : <Navigate to="/" />} />
-              <Route path="/griot" element={user ? <GriotStudio /> : <Navigate to="/" />} />
-              <Route path="/impact" element={user ? <ImpactStudio user={user} /> : <Navigate to="/" />} />
-              <Route path="/exchange" element={user ? <ResourceExchange user={user} /> : <Navigate to="/" />} />
-              <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
-              <Route path="/circle/:type" element={user ? <CirclePage user={user} /> : <Navigate to="/" />} />
+              
+              {/* Routes Protégées : Redirection vers '/' si non connecté */}
+              <Route path="/welcome" element={<PrivateRoute user={user}><WelcomePage /></PrivateRoute>} />
+              <Route path="/feed" element={<PrivateRoute user={user}><FeedPage user={user} /></PrivateRoute>} />
+              <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
+              <Route path="/chat" element={<PrivateRoute user={user}><ChatPage user={user} /></PrivateRoute>} />
+              <Route path="/live" element={<PrivateRoute user={user}><LiveAssembly /></PrivateRoute>} />
+              <Route path="/map" element={<PrivateRoute user={user}><ActionMap /></PrivateRoute>} />
+              <Route path="/governance" element={<PrivateRoute user={user}><GovernancePage user={user} /></PrivateRoute>} />
+              <Route path="/quests" element={<PrivateRoute user={user}><QuestsPage /></PrivateRoute>} />
+              <Route path="/griot" element={<PrivateRoute user={user}><GriotStudio /></PrivateRoute>} />
+              <Route path="/impact" element={<PrivateRoute user={user}><ImpactStudio user={user} /></PrivateRoute>} />
+              <Route path="/exchange" element={<PrivateRoute user={user}><ResourceExchange user={user} /></PrivateRoute>} />
+              <Route path="/profile" element={<PrivateRoute user={user}><ProfilePage currentUser={user!} onLogout={handleLogout} /></PrivateRoute>} />
+              <Route path="/circle/:type" element={<PrivateRoute user={user}><CirclePage user={user!} /></PrivateRoute>} />
+              
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

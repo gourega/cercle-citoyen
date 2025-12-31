@@ -505,16 +505,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="bg-gray-900 rounded-[3rem] p-10 mb-16 text-white shadow-2xl flex items-center justify-between overflow-hidden relative">
-              <div className="relative z-10">
-                <h3 className="text-2xl font-serif font-bold mb-2">Participez à l'Éveil</h3>
-                <p className="opacity-60 text-sm font-medium">Rejoignez le Cercle pour influencer le destin du territoire.</p>
-              </div>
-              <Link to="/auth" className="relative z-10 bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl">Rejoindre la Cité</Link>
-              <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><Sparkles size={120} /></div>
-            </div>
-          )}
+          ) : null}
 
           <div className="space-y-4">
             <div className="flex justify-between items-center mb-10 px-6">
