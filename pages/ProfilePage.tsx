@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
@@ -81,10 +82,14 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         if (data) {
+          // Gestion robuste du score d'impact pour l'admin
+          let score = data.impact_score ?? data.impactScore ?? 0;
+          if (targetId === ADMIN_ID && score === 0) score = MOCK_USERS[ADMIN_ID].impact_score || 19740;
+
           const fetchedProfile = { 
             ...data, 
             avatar: data.avatar_url || data.avatar, 
-            impact_score: data.impact_score ?? data.impactScore ?? 0 
+            impact_score: score 
           };
           setProfile(fetchedProfile);
           if (targetId === currentUser.id) {
@@ -97,35 +102,21 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           }
         }
       } else {
-        // Fallback démo : on synchronise avec les mocks pour le Gardien
-        const isTargetAdmin = targetId === ADMIN_ID;
-        const mockData = isTargetAdmin ? MOCK_USERS[ADMIN_ID] : null;
-        
-        // Fix for errors on lines 111, 117-119: Use any for baseProfile and ensure fallback object has all expected properties
-        const baseProfile: any = isTargetAdmin 
-          ? { ...MOCK_USERS[ADMIN_ID], ...currentUser, id: ADMIN_ID } // On priorise les points du mock pour l'admin
-          : (targetId === currentUser.id ? currentUser : { 
-              name: "Citoyen", 
-              role: Role.MEMBER,
-              pseudonym: "citoyen",
-              bio: "",
-              avatar: `https://picsum.photos/seed/${targetId}/150/150`,
-              impact_score: 0,
-              impactScore: 0
-            });
-
-        setProfile({ 
-          ...baseProfile, 
-          impact_score: mockData ? mockData.impact_score : (baseProfile.impact_score ?? baseProfile.impactScore ?? 0)
-        });
-        
-        if (targetId === currentUser.id) {
-          setEditData({
-            name: baseProfile.name || '',
-            pseudonym: baseProfile.pseudonym || '',
-            bio: baseProfile.bio || '',
-            avatar: baseProfile.avatar || ''
+        // Fallback démo : on utilise les mocks si c'est l'admin
+        const mockUser = MOCK_USERS[targetId] || (targetId === currentUser.id ? currentUser : null);
+        if (mockUser) {
+          setProfile({
+            ...mockUser,
+            impact_score: mockUser.impact_score ?? mockUser.impactScore ?? 0
           });
+          if (targetId === currentUser.id) {
+            setEditData({
+              name: mockUser.name,
+              pseudonym: mockUser.pseudonym,
+              bio: mockUser.bio,
+              avatar: mockUser.avatar
+            });
+          }
         }
       }
     } catch (e) {
@@ -189,7 +180,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   const isOwnProfile = profile?.id === currentUser.id;
   const isGuardian = profile?.role === Role.SUPER_ADMIN;
-  // Robustesse : vérifie les deux noms de propriété possibles
   const impactScoreValue = profile?.impact_score ?? profile?.impactScore ?? 0;
 
   const badges = [
@@ -299,7 +289,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             </div>
 
             <aside className="lg:sticky lg:top-24 space-y-10 self-start">
-              {/* CARTE D'IMPACT SOUVERAINE POUR LE GARDIEN */}
               <div className={`p-10 rounded-[3rem] text-center shadow-2xl relative overflow-hidden group border transition-all duration-700 ${
                 isGuardian 
                   ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 text-white border-amber-400/30' 
@@ -339,12 +328,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                   {badges.map((b, i) => (
                     <Badge key={i} {...b} />
                   ))}
-                </div>
-                <div className="mt-12 pt-8 border-t border-gray-50 flex flex-col items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-amber-500" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Mérite Territorial</span>
-                  </div>
                 </div>
               </div>
             </aside>
