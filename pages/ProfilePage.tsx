@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
@@ -8,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
+import { ADMIN_ID, MOCK_USERS } from '../lib/mocks';
 
 const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick }) => {
   const [error, setError] = useState(false);
@@ -97,11 +97,36 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           }
         }
       } else {
-        // Fallback démo
+        // Fallback démo : on synchronise avec les mocks pour le Gardien
+        const isTargetAdmin = targetId === ADMIN_ID;
+        const mockData = isTargetAdmin ? MOCK_USERS[ADMIN_ID] : null;
+        
+        // Fix for errors on lines 111, 117-119: Use any for baseProfile and ensure fallback object has all expected properties
+        const baseProfile: any = isTargetAdmin 
+          ? { ...MOCK_USERS[ADMIN_ID], ...currentUser, id: ADMIN_ID } // On priorise les points du mock pour l'admin
+          : (targetId === currentUser.id ? currentUser : { 
+              name: "Citoyen", 
+              role: Role.MEMBER,
+              pseudonym: "citoyen",
+              bio: "",
+              avatar: `https://picsum.photos/seed/${targetId}/150/150`,
+              impact_score: 0,
+              impactScore: 0
+            });
+
         setProfile({ 
-          ...currentUser, 
-          impact_score: currentUser.impact_score ?? currentUser.impactScore ?? 0 
+          ...baseProfile, 
+          impact_score: mockData ? mockData.impact_score : (baseProfile.impact_score ?? baseProfile.impactScore ?? 0)
         });
+        
+        if (targetId === currentUser.id) {
+          setEditData({
+            name: baseProfile.name || '',
+            pseudonym: baseProfile.pseudonym || '',
+            bio: baseProfile.bio || '',
+            avatar: baseProfile.avatar || ''
+          });
+        }
       }
     } catch (e) {
       console.error(e);
