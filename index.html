@@ -50,28 +50,13 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Enregistrement optimisé du Service Worker
+      // Enregistrement robuste du Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // On force le chemin absolu pour éviter les erreurs de MIME type sur les sous-pages
-          navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(reg => {
-              console.log('Souveraineté PWA : Active');
-              // Optionnel : vérifier les mises à jour
-              reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                if (installingWorker) {
-                  installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                      console.log('Nouvelle version disponible !');
-                    }
-                  };
-                }
-              };
-            })
-            .catch(err => {
-              console.warn('PWA : Mode secours (Erreur SW)', err);
-            });
+          // On utilise un chemin relatif propre
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Souveraineté PWA : Active'))
+            .catch(err => console.warn('PWA non disponible dans ce contexte', err));
         });
       }
     </script>
