@@ -3,7 +3,7 @@
   "name": "CERCLE CITOYEN",
   "short_name": "Le Cercle",
   "description": "Réseau social citoyen souverain.",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#fcfcfc",
   "theme_color": "#2563eb",

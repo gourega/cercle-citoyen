@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Cercle Citoyen">
     
-    <!-- Icônes Apple (Fallback direct) -->
+    <!-- Icône Apple (Fallback direct) -->
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,17 +47,16 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Correction MIME Type : Utilisation d'un chemin relatif strict pour éviter l'interception SPA
+      // Enregistrement ultra-robuste du Service Worker
+      // On retire le './' pour éviter les erreurs de routing SPA
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // On tente d'abord le chemin standard
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
+          navigator.serviceWorker.register('sw.js')
             .then(reg => {
-              console.log('%c PWA %c Active et prête ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
+              console.log('%c PWA %c Liaison établie avec la Cité ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
             })
             .catch(err => {
-              // En cas d'échec (souvent en dev local), on log de façon plus discrète
-              console.warn('PWA: Service Worker en attente du déploiement final.');
+              console.warn('PWA: Mode dégradé (Installation non disponible)');
             });
         });
       }

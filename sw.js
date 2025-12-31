@@ -1,19 +1,17 @@
 
 /**
- * CERCLE CITOYEN - Service Worker
- * Gère l'installation hors-ligne et l'identité PWA.
+ * CERCLE CITOYEN - Service Worker v6
+ * Indispensable pour l'installation sur écran d'accueil.
  */
-const CACHE_NAME = 'cercle-citoyen-cache-v1';
-
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
-  // On laisse passer les requêtes normales pour le moment
+  // On laisse le réseau gérer les requêtes pour éviter les bugs de cache en dev
   return;
 });
