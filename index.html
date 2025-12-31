@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Cercle Citoyen">
     
-    <!-- Icône Apple (Fallback direct) -->
+    <!-- Icône Apple -->
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,16 +47,18 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Enregistrement ultra-robuste du Service Worker
-      // On retire le './' pour éviter les erreurs de routing SPA
+      // Enregistrement PWA : Correction stricte de l'URL pour éviter les erreurs d'origine
+      // On utilise une URL relative sans point pour laisser le navigateur résoudre par rapport à la base actuelle
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
+          const swPath = 'sw.js';
+          navigator.serviceWorker.register(swPath)
             .then(reg => {
               console.log('%c PWA %c Liaison établie avec la Cité ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
             })
             .catch(err => {
-              console.warn('PWA: Mode dégradé (Installation non disponible)');
+              // En cas d'erreur de domaine (souvent lié au sandbox iframe), on logue proprement
+              console.warn('PWA: Navigation assistée active. (Note: L\'installation peut être limitée par l\'environnement de développement).');
             });
         });
       }
@@ -74,14 +76,14 @@
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.48.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "vite": "https://esm.sh/vite@^7.3.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
+    "react/": "https://esm.sh/react@^19.0.0/"
   }
 }
 </script>
 </head>
 <body class="antialiased">
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

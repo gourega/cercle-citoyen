@@ -3,12 +3,12 @@
   "name": "CERCLE CITOYEN",
   "short_name": "Le Cercle",
   "description": "Réseau social citoyen souverain.",
-  "start_url": "/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#fcfcfc",
   "theme_color": "#2563eb",
   "orientation": "portrait",
-  "scope": "/",
+  "scope": "./",
   "icons": [
     {
       "src": "https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png",
