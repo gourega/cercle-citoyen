@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
-  Flame, Heart, Sparkles, Medal, Shield, Pencil
+  Flame, Heart, Sparkles, Medal, Shield, Pencil, UserPlus, UserCheck, Users, MessageSquare
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -64,6 +64,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +83,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         if (data) {
-          // Si c'est l'admin et que son score est 0, on force les points historiques
           let score = data.impact_score ?? data.impactScore ?? 0;
           if (targetId === ADMIN_ID && score === 0) {
             score = MOCK_USERS[ADMIN_ID].impact_score || 19740;
@@ -103,7 +103,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
             });
           }
         } else {
-           // Fallback si pas de profil trouvé en DB
            handleMockFallback(targetId);
         }
       } else {
@@ -183,6 +182,11 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     }
   };
 
+  const toggleFollow = () => {
+    setIsFollowing(!isFollowing);
+    addToast(isFollowing ? `Vous ne suivez plus ${profile.name}` : `Vous suivez désormais ${profile.name}`, "success");
+  };
+
   useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
 
   if (loading && !profile) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>;
@@ -248,14 +252,24 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                     <p className="text-gray-400 font-bold text-base tracking-wide flex items-center justify-center md:justify-start gap-2">
                       <AtSign size={16} /> {profile.pseudonym}
                     </p>
+                    <div className="flex items-center justify-center md:justify-start gap-6 mt-4">
+                       <div className="text-center md:text-left">
+                         <p className="text-lg font-bold text-gray-900">124</p>
+                         <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Soutiens</p>
+                       </div>
+                       <div className="text-center md:text-left">
+                         <p className="text-lg font-bold text-gray-900">89</p>
+                         <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Suivis</p>
+                       </div>
+                    </div>
                   </>
                 )}
               </div>
             </div>
             
-            {isOwnProfile && (
-              <div className="flex flex-wrap justify-center gap-3">
-                {isEditing ? (
+            <div className="flex flex-wrap justify-center gap-3">
+              {isOwnProfile ? (
+                isEditing ? (
                   <>
                     <button onClick={handleSave} disabled={syncing} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl">
                       {syncing ? <Loader2 className="animate-spin" /> : <Save size={16} />} Enregistrer
@@ -267,15 +281,29 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 ) : (
                   <>
                     <button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl">
-                      <Pencil size={16} /> Modifier
+                      <PenLine size={16} /> Modifier
                     </button>
                     <button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100">
                       <LogOut size={16} />
                     </button>
                   </>
-                )}
-              </div>
-            )}
+                )
+              ) : (
+                <>
+                  <button 
+                    onClick={toggleFollow}
+                    className={`px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl ${
+                      isFollowing ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {isFollowing ? <><UserCheck size={18} /> Suivi</> : <><UserPlus size={18} /> Suivre</>}
+                  </button>
+                  <button className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl">
+                    <MessageSquare size={16} /> Palabrer
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-3 gap-16">

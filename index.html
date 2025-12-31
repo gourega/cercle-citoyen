@@ -51,9 +51,12 @@
       // Enregistrement sécurisé du Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
+          navigator.serviceWorker.register('./sw.js')
             .then(reg => console.log('Souveraineté PWA : Active'))
-            .catch(err => console.debug('PWA : Mode classique activé'));
+            .catch(err => {
+              // On ignore silencieusement les erreurs de type MIME en mode démo preview
+              if (!err.message.includes('MIME')) console.debug('PWA registration:', err);
+            });
         });
       }
     </script>

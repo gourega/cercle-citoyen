@@ -19,7 +19,8 @@ import {
   ChevronDown,
   LayoutGrid,
   Users,
-  LogOut
+  LogOut,
+  Search
 } from 'lucide-react';
 
 // Pages
@@ -68,9 +69,6 @@ const ScrollToTop = () => {
   return null;
 };
 
-/**
- * HOC de protection des routes
- */
 const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: User | null }) => {
   if (!user) return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -122,7 +120,11 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifications] = useState<CitizenNotification[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [notifications, setNotifications] = useState<CitizenNotification[]>([
+    { id: '1', type: 'drum_call', title: 'Appel du Conseil', message: 'Un nouvel édit sur la souveraineté alimentaire vient d\'être publié.', timestamp: 'Il y a 10 min', isRead: false },
+    { id: '2', type: 'award', title: 'Distinction', message: 'Vous avez reçu le badge "Pionnier" pour votre inscription.', timestamp: 'Hier', isRead: true }
+  ]);
 
   const hideNavbarPaths = ['/', '/manifesto', '/auth', '/welcome', '/legal'];
   if (!user && hideNavbarPaths.includes(location.pathname)) return null;
@@ -148,12 +150,25 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100 h-20 px-6 shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
       <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center group">
+        <div className="flex items-center gap-8">
+          <Link to="/" className="flex items-center group shrink-0">
             <Logo size={32} showText={true} />
           </Link>
+
+          {user && (
+            <div className={`hidden md:flex items-center bg-gray-50 rounded-2xl border border-transparent transition-all px-4 py-2 ${searchFocused ? 'bg-white border-blue-200 shadow-lg w-80' : 'w-48'}`}>
+              <Search size={16} className={`${searchFocused ? 'text-blue-600' : 'text-gray-400'}`} />
+              <input 
+                type="text" 
+                placeholder="Rechercher..." 
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                className="bg-transparent border-none outline-none ml-3 text-[11px] font-bold text-gray-900 w-full placeholder:text-gray-300"
+              />
+            </div>
+          )}
         </div>
 
         <div className="hidden lg:flex items-center gap-1">
@@ -170,7 +185,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
                 className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative"
               >
                 <Bell size={20} />
-                {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>}
+                {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
               </button>
 
               {isGuardian && (
@@ -210,6 +225,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
            {user && (
              <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative">
                <Bell size={24} />
+               {notifications.some(n => !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>}
              </button>
            )}
            <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>
@@ -222,7 +238,7 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
         <NotificationDrawer 
           notifications={notifications} 
           onClose={() => setIsNotifOpen(false)} 
-          onMarkRead={() => {}} 
+          onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} 
         />
       )}
 
@@ -318,13 +334,11 @@ const App = () => {
           <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
-              {/* Route Racine : La Landing Page est l'entrée obligatoire */}
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
               <Route path="/legal" element={<LegalPage />} />
               
-              {/* Routes Protégées : Redirection vers '/' si non connecté */}
               <Route path="/welcome" element={<PrivateRoute user={user}><WelcomePage /></PrivateRoute>} />
               <Route path="/feed" element={<PrivateRoute user={user}><FeedPage user={user} /></PrivateRoute>} />
               <Route path="/admin" element={user?.role === Role.SUPER_ADMIN ? <AdminDashboard /> : <Navigate to="/" />} />
@@ -337,6 +351,7 @@ const App = () => {
               <Route path="/impact" element={<PrivateRoute user={user}><ImpactStudio user={user} /></PrivateRoute>} />
               <Route path="/exchange" element={<PrivateRoute user={user}><ResourceExchange user={user} /></PrivateRoute>} />
               <Route path="/profile" element={<PrivateRoute user={user}><ProfilePage currentUser={user!} onLogout={handleLogout} /></PrivateRoute>} />
+              <Route path="/profile/:id" element={<PrivateRoute user={user}><ProfilePage currentUser={user!} onLogout={handleLogout} /></PrivateRoute>} />
               <Route path="/circle/:type" element={<PrivateRoute user={user}><CirclePage user={user!} /></PrivateRoute>} />
               
               <Route path="*" element={<Navigate to="/" />} />
