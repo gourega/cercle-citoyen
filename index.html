@@ -19,7 +19,6 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Silence Tailwind Production Warning by defining config
       window.tailwind.config = {
         theme: {
           extend: {
@@ -65,20 +64,12 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Enregistrement PWA intelligent : On évite les erreurs d'origine en environnement sandbox
+      // Enregistrement PWA intelligent
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          try {
-            const swUrl = new URL('sw.js', window.location.href);
-            // On ne tente l'enregistrement que si l'origine est identique
-            if (swUrl.origin === window.location.origin) {
-              navigator.serviceWorker.register(swUrl.pathname)
-                .then(reg => {
-                  console.log('%c PWA %c Liaison établie avec la Cité ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
-                })
-                .catch(() => { /* Échec silencieux attendu en mode dev */ });
-            }
-          } catch(e) { /* Erreur d'URL silencieuse */ }
+          navigator.serviceWorker.register('sw.js', { scope: './' })
+            .then(() => console.log('Liaison établie avec la Cité'))
+            .catch(err => console.warn('PWA: Navigation assistée active.'));
         });
       }
     </script>
@@ -93,10 +84,10 @@
     "react-router-dom": "https://esm.sh/react-router-dom@6.28.0?deps=react@19.0.0,react-dom@19.0.0",
     "@google/genai": "https://esm.sh/@google/genai@1.34.0",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.48.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "vite": "https://esm.sh/vite@^7.3.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
-    "react/": "https://esm.sh/react@^19.0.0/"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>

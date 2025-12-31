@@ -22,8 +22,7 @@ import {
   LogOut,
   Search,
   Smartphone,
-  Download,
-  Plus
+  PlusCircle
 } from 'lucide-react';
 
 // Pages
@@ -64,60 +63,6 @@ export const useToast = () => {
   return context;
 };
 
-const PWAInstallPrompt = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showPrompt, setShowPrompt] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      // On affiche le prompt après 5 secondes si l'app n'est pas déjà installée
-      const timer = setTimeout(() => {
-        if (!window.matchMedia('(display-mode: standalone)').matches) {
-          setShowPrompt(true);
-        }
-      }, 5000);
-      return () => clearTimeout(timer);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowPrompt(false);
-    setDeferredPrompt(null);
-  };
-
-  if (!showPrompt) return null;
-
-  return (
-    <div className="fixed bottom-24 left-6 right-6 lg:left-auto lg:right-10 lg:w-96 z-[200] animate-in slide-in-from-bottom-10 duration-700">
-      <div className="bg-gray-900 text-white rounded-[2.5rem] shadow-3xl border border-white/10 p-6 flex items-center gap-5 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent pointer-events-none"></div>
-        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xl group-hover:scale-110 transition-transform duration-500">
-          <Smartphone size={32} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] mb-1">Expérience Mobile</p>
-          <p className="text-sm font-bold leading-tight">Installer le Cercle sur votre écran d'accueil</p>
-        </div>
-        <div className="flex flex-col gap-2">
-           <button onClick={handleInstall} className="bg-white text-gray-900 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-lg active:scale-95">
-             Installer
-           </button>
-           <button onClick={() => setShowPrompt(false)} className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors text-center">
-             Plus tard
-           </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
@@ -129,38 +74,10 @@ const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: Use
   return <>{children}</>;
 };
 
-const NavDropdown = ({ label, icon, items }: { label: string, icon: React.ReactNode, items: { to: string, icon: React.ReactNode, label: string }[] }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-  const handleMouseEnter = () => { if (timeoutRef.current) window.clearTimeout(timeoutRef.current); setIsOpen(true); };
-  const handleMouseLeave = () => { timeoutRef.current = window.setTimeout(() => setIsOpen(false), 200); };
-
-  return (
-    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isOpen ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-900'}`}>
-        {icon} {label} <ChevronDown size={12} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-[110] backdrop-blur-xl bg-white/95 animate-in fade-in slide-in-from-top-2">
-          {items.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} className={({ isActive }) => `flex items-center gap-3 p-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}>
-              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-blue-600 transition-colors">
-                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 14 })}
-              </div>
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [notifications, setNotifications] = useState<CitizenNotification[]>([
     { id: '1', type: 'drum_call', title: 'Appel du Conseil', message: 'Un nouvel édit sur la souveraineté alimentaire vient d\'être publié.', timestamp: '10m', isRead: false },
     { id: '2', type: 'award', title: 'Distinction', message: 'Vous avez reçu le badge "Pionnier" !', timestamp: '1h', isRead: false }
@@ -171,64 +88,67 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
   const isGuardian = user?.role === Role.SUPER_ADMIN;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
-      <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center shrink-0"><Logo size={32} showText /></Link>
-          {user && (
-            <div className={`hidden md:flex items-center bg-gray-50 rounded-2xl border transition-all px-4 py-2 ${searchFocused ? 'bg-white border-blue-200 shadow-lg w-80' : 'border-transparent w-48'}`}>
-              <Search size={16} className={`${searchFocused ? 'text-blue-600' : 'text-gray-400'}`} />
-              <input 
-                type="text" placeholder="Chercher un citoyen..." onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-                className="bg-transparent border-none outline-none ml-3 text-[11px] font-bold text-gray-900 w-full placeholder:text-gray-300"
-              />
-            </div>
-          )}
-        </div>
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
+        <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
+          <div className="flex items-center gap-8">
+            <Link to="/" className="flex items-center shrink-0"><Logo size={32} showText /></Link>
+          </div>
 
-        <div className="hidden lg:flex items-center gap-1">
-          {user ? (
-            <>
-              <NavDropdown label="Espaces" icon={<Users size={16} />} items={[{ to: "/feed", icon: <Home />, label: "Fil d'Éveil" }, { to: "/chat", icon: <MessageSquare />, label: "Palabres" }, { to: "/live", icon: <Mic />, label: "L'Assemblée" }]} />
-              <NavDropdown label="Engagement" icon={<MapIcon size={16} />} items={[{ to: "/map", icon: <MapIcon />, label: "Carte" }, { to: "/governance", icon: <Gavel />, label: "Édits" }, { to: "/quests", icon: <Target />, label: "Sentiers" }]} />
-              <NavDropdown label="Outils" icon={<LayoutGrid size={16} />} items={[{ to: "/griot", icon: <Sparkles />, label: "Griot" }, { to: "/impact", icon: <Zap />, label: "Impact" }, { to: "/exchange", icon: <ShoppingBag />, label: "Marché" }]} />
-              <div className="h-6 w-px bg-gray-100 mx-3"></div>
-              <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all relative">
-                <Bell size={20} />
-                {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
-              </button>
-              {isGuardian && <NavLink to="/admin" className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isActive ? 'text-amber-600 bg-amber-50' : 'text-amber-500/60 hover:text-amber-600'}`}><Crown size={16} /> Conseil</NavLink>}
-              <div className="flex items-center gap-2 ml-2">
-                <NavLink to="/profile" className={({ isActive }) => `w-10 h-10 rounded-xl overflow-hidden ring-2 transition-all ${isActive ? 'ring-blue-600' : 'ring-transparent hover:ring-blue-200'}`}>
+          <div className="hidden lg:flex items-center gap-6">
+            {user ? (
+              <>
+                <NavLink to="/feed" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Fil d'Éveil</NavLink>
+                <NavLink to="/chat" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Palabres</NavLink>
+                <NavLink to="/map" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Carte</NavLink>
+                <NavLink to="/governance" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Édits</NavLink>
+                <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 relative">
+                  <Bell size={20} />
+                  {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
+                </button>
+                <NavLink to="/profile" className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-transparent hover:ring-blue-100">
                   <img src={user.avatar} className="w-full h-full object-cover" alt="Moi" />
                 </NavLink>
-                <button onClick={onLogout} className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><LogOut size={18} /></button>
-              </div>
-            </>
-          ) : (
-            <Link to="/auth" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">Rejoindre la Cité</Link>
-          )}
-        </div>
+                <button onClick={onLogout} className="text-gray-400 hover:text-rose-600 transition-all"><LogOut size={18} /></button>
+              </>
+            ) : (
+              <Link to="/auth" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">Rejoindre la Cité</Link>
+            )}
+          </div>
 
-        <div className="flex items-center gap-4 lg:hidden">
-          {user && <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 relative"><Bell size={24} />{notifications.some(n => !n.isRead) && <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>}</button>}
-          <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>{isOpen ? <X size={28} /> : <Menu size={28} />}</button>
+          <div className="lg:hidden">
+            <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>{isOpen ? <X size={28} /> : <Menu size={28} />}</button>
+          </div>
         </div>
-      </div>
+      </nav>
 
-      {isNotifOpen && user && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} />}
+      {/* Mobile Sidebar */}
       {isOpen && (
-        <div className="lg:hidden absolute top-20 left-0 right-0 bg-white border-t border-gray-100 p-6 flex flex-col gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
-          {user ? (
-            <>
-              <NavLink to="/feed" onClick={() => setIsOpen(false)} className="p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3"><Home size={18}/> Fil d'Éveil</NavLink>
-              <NavLink to="/profile" onClick={() => setIsOpen(false)} className="p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3"><Users size={18}/> Mon Profil</NavLink>
-              <button onClick={() => { onLogout(); setIsOpen(false); }} className="p-4 rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] uppercase tracking-widest text-left flex items-center gap-3"><LogOut size={18}/> Déconnexion</button>
-            </>
-          ) : <Link to="/auth" onClick={() => setIsOpen(false)} className="bg-blue-600 text-white p-6 rounded-2xl font-black text-center uppercase tracking-widest">S'inscrire au Cercle</Link>}
+        <div className="fixed inset-0 z-[110] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden">
+          <button onClick={() => setIsOpen(false)} className="absolute top-10 right-10"><X size={32} /></button>
+          <div className="mt-20 flex flex-col gap-8">
+            <NavLink to="/feed" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Fil d'Éveil</NavLink>
+            <NavLink to="/chat" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Palabres</NavLink>
+            <NavLink to="/map" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Carte d'Impact</NavLink>
+            <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Mon Profil</NavLink>
+            <button onClick={() => { onLogout(); setIsOpen(false); }} className="text-rose-600 text-left text-2xl font-serif font-bold">Déconnexion</button>
+          </div>
         </div>
       )}
-    </nav>
+
+      {isNotifOpen && user && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} />}
+
+      {/* Mobile Tab Bar */}
+      {user && (
+        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe">
+          <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
+          <NavLink to="/chat" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MessageSquare size={24} /></NavLink>
+          <NavLink to="/map" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MapIcon size={24} /></NavLink>
+          <NavLink to="/governance" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Gavel size={24} /></NavLink>
+          <NavLink to="/profile" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><img src={user.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" /></NavLink>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -242,9 +162,9 @@ const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-w-sm px-4">
+      <div className="fixed bottom-24 lg:bottom-10 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
         {toasts.map(t => (
-          <div key={t.id} className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-2 ${t.type === 'success' ? 'bg-emerald-600' : 'bg-blue-600'}`}>
+          <div key={t.id} className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-2 ${t.type === 'success' ? 'bg-emerald-600' : 'bg-gray-900'}`}>
              <CheckCircle size={18} /> <span className="text-sm font-bold">{t.message}</span>
           </div>
         ))}
@@ -265,7 +185,7 @@ const App = () => {
     <ToastProvider>
       <Router>
         <ScrollToTop />
-        <div className="min-h-screen flex flex-col bg-[#fcfcfc]">
+        <div className="min-h-screen flex flex-col bg-[#fcfcfc] pb-20 lg:pb-0">
           <Navbar user={user} onLogout={handleLogout} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
@@ -291,7 +211,6 @@ const App = () => {
             </Routes>
           </main>
           <GuardianAssistant />
-          <PWAInstallPrompt />
           <Footer />
         </div>
       </Router>

@@ -1,20 +1,32 @@
 
-/**
- * CERCLE CITOYEN - Service Worker
- * Version optimisée pour la compatibilité Cross-Origin.
- */
-const CACHE_NAME = 'cercle-v8';
+const CACHE_NAME = 'cercle-v10';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json'
+];
 
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      );
+    })
+  );
+  self.clients.claim();
 });
 
-// Stratégie : Network First pour le développement
 self.addEventListener('fetch', (event) => {
-  // On ne capture rien pour éviter les problèmes de MIME type dans l'IDE
-  return;
+  // Stratégie simple pour éviter les erreurs de MIME en environnement dev
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(() => caches.match('/')));
+  }
 });
