@@ -22,7 +22,8 @@ import {
   LogOut,
   Search,
   Smartphone,
-  Download
+  Download,
+  Plus
 } from 'lucide-react';
 
 // Pages
@@ -71,9 +72,13 @@ const PWAInstallPrompt = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
-        setShowPrompt(true);
-      }
+      // On affiche le prompt après 5 secondes si l'app n'est pas déjà installée
+      const timer = setTimeout(() => {
+        if (!window.matchMedia('(display-mode: standalone)').matches) {
+          setShowPrompt(true);
+        }
+      }, 5000);
+      return () => clearTimeout(timer);
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -91,21 +96,23 @@ const PWAInstallPrompt = () => {
 
   return (
     <div className="fixed bottom-24 left-6 right-6 lg:left-auto lg:right-10 lg:w-96 z-[200] animate-in slide-in-from-bottom-10 duration-700">
-      <div className="bg-white rounded-3xl shadow-2xl border border-blue-100 p-6 flex items-center gap-4 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-          <Smartphone size={28} />
+      <div className="bg-gray-900 text-white rounded-[2.5rem] shadow-3xl border border-white/10 p-6 flex items-center gap-5 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent pointer-events-none"></div>
+        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xl group-hover:scale-110 transition-transform duration-500">
+          <Smartphone size={32} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mb-1">Application Souveraine</p>
-          <p className="text-sm font-bold text-gray-900 leading-tight">Installer le Cercle sur votre téléphone</p>
+          <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] mb-1">Expérience Mobile</p>
+          <p className="text-sm font-bold leading-tight">Installer le Cercle sur votre écran d'accueil</p>
         </div>
-        <button onClick={handleInstall} className="bg-gray-900 text-white p-3 rounded-xl hover:bg-black transition-all shadow-md active:scale-95">
-          <Download size={20} />
-        </button>
-        <button onClick={() => setShowPrompt(false)} className="absolute top-2 right-2 text-gray-300 hover:text-gray-500">
-          <X size={14} />
-        </button>
+        <div className="flex flex-col gap-2">
+           <button onClick={handleInstall} className="bg-white text-gray-900 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-lg active:scale-95">
+             Installer
+           </button>
+           <button onClick={() => setShowPrompt(false)} className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors text-center">
+             Plus tard
+           </button>
+        </div>
       </div>
     </div>
   );

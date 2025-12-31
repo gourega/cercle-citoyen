@@ -1,13 +1,11 @@
 
-const CACHE_NAME = 'cercle-citoyen-v2';
+const CACHE_NAME = 'cercle-citoyen-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  'https://cdn.tailwindcss.com'
+  '/manifest.json'
 ];
 
-// Installation : Mise en cache des ressources statiques essentielles
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -17,31 +15,22 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activation : Nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
+    caches.keys().then((keys) => {
+      return Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)));
     })
   );
 });
 
-// Fetch : Stratégie "Network First" pour le social, avec fallback sur le cache
 self.addEventListener('fetch', (event) => {
-  // On ne met pas en cache les requêtes API (Supabase / Gemini)
+  // On laisse passer les requêtes API en direct
   if (event.request.url.includes('supabase.co') || event.request.url.includes('googleapis')) {
     return;
   }
 
+  // Pour le reste, on tente le réseau, sinon le cache
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
