@@ -18,6 +18,24 @@
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Silence Tailwind Production Warning by defining config
+      window.tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              serif: ['Playfair Display', 'serif'],
+              sans: ['Plus Jakarta Sans', 'sans-serif'],
+            },
+            colors: {
+              cercle: {
+                blue: '#2563eb',
+              }
+            }
+          }
+        }
+      }
+    </script>
     
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
@@ -47,19 +65,20 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Enregistrement PWA : Correction stricte de l'URL pour éviter les erreurs d'origine
-      // On utilise une URL relative sans point pour laisser le navigateur résoudre par rapport à la base actuelle
+      // Enregistrement PWA intelligent : On évite les erreurs d'origine en environnement sandbox
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          const swPath = 'sw.js';
-          navigator.serviceWorker.register(swPath)
-            .then(reg => {
-              console.log('%c PWA %c Liaison établie avec la Cité ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
-            })
-            .catch(err => {
-              // En cas d'erreur de domaine (souvent lié au sandbox iframe), on logue proprement
-              console.warn('PWA: Navigation assistée active. (Note: L\'installation peut être limitée par l\'environnement de développement).');
-            });
+          try {
+            const swUrl = new URL('sw.js', window.location.href);
+            // On ne tente l'enregistrement que si l'origine est identique
+            if (swUrl.origin === window.location.origin) {
+              navigator.serviceWorker.register(swUrl.pathname)
+                .then(reg => {
+                  console.log('%c PWA %c Liaison établie avec la Cité ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
+                })
+                .catch(() => { /* Échec silencieux attendu en mode dev */ });
+            }
+          } catch(e) { /* Erreur d'URL silencieuse */ }
         });
       }
     </script>
