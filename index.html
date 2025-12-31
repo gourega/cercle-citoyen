@@ -47,15 +47,17 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Correction MIME Type : On utilise le chemin relatif direct sans slash initial complexe
+      // Correction MIME Type : Utilisation d'un chemin relatif strict pour éviter l'interception SPA
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
+          // On tente d'abord le chemin standard
+          navigator.serviceWorker.register('./sw.js', { scope: './' })
             .then(reg => {
-              console.log('PWA: Prête à être installée');
+              console.log('%c PWA %c Active et prête ', 'background: #2563eb; color: #fff; border-radius: 3px 0 0 3px; padding: 2px 5px;', 'background: #f1f5f9; color: #2563eb; border-radius: 0 3px 3px 0; padding: 2px 5px;');
             })
             .catch(err => {
-              console.log('PWA: Note - En attente du déploiement final du fichier sw.js');
+              // En cas d'échec (souvent en dev local), on log de façon plus discrète
+              console.warn('PWA: Service Worker en attente du déploiement final.');
             });
         });
       }

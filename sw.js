@@ -1,16 +1,19 @@
 
-// Service Worker Minimaliste pour validation PWA
-const CACHE_NAME = 'cercle-v4';
+/**
+ * CERCLE CITOYEN - Service Worker
+ * Gère l'installation hors-ligne et l'identité PWA.
+ */
+const CACHE_NAME = 'cercle-citoyen-cache-v1';
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(clients.claim());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
 });
 
-self.addEventListener('fetch', (e) => {
-  // Stratégie : Toujours réseau pour éviter les bugs de cache pendant le dev
+self.addEventListener('fetch', (event) => {
+  // On laisse passer les requêtes normales pour le moment
   return;
 });
