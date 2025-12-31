@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
-  Flame, Heart, Sparkles, Medal, Shield
+  Flame, Heart, Sparkles, Medal, Shield, Pencil
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -82,9 +82,11 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         if (data) {
-          // Gestion robuste du score d'impact pour l'admin
+          // Si c'est l'admin et que son score est 0, on force les points historiques
           let score = data.impact_score ?? data.impactScore ?? 0;
-          if (targetId === ADMIN_ID && score === 0) score = MOCK_USERS[ADMIN_ID].impact_score || 19740;
+          if (targetId === ADMIN_ID && score === 0) {
+            score = MOCK_USERS[ADMIN_ID].impact_score || 19740;
+          }
 
           const fetchedProfile = { 
             ...data, 
@@ -100,29 +102,36 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
               avatar: fetchedProfile.avatar
             });
           }
+        } else {
+           // Fallback si pas de profil trouvé en DB
+           handleMockFallback(targetId);
         }
       } else {
-        // Fallback démo : on utilise les mocks si c'est l'admin
-        const mockUser = MOCK_USERS[targetId] || (targetId === currentUser.id ? currentUser : null);
-        if (mockUser) {
-          setProfile({
-            ...mockUser,
-            impact_score: mockUser.impact_score ?? mockUser.impactScore ?? 0
-          });
-          if (targetId === currentUser.id) {
-            setEditData({
-              name: mockUser.name,
-              pseudonym: mockUser.pseudonym,
-              bio: mockUser.bio,
-              avatar: mockUser.avatar
-            });
-          }
-        }
+        handleMockFallback(targetId);
       }
     } catch (e) {
       console.error(e);
+      handleMockFallback(targetId);
     } finally { 
       setLoading(false); 
+    }
+  };
+
+  const handleMockFallback = (targetId: string) => {
+    const mockUser = MOCK_USERS[targetId] || (targetId === currentUser.id ? currentUser : null);
+    if (mockUser) {
+      setProfile({
+        ...mockUser,
+        impact_score: mockUser.impact_score ?? mockUser.impactScore ?? 0
+      });
+      if (targetId === currentUser.id) {
+        setEditData({
+          name: mockUser.name,
+          pseudonym: mockUser.pseudonym,
+          bio: mockUser.bio,
+          avatar: mockUser.avatar
+        });
+      }
     }
   };
 
@@ -258,7 +267,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 ) : (
                   <>
                     <button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl">
-                      <PenLine size={16} /> Modifier
+                      <Pencil size={16} /> Modifier
                     </button>
                     <button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100">
                       <LogOut size={16} />

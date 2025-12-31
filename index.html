@@ -9,7 +9,7 @@
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Cercle Citoyen">
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
@@ -48,14 +48,12 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Enregistrement du Service Worker avec chemin relatif correct
+      // Enregistrement sécurisé du Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            console.log('Service Worker registered:', reg.scope);
-          }).catch(err => {
-            console.warn('Service Worker registration failed:', err);
-          });
+          navigator.serviceWorker.register('./sw.js', { scope: './' })
+            .then(reg => console.log('Souveraineté PWA : Active'))
+            .catch(err => console.debug('PWA : Mode classique activé'));
         });
       }
     </script>
