@@ -12,33 +12,13 @@ import {
   ArrowRight, 
   Loader2, 
   CheckCircle2,
-  LayoutGrid,
-  MapPin,
   Sparkles,
   Zap,
   Shield
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
-import { CIRCLES_CONFIG } from '../constants.tsx';
 import { User, Role, UserCategory } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
-
-const PulsePoint = ({ x, y, city, action, color = "bg-blue-400" }: { x: string, y: string, city: string, action: string, color?: string }) => (
-  <div 
-    className="absolute group z-20" 
-    style={{ left: x, top: y }}
-  >
-    <div className={`absolute -inset-2 rounded-full ${color} opacity-20 animate-ping`}></div>
-    <div className={`w-3 h-3 ${color} rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)] cursor-pointer transition-transform group-hover:scale-150`}></div>
-    
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto translate-y-2 group-hover:translate-y-0">
-      <div className="bg-gray-900 border border-white/10 p-3 rounded-2xl shadow-2xl backdrop-blur-md text-left">
-        <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">{city}</p>
-        <p className="text-white text-[10px] leading-tight font-medium">{action}</p>
-      </div>
-    </div>
-  </div>
-);
 
 const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: User | null }) => {
   const navigate = useNavigate();
@@ -103,14 +83,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     }
   };
 
-  const handleCircleClick = (circleType: string) => {
-    if (user) {
-      navigate(`/circle/${encodeURIComponent(circleType)}`);
-    } else {
-      navigate('/manifesto');
-    }
-  };
-
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
       
@@ -125,10 +97,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
       <header className="relative z-20 pt-16 mb-16 flex flex-col items-center gap-8 text-center animate-in fade-in duration-1000">
         <Logo size={64} showText={true} variant="blue" />
         <div className="flex flex-col items-center gap-3">
-          <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-xl shadow-blue-100 animate-bounce-slow">
+          <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-xl shadow-blue-100">
             <Shield size={16} />
             <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-              Souveraineté .CI Activée
+              Souveraineté .CI Active
             </span>
           </div>
           <p className="text-[9px] font-black uppercase tracking-[0.5em] text-gray-300">Territoire Numérique Ivoirien</p>
@@ -150,7 +122,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
         {/* Section Connexion */}
         <div id="login-section" className="w-full max-w-[540px] mb-32 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-          <div className="bg-white rounded-[4rem] shadow-prestige border border-gray-100 p-10 md:p-16 mb-10 relative overflow-hidden group">
+          <div className="bg-white rounded-[4rem] shadow-2xl border border-gray-100 p-10 md:p-16 mb-10 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000">
               <Sparkles size={120} className="text-blue-600" />
             </div>
@@ -174,7 +146,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               <form onSubmit={handleLogin} className="space-y-6 relative z-10">
                 {error && (
                   <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake duration-300">
-                    <AlertCircle size={18} /> {error}
+                    <AlertCircle size={18} className="shrink-0" /> {error}
                   </div>
                 )}
 
