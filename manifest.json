@@ -3,7 +3,7 @@
   "name": "CERCLE CITOYEN",
   "short_name": "Le Cercle",
   "description": "Réseau social citoyen souverain pour le progrès social en Côte d'Ivoire.",
-  "start_url": "./index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#fcfcfc",
   "theme_color": "#2563eb",
