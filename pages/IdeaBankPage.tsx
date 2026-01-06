@@ -39,13 +39,17 @@ const IdeaBankPage: React.FC = () => {
   }, []);
 
   const fetchIdeas = async () => {
-    const { data } = await supabase.from('ideas').select('*').order('created_at', { ascending: false });
-    if (data) setIdeas(data);
+    if (supabase) {
+      const { data } = await supabase.from('ideas').select('*').order('created_at', { ascending: false });
+      if (data) setIdeas(data);
+    }
     setLoading(false);
   };
 
   const handleCreateIdea = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!supabase) return;
+    // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+    const { data: { user } } = await (supabase.auth as any).getUser();
     if (!user) return;
 
     const analysis = await analyzeIdeaImpact(newIdea.title, newIdea.description);

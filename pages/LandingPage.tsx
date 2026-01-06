@@ -41,7 +41,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
     try {
       if (isRealSupabase && supabase) {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+        const { data: authData, error: authError } = await (supabase.auth as any).signInWithPassword({
           email,
           password,
         });
@@ -97,7 +98,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
       if (isRealSupabase && supabase) {
         // En production, window.location.origin sera https://cerclecitoyen.ci
         const siteUrl = window.location.origin;
-        const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email, {
+        // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+        const { error: recoveryError } = await (supabase.auth as any).resetPasswordForEmail(email, {
           redirectTo: `${siteUrl}/#/auth?type=recovery`,
         });
 
@@ -231,7 +233,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
                 {!success && (
                   <button 
-                    type="button"
+                    type="button" 
                     onClick={() => setIsRecoveryMode(false)}
                     className="w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-900 tracking-widest transition-colors"
                   >

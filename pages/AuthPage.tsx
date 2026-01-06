@@ -66,7 +66,8 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
       }
 
       // 1. Création du compte dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+      const { data: authData, error: authError } = await (supabase.auth as any).signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -132,7 +133,8 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
 
     try {
       if (isRealSupabase && supabase) {
-        const { error: updateError } = await supabase.auth.updateUser({
+        // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+        const { error: updateError } = await (supabase.auth as any).updateUser({
           password: formData.password
         });
 

@@ -38,7 +38,8 @@ import Logo from './Logo.tsx';
 import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import NotificationDrawer from './components/NotificationDrawer.tsx';
-import { User, Role, CitizenNotification } from './types.ts';
+import { User, Role, CitizenNotification, UserCategory } from './types.ts';
+import { supabase, isRealSupabase } from './lib/supabase.ts';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -164,8 +165,52 @@ const App = () => {
     try { const saved = localStorage.getItem('cercle_user'); return saved ? JSON.parse(saved) : null; } catch (e) { return null; }
   });
 
-  const handleLogin = (u: User) => { setUser(u); localStorage.setItem('cercle_user', JSON.stringify(u)); };
-  const handleLogout = async () => { setUser(null); localStorage.removeItem('cercle_user'); window.location.hash = '#/'; };
+  const handleLogin = (u: User) => { 
+    setUser(u); 
+    localStorage.setItem('cercle_user', JSON.stringify(u)); 
+  };
+
+  const handleLogout = async () => { 
+    // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+    if (isRealSupabase && supabase) await (supabase.auth as any).signOut();
+    setUser(null); 
+    localStorage.removeItem('cercle_user'); 
+    window.location.hash = '#/'; 
+  };
+
+  useEffect(() => {
+    if (!isRealSupabase || !supabase) return;
+
+    // Écouter les changements de session (utile pour la récupération de MDP)
+    // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
+    const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
+      if (session?.user && !user) {
+        // Un utilisateur vient de se connecter (peut-être via un lien de récupération)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          handleLogin({
+            id: profile.id,
+            name: profile.name,
+            pseudonym: profile.pseudonym,
+            email: profile.email,
+            bio: profile.bio,
+            role: profile.role as Role,
+            category: (profile.category as UserCategory) || UserCategory.CITIZEN,
+            interests: [],
+            avatar: profile.avatar_url,
+            impactScore: profile.impact_score || 0
+          });
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [user]);
 
   return (
     <ToastProvider>

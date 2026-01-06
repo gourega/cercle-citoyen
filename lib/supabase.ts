@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Récupération des variables injectées par le define de vite.config.ts
+// Récupération des variables injectées
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
@@ -14,47 +14,43 @@ const clean = (val: any) => {
 const finalUrl = clean(supabaseUrl);
 const finalKey = clean(supabaseAnonKey);
 
-// Détection de l'erreur courante : utilisation de clés Stripe (sb_...) au lieu de Supabase (eyJ...)
+// Détection de configuration Stripe au lieu de Supabase
 const isStripeKey = !!finalKey && finalKey.startsWith('sb_');
 
-// Validation : L'URL doit être une URL supabase.co valide et la clé ne doit pas être une clé Stripe
 export const isRealSupabase = !!finalUrl && finalUrl.includes('.supabase.co') && !!finalKey && !isStripeKey;
 
+if (!isRealSupabase) {
+  console.warn("⚠️ Configuration Supabase manquante ou erronée. Le mode démo est activé.");
+  if (isStripeKey) console.error("❌ ERREUR : Vous avez utilisé une clé Stripe au lieu de la clé 'anon' Supabase.");
+}
+
 export const supabase = isRealSupabase
-  ? createClient(finalUrl as string, finalKey as string)
+  ? createClient(finalUrl as string, finalKey as string, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : null;
 
 export const db = {
   async checkConnection() {
-    if (isStripeKey) {
-      return { 
-        ok: false, 
-        message: "Clé Stripe détectée ! Utilisez la clé 'anon' de Supabase (eyJ...) dans la variable VITE_SUPABASE_ANON_KEY." 
-      };
-    }
-
     if (!supabase) {
       return { 
         ok: false, 
-        message: `Mode Démo : Nommez vos variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans Cloudflare, puis relancez un déploiement.` 
+        message: `Mode Démo : Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans vos variables d'environnement.` 
       };
     }
 
     try {
       const { error } = await supabase.from('profiles').select('id').limit(1);
-      
       if (error) {
-        if (error.code === 'PGRST301' || error.message.includes('JWT')) {
-          return { ok: false, message: "La clé est incorrecte. Copiez bien la clé 'anon' (très longue) depuis Supabase." };
-        }
-        if (error.message.includes('relation') || error.code === 'PGRST116') {
-          return { ok: true, message: "Liaison établie ! Prêt pour le premier citoyen." };
-        }
-        return { ok: false, message: `Erreur Supabase : ${error.message}` };
+        return { ok: false, message: `Liaison interrompue : ${error.message}` };
       }
       return { ok: true, message: "Liaison souveraine établie." };
     } catch (e: any) {
-      return { ok: false, message: `Échec réseau : Impossible de contacter ${finalUrl}.` };
+      return { ok: false, message: `Échec réseau : Impossible de contacter Supabase.` };
     }
   }
 };
