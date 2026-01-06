@@ -82,8 +82,8 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
     <>
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
         {connStatus && (
-          <div className={`absolute top-0 inset-x-0 text-[8px] py-1 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest transition-colors duration-500 z-[110] ${connStatus.ok ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-            {connStatus.ok ? <Wifi size={10} /> : <AlertTriangle size={10} />} {connStatus.message}
+          <div className={`absolute top-0 inset-x-0 text-[7px] py-1 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest transition-all duration-700 z-[110] ${connStatus.ok ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+            {connStatus.ok ? <Wifi size={8} /> : <AlertTriangle size={8} />} {connStatus.message}
           </div>
         )}
         <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
@@ -206,8 +206,12 @@ const App = () => {
       const status = await db.checkConnection();
       setConnStatus(status);
     };
+    
+    // Premier check immédiat
     check();
-    const interval = setInterval(check, 30000); // Check toutes les 30s en production
+    
+    // Intervalle plus souple pour la production
+    const interval = setInterval(check, 60000); 
 
     if (!isRealSupabase || !supabase) return () => clearInterval(interval);
 
