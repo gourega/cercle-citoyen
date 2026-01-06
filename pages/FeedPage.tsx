@@ -4,10 +4,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { 
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
   ShieldCheck, MessageCircle, RefreshCw, 
-  Info, Pencil, Save, Trash2, Crown,
-  TrendingUp, Users, Heart, ChevronRight,
-  Flame, Award, Clock, Share2, ChevronDown, ChevronUp,
-  Bold, Italic, Smile, MoreHorizontal
+  Pencil, Crown, Share2, ChevronDown, ChevronUp,
+  Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
@@ -37,11 +35,6 @@ const PostSkeleton = () => (
     <div className="space-y-3 mb-8">
       <div className="w-full h-4 bg-gray-100 rounded"></div>
       <div className="w-5/6 h-4 bg-gray-100 rounded"></div>
-      <div className="w-4/6 h-4 bg-gray-100 rounded"></div>
-    </div>
-    <div className="pt-8 border-t border-gray-50 flex gap-4">
-      <div className="w-12 h-6 bg-gray-50 rounded-full"></div>
-      <div className="w-12 h-6 bg-gray-50 rounded-full"></div>
     </div>
   </div>
 );
@@ -93,11 +86,12 @@ const PostCard: React.FC<{
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isAuthor = currentUser?.id === post.author_id;
-  const needsTruncation = post.content.length > 280;
-  const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, 280) + '...' : post.content;
+  const TRUNCATE_LIMIT = 200; // Limite plus stricte pour un fil plus propre
+  const needsTruncation = post.content.length > TRUNCATE_LIMIT;
+  const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, TRUNCATE_LIMIT) + '...' : post.content;
 
   return (
-    <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden animate-in fade-in duration-500 ${isMajestic ? 'ring-2 ring-amber-100 shadow-amber-50' : ''}`}>
+    <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden animate-in fade-in duration-500 ${isMajestic ? 'ring-2 ring-amber-100 shadow-amber-50/50' : ''}`}>
       <div className="p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -117,45 +111,45 @@ const PostCard: React.FC<{
           </div>
           <div className="flex items-center gap-2">
             {isAuthor && (
-              <button onClick={() => addToast("Édition bientôt disponible", "info")} className="p-2 text-gray-300 hover:text-blue-600 transition-colors" title="Modifier">
-                <Pencil size={18} />
+              <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-600 hover:text-white transition-all transition-colors" title="Modifier">
+                <Pencil size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">Modifier</span>
               </button>
             )}
             <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
           </div>
         </div>
 
-        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif italic border-l-4 border-amber-200 pl-8 mb-4' : 'text-lg font-normal mb-4'}`}>
+        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif font-medium italic border-l-4 border-amber-200 pl-8 mb-4' : 'text-lg font-normal mb-4'}`}>
           {displayContent}
         </div>
 
         {needsTruncation && (
           <button 
             onClick={() => setIsExpanded(!isExpanded)} 
-            className="text-blue-600 font-bold text-xs uppercase tracking-widest mb-6 flex items-center gap-2 hover:underline"
+            className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em] mb-8 flex items-center gap-2 hover:bg-blue-50 px-4 py-2 rounded-full transition-all w-fit"
           >
-            {isExpanded ? <><ChevronUp size={14} /> Réduire</> : <><ChevronDown size={14} /> Lire la suite</>}
+            {isExpanded ? <><ChevronUp size={14} /> Réduire la pensée</> : <><ChevronDown size={14} /> Déplier la pensée</>}
           </button>
         )}
 
         <div className="flex flex-wrap items-center justify-between pt-8 border-t border-gray-50 gap-4">
           <div className="flex flex-wrap gap-4">
-            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 hover:scale-110 transition-transform bg-blue-50/50 px-4 py-2 rounded-xl">
-              <ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span>
+            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 hover:scale-110 transition-transform bg-blue-50/50 px-4 py-2 rounded-xl group">
+              <ThumbsUp size={16} className="group-active:scale-125 transition-transform" /> <span className="text-xs font-black">{reactions.useful}</span>
             </button>
-            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 hover:scale-110 transition-transform bg-emerald-50/50 px-4 py-2 rounded-xl">
-              <Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span>
+            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 hover:scale-110 transition-transform bg-emerald-50/50 px-4 py-2 rounded-xl group">
+              <Lightbulb size={16} className="group-active:scale-125 transition-transform" /> <span className="text-xs font-black">{reactions.relevant}</span>
             </button>
-            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 hover:scale-110 transition-transform bg-amber-50/50 px-4 py-2 rounded-xl">
-              <Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span>
+            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 hover:scale-110 transition-transform bg-amber-50/50 px-4 py-2 rounded-xl group">
+              <Sparkles size={16} className="group-active:scale-125 transition-transform" /> <span className="text-xs font-black">{reactions.inspiring}</span>
             </button>
           </div>
           
           <div className="flex items-center gap-2">
-            <button onClick={handleShare} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 px-4 py-2 rounded-xl transition-all" title="Partager">
-              <Share2 size={16} /> <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Partager</span>
+            <button onClick={handleShare} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 px-5 py-2.5 rounded-xl transition-all group" title="Partager">
+              <Share2 size={16} className="group-hover:rotate-12 transition-transform" /> <span className="text-[10px] font-black uppercase tracking-widest">Partager</span>
             </button>
-            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 px-4 py-2 rounded-xl transition-all">
+            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 bg-gray-50 px-5 py-2.5 rounded-xl transition-all">
               <MessageCircle size={16} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
             </button>
           </div>
@@ -172,6 +166,8 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const [newPostText, setNewPostText] = useState('');
   const [selectedCircle, setSelectedCircle] = useState<CircleType>(CircleType.PEACE);
   const [sending, setSending] = useState(false);
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -214,6 +210,8 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
         addToast("Action enregistrée en local", "info");
       }
       setNewPostText('');
+      setIsBold(false);
+      setIsItalic(false);
     } catch (e) { 
       addToast("La cité rencontre une difficulté technique.", "error"); 
     }
@@ -228,9 +226,9 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       </div>
 
       {user && (
-        <div className="bg-white rounded-[3rem] border border-gray-100 p-8 shadow-sm mb-16 relative overflow-hidden group">
+        <div className="bg-white rounded-[3.5rem] border-2 border-gray-100 p-10 shadow-xl mb-16 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-focus-within:rotate-12 transition-transform duration-700">
-            <Sparkles size={100} className="text-blue-600" />
+            <Sparkles size={120} className="text-blue-600" />
           </div>
           
           <div className="relative z-10">
@@ -238,32 +236,44 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
               value={newPostText} 
               onChange={e => setNewPostText(e.target.value)} 
               placeholder="Déposez une pierre à l'édifice..." 
-              className="w-full h-32 bg-gray-50/50 p-6 rounded-2xl outline-none mb-4 font-normal text-lg focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-50" 
+              className={`w-full h-40 bg-gray-50/50 p-8 rounded-3xl outline-none mb-6 font-normal text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100/50 ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''}`} 
             />
             
-            {/* TOOLBAR MISE EN FORME */}
-            <div className="flex items-center gap-6 mb-6 px-4">
-              <button className="text-gray-400 hover:text-blue-600 transition-colors" title="Gras">
-                <Bold size={20} />
+            {/* TOOLBAR MISE EN FORME VISIBLE */}
+            <div className="flex items-center gap-4 mb-8 px-2 border-b border-gray-100 pb-4">
+              <button 
+                onClick={() => setIsBold(!isBold)} 
+                className={`p-3 rounded-xl transition-all ${isBold ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                title="Gras"
+              >
+                <Bold size={18} />
               </button>
-              <button className="text-gray-400 hover:text-blue-600 transition-colors" title="Italique">
-                <Italic size={20} />
+              <button 
+                onClick={() => setIsItalic(!isItalic)} 
+                className={`p-3 rounded-xl transition-all ${isItalic ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                title="Italique"
+              >
+                <Italic size={18} />
               </button>
-              <button className="text-gray-400 hover:text-blue-600 transition-colors" title="Émojis">
-                <Smile size={20} />
+              <div className="w-px h-6 bg-gray-100 mx-2"></div>
+              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Émojis">
+                <Smile size={18} />
+              </button>
+              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Style de texte">
+                <TypeIcon size={18} />
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Cercle :</span>
-              <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Destination :</span>
+              <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer shadow-sm hover:bg-gray-100 transition-all">
                 {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
               </select>
             </div>
-            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className="w-full sm:w-auto bg-gray-900 text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-30 shadow-xl hover:bg-black active:scale-95 transition-all">
-              {sending ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} 
+            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className="w-full sm:w-auto bg-gray-900 text-white px-12 py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-4 disabled:opacity-30 shadow-2xl hover:bg-black active:scale-95 transition-all">
+              {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} className="text-blue-400" />} 
               Diffuser l'Onde
             </button>
           </div>
@@ -275,15 +285,14 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
           <>
             <PostSkeleton />
             <PostSkeleton />
-            <PostSkeleton />
           </>
         ) : (
           posts.length > 0 ? (
             posts.map(p => <PostCard key={p.id} post={p} currentUser={user} onUpdate={fetchPosts} />)
           ) : (
-            <div className="p-20 text-center bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
-               <RefreshCw size={40} className="mx-auto mb-4 text-gray-200" />
-               <p className="text-gray-400 font-bold uppercase tracking-widest">Le fil est encore calme...</p>
+            <div className="p-20 text-center bg-gray-50 rounded-[4rem] border-2 border-dashed border-gray-100">
+               <RefreshCw size={40} className="mx-auto mb-6 text-gray-200" />
+               <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Le fil est en attente d'étincelles...</p>
             </div>
           )
         )}
