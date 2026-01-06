@@ -1,5 +1,5 @@
 
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -14,8 +14,14 @@ import {
   LogOut,
   Wifi,
   AlertTriangle,
-  Globe,
-  ChevronRight
+  ChevronDown,
+  Target,
+  Video,
+  Handshake,
+  BookText,
+  Mic,
+  Image as ImageIcon,
+  Users
 } from 'lucide-react';
 
 // Pages
@@ -36,6 +42,7 @@ import CirclePage from './pages/CirclePage.tsx';
 import ResourceExchange from './pages/ResourceExchange.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import LiveAssembly from './pages/LiveAssembly.tsx';
+import TransparencyLedger from './pages/TransparencyLedger.tsx';
 
 // Components
 import Logo from './Logo.tsx';
@@ -68,6 +75,57 @@ const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: Use
   return <>{children}</>;
 };
 
+// --- NAVIGATION DROPDOWN COMPONENT ---
+const NavDropdown = ({ label, items }: { label: string, items: { to: string, icon: React.ReactNode, label: string, desc: string }[] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = window.setTimeout(() => setIsOpen(false), 200);
+  };
+
+  return (
+    <div 
+      className="relative group h-full flex items-center"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <button className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-blue-600 transition-colors py-8">
+        {label} <ChevronDown size={10} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-64 bg-white rounded-[2rem] shadow-2xl border border-gray-50 p-4 animate-in fade-in zoom-in duration-200 z-[110]">
+          <div className="space-y-1">
+            {items.map((item, idx) => (
+              <NavLink 
+                key={idx} 
+                to={item.to} 
+                className={({ isActive }) => `flex items-center gap-4 p-4 rounded-2xl transition-all group/item ${isActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-600'}`}
+                onClick={() => setIsOpen(false)}
+              >
+                <div className={`p-2 rounded-lg transition-colors ${item.to === useLocation().pathname ? 'bg-blue-100' : 'bg-gray-100 group-hover/item:bg-blue-100'}`}>
+                  {/* Fixed TypeScript error by adding generic type parameter to allow 'size' prop */}
+                  {React.cloneElement(item.icon as React.ReactElement<any>, { size: 16 })}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest leading-none">{item.label}</p>
+                  <p className="text-[8px] text-gray-400 font-bold mt-1 uppercase tracking-tight">{item.desc}</p>
+                </div>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: () => void, connStatus: { ok: boolean, message: string } | null }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -75,8 +133,6 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
   const [notifications, setNotifications] = useState<CitizenNotification[]>([
     { id: '1', type: 'drum_call', title: 'Appel du Conseil', message: 'Bienvenue sur cerclecitoyen.ci ! Le réseau est désormais ouvert.', timestamp: '1m', isRead: false }
   ]);
-
-  const isPublicPage = ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname);
 
   return (
     <>
@@ -91,13 +147,42 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
             <Link to="/" className="flex items-center shrink-0"><Logo size={32} showText /></Link>
           </div>
 
-          <div className="hidden lg:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-10">
             {user ? (
               <>
-                <NavLink to="/feed" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Fil d'Éveil</NavLink>
-                <NavLink to="/chat" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Palabres</NavLink>
-                <NavLink to="/map" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Carte</NavLink>
-                <NavLink to="/governance" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Édits</NavLink>
+                <NavDropdown 
+                  label="Dialogue" 
+                  items={[
+                    { to: '/feed', icon: <Home />, label: "Fil d'Éveil", desc: "Refléxions citoyennes" },
+                    { to: '/chat', icon: <MessageSquare />, label: "Palabres", desc: "Salle de discussion" },
+                    { to: '/live', icon: <Mic />, label: "L'Assemblée", desc: "Dialogue en temps réel" }
+                  ]} 
+                />
+                <NavDropdown 
+                  label="Action" 
+                  items={[
+                    { to: '/map', icon: <MapIcon />, label: "Carte", desc: "Maillage territorial" },
+                    { to: '/quests', icon: <Target />, label: "Sentiers", desc: "Quêtes d'impact social" },
+                    { to: '/exchange', icon: <Handshake />, label: "Marché", desc: "Dons et solidarité" }
+                  ]} 
+                />
+                <NavDropdown 
+                  label="Studio" 
+                  items={[
+                    { to: '/griot', icon: <Video />, label: "Griot Studio", desc: "Vidéos de mobilisation" },
+                    { to: '/impact', icon: <ImageIcon />, label: "Impact Studio", desc: "Visuels de vision" }
+                  ]} 
+                />
+                <NavDropdown 
+                  label="Lois" 
+                  items={[
+                    { to: '/governance', icon: <Gavel />, label: "Édits", desc: "Gouvernance et votes" },
+                    { to: '/transparency', icon: <BookText />, label: "Transparence", desc: "Registre des flux" }
+                  ]} 
+                />
+
+                <div className="h-8 w-px bg-gray-100 ml-4"></div>
+
                 <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 relative transition-colors">
                   <Bell size={20} />
                   {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
@@ -122,19 +207,38 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
         </div>
       </nav>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar - Enhanced to include all pages */}
       {isOpen && (
-        <div className="fixed inset-0 z-[150] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden">
+        <div className="fixed inset-0 z-[150] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden overflow-y-auto">
           <button onClick={() => setIsOpen(false)} className="absolute top-10 right-10 p-4"><X size={32} /></button>
-          <div className="mt-20 flex flex-col gap-10">
+          <div className="mt-20 flex flex-col gap-8">
             {user ? (
               <>
-                <NavLink to="/feed" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Fil d'Éveil</NavLink>
-                <NavLink to="/chat" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Palabres</NavLink>
-                <NavLink to="/map" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Carte d'Impact</NavLink>
-                <NavLink to="/governance" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Le Conseil</NavLink>
-                <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Mon Profil</NavLink>
-                <button onClick={() => { onLogout(); setIsOpen(false); }} className="text-rose-600 text-left text-3xl font-serif font-bold">Déconnexion</button>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Dialogue</p>
+                  <NavLink to="/feed" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Fil d'Éveil</NavLink>
+                  <NavLink to="/chat" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Palabres</NavLink>
+                  <NavLink to="/live" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">L'Assemblée</NavLink>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Action</p>
+                  <NavLink to="/map" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Carte Territoriale</NavLink>
+                  <NavLink to="/quests" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Sentiers d'Impact</NavLink>
+                  <NavLink to="/exchange" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Marché Solidaire</NavLink>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Sagesse & Studio</p>
+                  <NavLink to="/griot" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Griot Studio</NavLink>
+                  <NavLink to="/impact" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Impact Studio</NavLink>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Gouvernance</p>
+                  <NavLink to="/governance" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Édits & Scrutins</NavLink>
+                  <NavLink to="/transparency" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Transparence</NavLink>
+                </div>
+                <div className="h-px bg-gray-100 my-4"></div>
+                <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Mon Profil</NavLink>
+                <button onClick={() => { onLogout(); setIsOpen(false); }} className="text-rose-600 text-left text-2xl font-serif font-bold">Déconnexion</button>
               </>
             ) : (
               <>
@@ -152,8 +256,8 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
       {user && (
         <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
           <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
-          <NavLink to="/chat" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MessageSquare size={24} /></NavLink>
           <NavLink to="/map" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MapIcon size={24} /></NavLink>
+          <NavLink to="/quests" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Target size={24} /></NavLink>
           <NavLink to="/governance" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Gavel size={24} /></NavLink>
           <NavLink to="/profile" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><img src={user.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" /></NavLink>
         </div>
@@ -207,10 +311,7 @@ const App = () => {
       setConnStatus(status);
     };
     
-    // Premier check immédiat
     check();
-    
-    // Intervalle plus souple pour la production
     const interval = setInterval(check, 60000); 
 
     if (!isRealSupabase || !supabase) return () => clearInterval(interval);
@@ -263,6 +364,7 @@ const App = () => {
               <Route path="/live" element={<PrivateRoute user={user}><LiveAssembly /></PrivateRoute>} />
               <Route path="/map" element={<PrivateRoute user={user}><ActionMap /></PrivateRoute>} />
               <Route path="/governance" element={<PrivateRoute user={user}><GovernancePage user={user} /></PrivateRoute>} />
+              <Route path="/transparency" element={<PrivateRoute user={user}><TransparencyLedger /></PrivateRoute>} />
               <Route path="/quests" element={<PrivateRoute user={user}><QuestsPage /></PrivateRoute>} />
               <Route path="/griot" element={<PrivateRoute user={user}><GriotStudio /></PrivateRoute>} />
               <Route path="/impact" element={<PrivateRoute user={user}><ImpactStudio user={user} /></PrivateRoute>} />
