@@ -95,23 +95,20 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
     try {
       if (isRealSupabase && supabase) {
+        // En production, window.location.origin sera https://cerclecitoyen.ci
+        const siteUrl = window.location.origin;
         const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/#/auth?type=recovery`,
+          redirectTo: `${siteUrl}/#/auth?type=recovery`,
         });
 
         if (recoveryError) throw recoveryError;
 
         addToast("Le messager est en route ! Vérifiez vos emails et SPAMS.", "success");
         setSuccess(true);
-        // On ne ferme pas tout de suite pour laisser lire l'instruction sur les spams
-        setTimeout(() => {
-          setIsRecoveryMode(false);
-          setSuccess(false);
-          setLoading(false);
-        }, 5000);
       }
     } catch (err: any) {
-      setError("Échec de l'envoi de l'email de récupération.");
+      console.error("Erreur de recouvrement:", err);
+      setError("Échec de l'envoi. Assurez-vous que l'URL 'cerclecitoyen.ci' est bien autorisée dans votre dashboard Supabase.");
       setLoading(false);
     }
   };
@@ -187,12 +184,25 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                       <CheckCircle2 size={32} />
                     </div>
                     <p className="text-emerald-800 font-bold text-sm">Le lien a été envoyé.</p>
-                    <p className="text-xs text-emerald-600 leading-relaxed font-medium">
-                      Important : Si vous ne voyez rien, vérifiez vos **courriers indésirables (Spams)**. Les emails de la cité peuvent parfois s'y cacher.
+                    <p className="text-xs text-emerald-600 leading-relaxed font-medium italic">
+                      Vérifiez vos **courriers indésirables (Spams)**. Si l'email n'arrive toujours pas, vérifiez que votre console Supabase autorise bien l'URL **https://cerclecitoyen.ci**.
                     </p>
+                    <button 
+                      type="button"
+                      onClick={() => { setIsRecoveryMode(false); setSuccess(false); setLoading(false); }}
+                      className="text-[10px] font-black uppercase text-blue-600 pt-4"
+                    >
+                      Retour à l'accueil
+                    </button>
                   </div>
                 ) : (
                   <>
+                    {error && (
+                      <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-start gap-3 text-rose-600 text-[11px] font-bold mb-4">
+                        <AlertCircle size={18} className="shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    )}
                     <p className="text-sm text-gray-500 mb-6 font-medium">Saisissez votre email citoyen pour recevoir un lien de réinitialisation.</p>
                     <div className="relative group">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
@@ -219,13 +229,15 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                   </button>
                 )}
 
-                <button 
-                  type="button"
-                  onClick={() => setIsRecoveryMode(false)}
-                  className="w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-900 tracking-widest transition-colors"
-                >
-                  <ArrowLeft size={14} /> Retour à la connexion
-                </button>
+                {!success && (
+                  <button 
+                    type="button"
+                    onClick={() => setIsRecoveryMode(false)}
+                    className="w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-900 tracking-widest transition-colors"
+                  >
+                    <ArrowLeft size={14} /> Retour à la connexion
+                  </button>
+                )}
               </form>
             ) : (
               <form onSubmit={handleLogin} className="space-y-6 relative z-10">
