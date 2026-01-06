@@ -1,31 +1,21 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Récupération des variables injectées
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+// Récupération sécurisée des variables
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
 
-// Nettoyage rigoureux des valeurs
-const clean = (val: any) => {
-  if (!val || val === 'undefined' || val === 'null' || val === '""' || val === '') return null;
-  return String(val).replace(/^"|"$/g, '').trim();
-};
+// Nettoyage des chaînes (suppression des quotes résiduelles de l'injection)
+const clean = (val: string) => val.replace(/^"|"$/g, '').trim();
 
 const finalUrl = clean(supabaseUrl);
 const finalKey = clean(supabaseAnonKey);
 
-// Détection de configuration Stripe au lieu de Supabase
-const isStripeKey = !!finalKey && finalKey.startsWith('sb_');
+export const isRealSupabase = !!finalUrl && finalUrl.includes('.supabase.co') && !!finalKey;
 
-export const isRealSupabase = !!finalUrl && finalUrl.includes('.supabase.co') && !!finalKey && !isStripeKey;
-
-if (!isRealSupabase) {
-  console.warn("⚠️ Configuration Supabase manquante ou erronée. Le mode démo est activé.");
-  if (isStripeKey) console.error("❌ ERREUR : Vous avez utilisé une clé Stripe au lieu de la clé 'anon' Supabase.");
-}
-
+// Instance Supabase
 export const supabase = isRealSupabase
-  ? createClient(finalUrl as string, finalKey as string, {
+  ? createClient(finalUrl, finalKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -35,22 +25,53 @@ export const supabase = isRealSupabase
   : null;
 
 export const db = {
+  /**
+   * Vérifie la liaison avec le serveur d'origine.
+   * Retourne un statut détaillé pour aider au diagnostic DNS/522.
+   */
   async checkConnection() {
     if (!supabase) {
       return { 
         ok: false, 
-        message: `Mode Démo : Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans vos variables d'environnement.` 
+        code: 'MISSING_CONFIG',
+        message: "Configuration manquante. Mode démo actif." 
       };
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s de patience
+
     try {
-      const { error } = await supabase.from('profiles').select('id').limit(1);
+      const { error } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1)
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
+
       if (error) {
-        return { ok: false, message: `Liaison interrompue : ${error.message}` };
+        return { 
+          ok: false, 
+          code: 'DB_ERROR',
+          message: `Liaison interrompue : ${error.message}` 
+        };
       }
       return { ok: true, message: "Liaison souveraine établie." };
     } catch (e: any) {
-      return { ok: false, message: `Échec réseau : Impossible de contacter Supabase.` };
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') {
+        return { 
+          ok: false, 
+          code: 'TIMEOUT',
+          message: "Délai d'attente dépassé (Possible erreur 522). Vérifiez vos DNS." 
+        };
+      }
+      return { 
+        ok: false, 
+        code: 'NETWORK_ERROR',
+        message: "Échec réseau : Impossible de contacter le serveur d'origine." 
+      };
     }
   }
 };

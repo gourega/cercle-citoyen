@@ -11,7 +11,9 @@ import {
   Gavel,
   CheckCircle,
   Bell,
-  LogOut
+  LogOut,
+  WifiOff,
+  AlertTriangle
 } from 'lucide-react';
 
 // Pages
@@ -39,7 +41,7 @@ import Footer from './components/Footer.tsx';
 import GuardianAssistant from './components/GuardianAssistant.tsx';
 import NotificationDrawer from './components/NotificationDrawer.tsx';
 import { User, Role, CitizenNotification, UserCategory } from './types.ts';
-import { supabase, isRealSupabase } from './lib/supabase.ts';
+import { supabase, isRealSupabase, db } from './lib/supabase.ts';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -64,7 +66,7 @@ const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: Use
   return <>{children}</>;
 };
 
-const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void }) => {
+const Navbar = ({ user, onLogout, connError }: { user: User | null, onLogout: () => void, connError: string | null }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -73,11 +75,22 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
     { id: '2', type: 'award', title: 'Distinction', message: 'Vous avez reçu le badge "Pionnier" !', timestamp: '1h', isRead: false }
   ]);
 
-  if (!user && ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
+  if (!user && ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) {
+    return connError ? (
+      <div className="fixed top-0 inset-x-0 z-[200] bg-rose-600 text-white p-2 text-center text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+        <WifiOff size={14} /> {connError}
+      </div>
+    ) : null;
+  }
 
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
+        {connError && (
+          <div className="absolute top-0 inset-x-0 bg-rose-500 text-white text-[9px] py-1 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest">
+            <AlertTriangle size={12} /> {connError}
+          </div>
+        )}
         <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center shrink-0"><Logo size={32} showText /></Link>
@@ -164,6 +177,7 @@ const App = () => {
   const [user, setUser] = useState<User | null>(() => {
     try { const saved = localStorage.getItem('cercle_user'); return saved ? JSON.parse(saved) : null; } catch (e) { return null; }
   });
+  const [connError, setConnError] = useState<string | null>(null);
 
   const handleLogin = (u: User) => { 
     setUser(u); 
@@ -171,7 +185,6 @@ const App = () => {
   };
 
   const handleLogout = async () => { 
-    // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
     if (isRealSupabase && supabase) await (supabase.auth as any).signOut();
     setUser(null); 
     localStorage.removeItem('cercle_user'); 
@@ -179,13 +192,18 @@ const App = () => {
   };
 
   useEffect(() => {
+    // Vérification initiale de la liaison
+    const check = async () => {
+      const status = await db.checkConnection();
+      if (!status.ok) setConnError(status.message);
+      else setConnError(null);
+    };
+    check();
+
     if (!isRealSupabase || !supabase) return;
 
-    // Écouter les changements de session (utile pour la récupération de MDP)
-    // Fix: Cast auth to any to bypass potential type mismatch in the Supabase library version
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
       if (session?.user && !user) {
-        // Un utilisateur vient de se connecter (peut-être via un lien de récupération)
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
@@ -217,7 +235,7 @@ const App = () => {
       <Router>
         <ScrollToTop />
         <div className="min-h-screen flex flex-col bg-[#fcfcfc] pb-20 lg:pb-0">
-          <Navbar user={user} onLogout={handleLogout} />
+          <Navbar user={user} onLogout={handleLogout} connError={connError} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
