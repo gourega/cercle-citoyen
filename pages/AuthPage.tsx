@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { 
   Lock, 
   Mail, 
@@ -13,7 +13,8 @@ import {
   Loader2,
   AlertCircle,
   PenLine,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { MANIFESTO_TEXT } from '../constants';
 import { supabase, isRealSupabase } from '../lib/supabase';
@@ -23,8 +24,11 @@ import { useToast } from '../App';
 
 const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { addToast } = useToast();
+  
   const [step, setStep] = useState(1); 
+  const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,11 +43,17 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   });
 
   useEffect(() => {
+    // Vérifier si l'utilisateur arrive pour une récupération de mot de passe
+    if (searchParams.get('type') === 'recovery') {
+      setIsRecoveryFlow(true);
+      return; // On ne redirige pas vers le manifeste en mode secours
+    }
+
     const hasRead = sessionStorage.getItem('manifesto_read');
     if (!hasRead) {
       navigate('/manifesto');
     }
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,20 +125,45 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
     }
   };
 
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isRealSupabase && supabase) {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: formData.password
+        });
+
+        if (updateError) throw updateError;
+
+        addToast("Mot de passe mis à jour ! Connectez-vous.", "success");
+        navigate('/');
+      }
+    } catch (err: any) {
+      setError("Échec de la mise à jour du mot de passe.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden">
       <div className="hidden md:flex md:w-1/2 bg-gray-950 p-20 flex-col justify-between text-white relative">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
         <div className="z-10">
-           <Link to="/manifesto" className="flex items-center text-gray-400 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest">
+           <Link to={isRecoveryFlow ? "/" : "/manifesto"} className="flex items-center text-gray-400 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest">
              <ArrowLeft size={14} className="mr-2" /> Retour
            </Link>
         </div>
         <div className="z-10">
           <Logo size={60} variant="light" showText />
-          <h2 className="text-6xl font-serif font-bold mt-12 mb-8 leading-tight">L'entrée <br />du Cercle.</h2>
+          <h2 className="text-6xl font-serif font-bold mt-12 mb-8 leading-tight">
+            {isRecoveryFlow ? "Nouveau\nAccès." : "L'entrée\ndu Cercle."}
+          </h2>
           <p className="text-gray-400 text-xl max-w-md leading-relaxed">
-            Votre identité numérique au service du territoire ivoirien commence ici.
+            {isRecoveryFlow ? "Sécurisez à nouveau votre identité citoyenne." : "Votre identité numérique au service du territoire ivoirien commence ici."}
           </p>
         </div>
         <div className="z-10 flex items-center gap-6">
@@ -140,7 +175,50 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
       <div className="flex-1 flex items-center justify-center p-8 bg-gray-50/50">
         <div className="max-w-md w-full">
           
-          {step === 1 && (
+          {isRecoveryFlow ? (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="mb-12">
+                <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl mb-8">
+                  <RefreshCw size={32} />
+                </div>
+                <h1 className="text-4xl font-serif font-bold text-gray-900 mb-2">Réinitialisation</h1>
+                <p className="text-gray-500 font-medium">Définissez votre nouveau mot de passe.</p>
+              </div>
+
+              <form onSubmit={handlePasswordUpdate} className="space-y-6">
+                {error && (
+                  <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold">
+                    <AlertCircle size={18} /> {error}
+                  </div>
+                )}
+                <div className="relative group">
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  <input 
+                    required 
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})}
+                    placeholder="Nouveau mot de passe" 
+                    className="w-full bg-white border border-gray-100 py-6 pl-14 pr-16 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-50 transition-all font-bold" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full bg-gray-900 text-white py-6 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : "Mettre à jour l'accès"}
+                </button>
+              </form>
+            </div>
+          ) : step === 1 ? (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="mb-12">
                 <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl mb-8">
@@ -209,9 +287,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
                 </div>
               </form>
             </div>
-          )}
-
-          {step === 2 && (
+          ) : (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="mb-10 text-center">
                  <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-600">

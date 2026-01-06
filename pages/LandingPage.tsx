@@ -101,13 +101,14 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
         if (recoveryError) throw recoveryError;
 
-        addToast("Le messager est en route ! Vérifiez vos emails.", "success");
+        addToast("Le messager est en route ! Vérifiez vos emails et SPAMS.", "success");
         setSuccess(true);
+        // On ne ferme pas tout de suite pour laisser lire l'instruction sur les spams
         setTimeout(() => {
           setIsRecoveryMode(false);
           setSuccess(false);
           setLoading(false);
-        }, 3000);
+        }, 5000);
       }
     } catch (err: any) {
       setError("Échec de l'envoi de l'email de récupération.");
@@ -180,32 +181,43 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               </div>
             ) : isRecoveryMode ? (
               <form onSubmit={handlePasswordRecovery} className="space-y-6 relative z-10 animate-in slide-in-from-right-4">
-                <p className="text-sm text-gray-500 mb-6 font-medium">Saisissez votre email citoyen pour recevoir un lien de réinitialisation.</p>
-                
-                <div className="relative group">
-                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                  <input 
-                    type="email"
-                    required
-                    disabled={loading || success}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email citoyen"
-                    className="w-full bg-gray-50 border border-transparent py-7 pl-16 pr-6 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
-                  />
-                </div>
+                {success ? (
+                  <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl text-center space-y-4 animate-in zoom-in">
+                    <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-100">
+                      <CheckCircle2 size={32} />
+                    </div>
+                    <p className="text-emerald-800 font-bold text-sm">Le lien a été envoyé.</p>
+                    <p className="text-xs text-emerald-600 leading-relaxed font-medium">
+                      Important : Si vous ne voyez rien, vérifiez vos **courriers indésirables (Spams)**. Les emails de la cité peuvent parfois s'y cacher.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-500 mb-6 font-medium">Saisissez votre email citoyen pour recevoir un lien de réinitialisation.</p>
+                    <div className="relative group">
+                      <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                      <input 
+                        type="email"
+                        required
+                        disabled={loading}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Email citoyen"
+                        className="w-full bg-gray-50 border border-transparent py-7 pl-16 pr-6 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
+                      />
+                    </div>
+                  </>
+                )}
 
-                <button 
-                  type="submit"
-                  disabled={loading || success}
-                  className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-2xl ${
-                    success 
-                      ? 'bg-emerald-500 text-white shadow-emerald-100' 
-                      : 'bg-gray-900 text-white hover:bg-black shadow-gray-100 active:scale-95'
-                  }`}
-                >
-                  {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Envoyer le lien"}
-                </button>
+                {!success && (
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-8 rounded-[2rem] bg-gray-900 text-white font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-2xl hover:bg-black active:scale-95 disabled:opacity-50"
+                  >
+                    {loading ? <Loader2 className="animate-spin" /> : "Envoyer le lien"}
+                  </button>
+                )}
 
                 <button 
                   type="button"
@@ -248,7 +260,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                   />
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
                   <button 
-                    type="button"
+                    type="button" 
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors"
                   >
