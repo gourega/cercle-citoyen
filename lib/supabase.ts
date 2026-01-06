@@ -1,19 +1,15 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Récupération sécurisée des variables
 const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
 
-// Nettoyage des chaînes (suppression des quotes résiduelles de l'injection)
 const clean = (val: string) => val.replace(/^"|"$/g, '').trim();
-
 const finalUrl = clean(supabaseUrl);
 const finalKey = clean(supabaseAnonKey);
 
 export const isRealSupabase = !!finalUrl && finalUrl.includes('.supabase.co') && !!finalKey;
 
-// Instance Supabase
 export const supabase = isRealSupabase
   ? createClient(finalUrl, finalKey, {
       auth: {
@@ -25,21 +21,11 @@ export const supabase = isRealSupabase
   : null;
 
 export const db = {
-  /**
-   * Vérifie la liaison avec le serveur d'origine.
-   * Retourne un statut détaillé pour aider au diagnostic DNS/522.
-   */
   async checkConnection() {
-    if (!supabase) {
-      return { 
-        ok: false, 
-        code: 'MISSING_CONFIG',
-        message: "Configuration manquante. Mode démo actif." 
-      };
-    }
+    if (!supabase) return { ok: false, message: "Configuration manquante (Mode Démo)." };
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s de patience
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
       const { error } = await supabase
@@ -51,11 +37,9 @@ export const db = {
       clearTimeout(timeoutId);
 
       if (error) {
-        return { 
-          ok: false, 
-          code: 'DB_ERROR',
-          message: `Liaison interrompue : ${error.message}` 
-        };
+        // Détection d'erreur de clé ou de table manquante
+        if (error.code === 'PGRST301') return { ok: false, message: "Erreur d'authentification base de données." };
+        return { ok: false, message: "Liaison base de données interrompue." };
       }
       return { ok: true, message: "Liaison souveraine établie." };
     } catch (e: any) {
@@ -63,14 +47,12 @@ export const db = {
       if (e.name === 'AbortError') {
         return { 
           ok: false, 
-          code: 'TIMEOUT',
-          message: "Délai d'attente dépassé (Possible erreur 522). Vérifiez vos DNS." 
+          message: "Délai dépassé : vérifiez la liaison Cloudflare Pages <-> Supabase." 
         };
       }
       return { 
         ok: false, 
-        code: 'NETWORK_ERROR',
-        message: "Échec réseau : Impossible de contacter le serveur d'origine." 
+        message: "Erreur réseau : propagation DNS en cours ou blocage SSL." 
       };
     }
   }

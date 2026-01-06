@@ -13,7 +13,8 @@ import {
   Bell,
   LogOut,
   WifiOff,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink
 } from 'lucide-react';
 
 // Pages
@@ -75,20 +76,13 @@ const Navbar = ({ user, onLogout, connError }: { user: User | null, onLogout: ()
     { id: '2', type: 'award', title: 'Distinction', message: 'Vous avez reçu le badge "Pionnier" !', timestamp: '1h', isRead: false }
   ]);
 
-  if (!user && ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) {
-    return connError ? (
-      <div className="fixed top-0 inset-x-0 z-[200] bg-rose-600 text-white p-2 text-center text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-        <WifiOff size={14} /> {connError}
-      </div>
-    ) : null;
-  }
-
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
         {connError && (
-          <div className="absolute top-0 inset-x-0 bg-rose-500 text-white text-[9px] py-1 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest">
-            <AlertTriangle size={12} /> {connError}
+          <div className="absolute top-0 inset-x-0 bg-rose-600 text-white text-[9px] py-1 px-4 flex items-center justify-center gap-4 font-black uppercase tracking-widest z-[110]">
+            <div className="flex items-center gap-1.5 animate-pulse"><AlertTriangle size={12} /> {connError}</div>
+            <a href="https://dash.cloudflare.com" target="_blank" className="underline flex items-center gap-1 opacity-80 hover:opacity-100">Vérifier Cloudflare <ExternalLink size={10}/></a>
           </div>
         )}
         <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
@@ -192,15 +186,16 @@ const App = () => {
   };
 
   useEffect(() => {
-    // Vérification initiale de la liaison
+    // Vérification périodique lors du déploiement
     const check = async () => {
       const status = await db.checkConnection();
       if (!status.ok) setConnError(status.message);
       else setConnError(null);
     };
     check();
+    const interval = setInterval(check, 15000); // Check toutes les 15s
 
-    if (!isRealSupabase || !supabase) return;
+    if (!isRealSupabase || !supabase) return () => clearInterval(interval);
 
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
       if (session?.user && !user) {
@@ -227,7 +222,10 @@ const App = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(interval);
+    };
   }, [user]);
 
   return (
