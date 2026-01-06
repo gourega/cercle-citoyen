@@ -1,5 +1,5 @@
 
-import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
+import React, { useState, createContext, useContext, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -9,20 +9,9 @@ import {
   Menu,
   X,
   Gavel,
-  Target,
   CheckCircle,
-  Zap,
-  ShoppingBag,
-  Crown,
-  Mic,
   Bell,
-  ChevronDown,
-  LayoutGrid,
-  Users,
-  LogOut,
-  Search,
-  Smartphone,
-  PlusCircle
+  LogOut
 } from 'lucide-react';
 
 // Pages
@@ -85,8 +74,6 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
 
   if (!user && ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname)) return null;
 
-  const isGuardian = user?.role === Role.SUPER_ADMIN;
-
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
@@ -138,7 +125,6 @@ const Navbar = ({ user, onLogout }: { user: User | null, onLogout: () => void })
 
       {isNotifOpen && user && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} />}
 
-      {/* Mobile Tab Bar */}
       {user && (
         <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe">
           <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
@@ -205,7 +191,6 @@ const App = () => {
               <Route path="/impact" element={<PrivateRoute user={user}><ImpactStudio user={user} /></PrivateRoute>} />
               <Route path="/exchange" element={<PrivateRoute user={user}><ResourceExchange user={user} /></PrivateRoute>} />
               <Route path="/profile" element={<PrivateRoute user={user}><ProfilePage currentUser={user!} onLogout={handleLogout} /></PrivateRoute>} />
-              <Route path="/profile/:id" element={<PrivateRoute user={user}><ProfilePage currentUser={user!} onLogout={handleLogout} /></PrivateRoute>} />
               <Route path="/circle/:type" element={<PrivateRoute user={user}><CirclePage user={user!} /></PrivateRoute>} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
