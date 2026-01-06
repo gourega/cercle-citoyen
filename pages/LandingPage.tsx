@@ -14,15 +14,20 @@ import {
   CheckCircle2,
   Sparkles,
   Zap,
-  Shield
+  Shield,
+  RefreshCw,
+  ArrowLeft
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { User, Role, UserCategory } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
+import { useToast } from '../App.tsx';
 
 const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: User | null }) => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +88,33 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     }
   };
 
+  const handlePasswordRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isRealSupabase && supabase) {
+        const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/#/auth?type=recovery`,
+        });
+
+        if (recoveryError) throw recoveryError;
+
+        addToast("Le messager est en route ! Vérifiez vos emails.", "success");
+        setSuccess(true);
+        setTimeout(() => {
+          setIsRecoveryMode(false);
+          setSuccess(false);
+          setLoading(false);
+        }, 3000);
+      }
+    } catch (err: any) {
+      setError("Échec de l'envoi de l'email de récupération.");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
       
@@ -120,7 +152,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
           </p>
         </div>
 
-        {/* Section Connexion */}
+        {/* Section Connexion / Recouvrement */}
         <div id="login-section" className="w-full max-w-[540px] mb-32 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
           <div className="bg-white rounded-[4rem] shadow-2xl border border-gray-100 p-10 md:p-16 mb-10 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000">
@@ -128,8 +160,12 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             </div>
             
             <div className="text-left mb-12 relative z-10">
-              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">Le Cercle Citoyen</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Portail d'accès officiel .CI</p>
+              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">
+                {isRecoveryMode ? "Recouvrement" : "Le Cercle Citoyen"}
+              </h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">
+                {isRecoveryMode ? "Accès de secours .CI" : "Portail d'accès officiel .CI"}
+              </p>
             </div>
 
             {user ? (
@@ -142,6 +178,43 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                   Entrer dans la Cité <ArrowRight size={18} />
                 </Link>
               </div>
+            ) : isRecoveryMode ? (
+              <form onSubmit={handlePasswordRecovery} className="space-y-6 relative z-10 animate-in slide-in-from-right-4">
+                <p className="text-sm text-gray-500 mb-6 font-medium">Saisissez votre email citoyen pour recevoir un lien de réinitialisation.</p>
+                
+                <div className="relative group">
+                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  <input 
+                    type="email"
+                    required
+                    disabled={loading || success}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email citoyen"
+                    className="w-full bg-gray-50 border border-transparent py-7 pl-16 pr-6 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
+                  />
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={loading || success}
+                  className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-2xl ${
+                    success 
+                      ? 'bg-emerald-500 text-white shadow-emerald-100' 
+                      : 'bg-gray-900 text-white hover:bg-black shadow-gray-100 active:scale-95'
+                  }`}
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Envoyer le lien"}
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setIsRecoveryMode(false)}
+                  className="w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-900 tracking-widest transition-colors"
+                >
+                  <ArrowLeft size={14} /> Retour à la connexion
+                </button>
+              </form>
             ) : (
               <form onSubmit={handleLogin} className="space-y-6 relative z-10">
                 {error && (
@@ -194,6 +267,16 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 >
                   {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Rejoindre l'Éveil"}
                 </button>
+
+                <div className="flex justify-center pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsRecoveryMode(true)}
+                    className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2"
+                  >
+                    <RefreshCw size={12} /> Mot de passe oublié ?
+                  </button>
+                </div>
               </form>
             )}
           </div>
