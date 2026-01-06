@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Quote, Target, Eye, CheckCircle2, ArrowRight } from 'lucide-react';
@@ -6,11 +7,6 @@ const ManifestoPage: React.FC = () => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
-
-  // Force le scroll en haut de page à l'ouverture
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(

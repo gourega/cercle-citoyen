@@ -64,9 +64,17 @@ export const useToast = () => {
   return context;
 };
 
+// --- OPTIMIZED SCROLL TO TOP ---
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
+  const { pathname, search } = useLocation();
+  
+  useEffect(() => {
+    // Forcer le scroll tout en haut lors de chaque changement de route ou paramètre
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    // Fallback pour les navigateurs plus anciens ou comportements erratiques
+    if (window.scrollY !== 0) window.scrollTo(0, 0);
+  }, [pathname, search]);
+  
   return null;
 };
 
@@ -110,7 +118,6 @@ const NavDropdown = ({ label, items }: { label: string, items: { to: string, ico
                 onClick={() => setIsOpen(false)}
               >
                 <div className={`p-2 rounded-lg transition-colors ${item.to === useLocation().pathname ? 'bg-blue-100' : 'bg-gray-100 group-hover/item:bg-blue-100'}`}>
-                  {/* Fixed TypeScript error by adding generic type parameter to allow 'size' prop */}
                   {React.cloneElement(item.icon as React.ReactElement<any>, { size: 16 })}
                 </div>
                 <div>
@@ -127,7 +134,6 @@ const NavDropdown = ({ label, items }: { label: string, items: { to: string, ico
 };
 
 const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: () => void, connStatus: { ok: boolean, message: string } | null }) => {
-  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<CitizenNotification[]>([
@@ -207,7 +213,7 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
         </div>
       </nav>
 
-      {/* Mobile Sidebar - Enhanced to include all pages */}
+      {/* Mobile Sidebar */}
       {isOpen && (
         <div className="fixed inset-0 z-[150] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden overflow-y-auto">
           <button onClick={() => setIsOpen(false)} className="absolute top-10 right-10 p-4"><X size={32} /></button>
@@ -306,6 +312,11 @@ const App = () => {
   };
 
   useEffect(() => {
+    // Désactiver la restauration automatique du scroll du navigateur
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
     const check = async () => {
       const status = await db.checkConnection();
       setConnStatus(status);
