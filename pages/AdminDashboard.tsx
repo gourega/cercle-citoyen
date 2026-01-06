@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Crown, Loader2, RefreshCw, Terminal, Copy, Wifi, 
   Users, Zap, Target, Landmark, Search, Check, 
-  X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield
+  X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
+  Database, Code
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../App.tsx';
@@ -11,7 +12,7 @@ import { Role, UserCategory } from '../types.ts';
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests'>('stats');
+  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests' | 'database'>('stats');
   const [profiles, setProfiles] = useState<any[]>([]);
   const [pendingQuests, setPendingQuests] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeEdicts: 0 });
@@ -19,44 +20,127 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
+  const sqlSchema = `-- SCRIPT DE CONFIGURATION SÉCURISÉ CERCLE CITOYEN
+-- Ce script vérifie l'existence des tables avant création pour éviter les erreurs.
+
+-- 1. Table des Profils
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  name TEXT,
+  pseudonym TEXT UNIQUE,
+  bio TEXT,
+  role TEXT DEFAULT 'Membre',
+  category TEXT DEFAULT 'Citoyen',
+  avatar_url TEXT,
+  impact_score INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Table des Publications
+CREATE TABLE IF NOT EXISTS public.posts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  circle_type TEXT NOT NULL,
+  is_majestic BOOLEAN DEFAULT FALSE,
+  reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. Activation du Realtime (Vérification intelligente)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'posts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE posts;
+  END IF;
+END $$;
+
+-- 4. Table des Édits
+CREATE TABLE IF NOT EXISTS public.edicts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'voting',
+  votes_count INTEGER DEFAULT 0,
+  threshold INTEGER DEFAULT 500,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Table des Votes
+CREATE TABLE IF NOT EXISTS public.votes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  edict_id UUID REFERENCES public.edicts(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, edict_id)
+);
+
+-- 6. Fonction de Vote
+CREATE OR REPLACE FUNCTION increment_edict_votes(row_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE edicts
+  SET votes_count = votes_count + 1
+  WHERE id = row_id;
+END;
+$$ LANGUAGE plpgsql;`;
+
   const fetchData = async () => {
     setLoading(true);
     const status = await db.checkConnection();
     setConnStatus(status);
     
     if (isRealSupabase && supabase) {
-      const { data: profs } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-      if (profs) {
-        setProfiles(profs);
-        setStats({ 
-          totalUsers: profs.length, 
-          totalPosts: 0, 
-          totalPoints: profs.reduce((acc, p) => acc + (p.impact_score || 0), 0), 
-          activeEdicts: 0 
-        });
+      try {
+        const { data: profs } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        if (profs) {
+          setProfiles(profs);
+          setStats({ 
+            totalUsers: profs.length, 
+            totalPosts: 0, 
+            totalPoints: profs.reduce((acc, p) => acc + (p.impact_score || 0), 0), 
+            activeEdicts: 0 
+          });
+        }
+        const { data: qData } = await supabase.from('quests').select('*').eq('status', 'pending');
+        if (qData) setPendingQuests(qData);
+      } catch (e) {
+        console.warn("Certaines tables sont peut-être manquantes.");
       }
-
-      const { data: qData } = await supabase.from('quests').select('*').eq('status', 'pending');
-      if (qData) setPendingQuests(qData);
     }
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const displayCitizens = profiles.filter(p => {
-    const isSpecial = p.role !== Role.MEMBER || (p.category && p.category !== UserCategory.CITIZEN);
-    const matchesSearch = searchTerm.length >= 2 && p.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    return isSpecial || matchesSearch;
-  });
+  const copySql = () => {
+    navigator.clipboard.writeText(sqlSchema);
+    addToast("Script SQL sécurisé copié !", "success");
+  };
 
-  const handleUpdateQuestStatus = async (id: string, status: 'validated' | 'rejected') => {
-    if (supabase) {
-      const { error } = await supabase.from('quests').update({ status }).eq('id', id);
-      if (!error) {
-        addToast(`Sentier mis à jour.`, "success");
+  const displayCitizens = profiles.filter(p => 
+    p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleUpdateQuestStatus = async (questId: string, status: 'validated' | 'rejected') => {
+    if (isRealSupabase && supabase) {
+      try {
+        const { error } = await supabase.from('quests').update({ status }).eq('id', questId);
+        if (error) throw error;
+        addToast(status === 'validated' ? "Sentier approuvé !" : "Sentier écarté.", "success");
         fetchData();
+      } catch (e) {
+        console.error("Quest update error:", e);
+        addToast("Erreur lors de la mise à jour.", "error");
       }
+    } else {
+      addToast("Mode démo : Action non effectuée sur la base de données.", "info");
     }
   };
 
@@ -79,6 +163,7 @@ const AdminDashboard: React.FC = () => {
             { id: 'stats', label: 'Impact', icon: Zap },
             { id: 'citizens', label: 'Membres', icon: Users },
             { id: 'quests', label: 'Sentiers', icon: Target },
+            { id: 'database', label: 'Base de Données', icon: Database },
             { id: 'system', label: 'Système', icon: Wifi }
           ].map(tab => (
             <button 
@@ -109,6 +194,34 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-4xl font-serif font-bold text-gray-900">{s.value}</p>
              </div>
            ))}
+        </div>
+      )}
+
+      {activeTab === 'database' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white p-12 rounded-[4rem] border border-gray-100 shadow-sm mb-12">
+            <div className="flex justify-between items-start mb-10">
+              <div>
+                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Configuration de Souveraineté</h3>
+                <p className="text-gray-400 font-medium">Copiez ce script et exécutez-le dans votre éditeur SQL Supabase pour créer les tables manquantes.</p>
+              </div>
+              <button onClick={copySql} className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all">
+                <Copy size={16} /> Copier le SQL
+              </button>
+            </div>
+            <div className="bg-gray-950 p-8 rounded-[2rem] text-blue-300 font-mono text-xs overflow-x-auto max-h-[500px] border-4 border-gray-900 shadow-inner">
+              <pre>{sqlSchema}</pre>
+            </div>
+          </div>
+          <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-100 flex items-start gap-6">
+            <ShieldAlert className="text-amber-600 shrink-0" size={32} />
+            <div className="text-amber-900">
+              <h4 className="font-bold text-lg mb-2">Note sur la Sécurité</h4>
+              <p className="text-sm leading-relaxed opacity-80">
+                Après avoir créé les tables, assurez-vous d'activer les politiques **RLS (Row Level Security)** dans Supabase pour garantir que les citoyens ne puissent modifier que leurs propres données.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
