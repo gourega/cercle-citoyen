@@ -18,45 +18,24 @@ export const supabase = isRealSupabase
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storageKey: 'cercle_citoyen_auth'
-      },
-      global: {
-        headers: { 'x-application-name': 'cercle-citoyen-ci' }
       }
     })
   : null;
 
 export const db = {
   async checkConnection() {
-    if (!supabase) return { ok: false, message: "Mode Démo actif." };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s pour un diagnostic rapide
+    if (!supabase) return { ok: false, message: "Mode Démo (Hors-ligne)" };
 
     try {
-      // Test de fetch direct pour voir si c'est le domaine ou l'API qui coince
-      const ping = await fetch(finalUrl + '/rest/v1/', { 
-        method: 'GET', 
-        headers: { 'apikey': finalKey },
-        signal: controller.signal 
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (ping.status === 401 || ping.ok) {
-        return { ok: true, message: "Liaison Souveraine Active" };
-      }
-      
-      return { ok: false, message: "Erreur passerelle API (" + ping.status + ")" };
+      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
+      if (error) throw error;
+      return { ok: true, message: "Liaison Souveraine Active" };
     } catch (e: any) {
-      clearTimeout(timeoutId);
-      if (e.name === 'AbortError') return { ok: false, message: "Timeout : Liaison réseau trop lente." };
-      
-      // Si l'erreur est liée au SSL/Certificat, le fetch échouera ici
-      if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
-        return { ok: false, message: "Blocage réseau : Vérifiez le mode SSL (doit être 'Complet')." };
+      console.error("DB Connection Error:", e);
+      if (e.message?.includes('Failed to fetch')) {
+        return { ok: false, message: "Erreur DNS : Propagation en cours..." };
       }
-      
-      return { ok: false, message: "Erreur de propagation DNS." };
+      return { ok: false, message: "Liaison instable" };
     }
   }
 };

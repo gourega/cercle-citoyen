@@ -6,25 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CERCLE CITOYEN | Penser. Relier. Agir.</title>
     
-    <!-- PWA & Mobile Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <link rel="canonical" href="https://cerclecitoyen.ci">
     <meta name="theme-color" content="#2563eb">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <!-- SEO & Social Sharing -->
-    <meta name="description" content="Réseau social citoyen souverain pour le progrès social en Côte d'Ivoire.">
-    <meta property="og:title" content="CERCLE CITOYEN">
-    <meta property="og:url" content="https://cerclecitoyen.ci">
-    <meta property="og:type" content="website">
-
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Configuration Tailwind déplacée pour éviter les avertissements CSP si possible
       window.tailwind = window.tailwind || {};
       window.tailwind.config = {
         theme: {
@@ -42,10 +30,6 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap');
       body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfcfc; margin: 0; }
-      .font-serif { font-family: 'Playfair Display', serif; }
-      .page-transition { animation: fadeIn 0.6s ease-out; }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      
       #critical-error {
         display: none;
         position: fixed;
@@ -58,23 +42,28 @@
         text-align: center;
         padding: 2rem;
       }
+      .loader {
+        width: 48px;
+        height: 48px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
     <script>
-      // 1. Force HTTPS
-      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-        location.replace(`https:${location.href.substring(location.protocol.length)}`);
-      }
-
-      window.process = { env: { NODE_ENV: 'production' } };
-      
-      // 2. Détection d'erreur critique de chargement améliorée
+      // Détection d'échec de chargement des modules
       window.addEventListener('error', function(e) {
         if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') {
           const errDiv = document.getElementById('critical-error');
           if (errDiv) errDiv.style.display = 'flex';
         }
       }, true);
+
+      window.process = { env: { NODE_ENV: 'production' } };
     </script>
 
     <script type="importmap">
@@ -95,19 +84,20 @@
 }
 </script>
 </head>
-<body class="antialiased">
+<body>
     <div id="root"></div>
     
-    <!-- Écran de secours en cas d'erreur 522 persistante -->
     <div id="critical-error">
-        <div style="background: #f8fafc; color: #1e293b; padding: 3rem; border-radius: 3rem; max-width: 450px; border: 1px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);">
-            <div style="background: #eff6ff; width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #2563eb;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </div>
-            <h2 style="font-family: serif; font-size: 24px; font-weight: bold; margin-bottom: 1rem;">Connexion à la Cité...</h2>
-            <p style="font-size: 14px; line-height: 1.6; color: #64748b;">Le serveur Cloudflare est en train d'établir la passerelle sécurisée vers cerclecitoyen.ci. Si cette page reste figée, vérifiez vos enregistrements DNS (supprimez les anciens enregistrements de type A).</p>
-            <button onclick="location.reload()" style="margin-top: 2rem; background: #1e293b; color: white; border: none; padding: 1rem 2rem; border-radius: 1.25rem; cursor: pointer; font-weight: bold; width: 100%; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;">Réessayer la liaison</button>
-        </div>
+        <div class="loader"></div>
+        <h2 style="font-family: serif; font-size: 24px; font-weight: bold; margin-bottom: 1rem;">Liaison DNS en cours...</h2>
+        <p style="color: #64748b; max-width: 400px; line-height: 1.6; margin-bottom: 2rem;">
+            Le domaine <b>cerclecitoyen.ci</b> est en cours de propagation. Votre navigateur ne trouve pas encore la nouvelle adresse. 
+            <br><br>
+            <i>Conseil : Essayez de désactiver le Wi-Fi sur votre téléphone pour tester en 4G.</i>
+        </p>
+        <button onclick="location.reload(true)" style="background: #2563eb; color: white; border: none; padding: 1rem 2rem; border-radius: 1rem; cursor: pointer; font-weight: bold;">
+            Forcer le rafraîchissement
+        </button>
     </div>
 
     <script type="module" src="index.tsx"></script>
