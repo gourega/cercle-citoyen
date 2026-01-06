@@ -25,6 +25,27 @@ const getRelativeTime = (dateString: string) => {
   return date.toLocaleDateString();
 };
 
+const PostSkeleton = () => (
+  <div className="bg-white rounded-[3rem] p-8 border border-gray-100 shadow-sm mb-10 animate-pulse">
+    <div className="flex items-center gap-4 mb-8">
+      <div className="w-14 h-14 bg-gray-100 rounded-2xl"></div>
+      <div className="space-y-2">
+        <div className="w-32 h-4 bg-gray-100 rounded"></div>
+        <div className="w-24 h-2 bg-gray-50 rounded"></div>
+      </div>
+    </div>
+    <div className="space-y-3 mb-8">
+      <div className="w-full h-4 bg-gray-100 rounded"></div>
+      <div className="w-5/6 h-4 bg-gray-100 rounded"></div>
+      <div className="w-4/6 h-4 bg-gray-100 rounded"></div>
+    </div>
+    <div className="pt-8 border-t border-gray-50 flex gap-4">
+      <div className="w-12 h-6 bg-gray-50 rounded-full"></div>
+      <div className="w-12 h-6 bg-gray-50 rounded-full"></div>
+    </div>
+  </div>
+);
+
 const PostCard: React.FC<{ 
   post: Post, 
   currentUser: User | null, 
@@ -34,9 +55,6 @@ const PostCard: React.FC<{
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.content);
-  const [commentInput, setCommentInput] = useState('');
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -44,8 +62,12 @@ const PostCard: React.FC<{
         setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
-      const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-      setAuthor(data || { name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+      try {
+        const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+        setAuthor(data || { name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+      } catch (e) {
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+      }
     };
     fetchAuthor();
   }, [post.author_id]);
@@ -58,21 +80,21 @@ const PostCard: React.FC<{
       if (isRealSupabase && supabase) {
         await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
       }
-    } catch (e) { addToast("Erreur de réaction", "error"); }
+    } catch (e) { addToast("Action enregistrée localement", "info"); }
   };
 
-  if (!author) return <div className="h-64 bg-gray-50 rounded-[3rem] animate-pulse mb-8"></div>;
+  if (!author) return <PostSkeleton />;
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
 
   return (
-    <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden ${isMajestic ? 'ring-2 ring-amber-100' : ''}`}>
+    <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden animate-in fade-in duration-500 ${isMajestic ? 'ring-2 ring-amber-100 shadow-amber-50' : ''}`}>
       <div className="p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link to={`/profile/${post.author_id}`} className="relative">
-              <img src={author.avatar_url} className="w-14 h-14 rounded-2xl object-cover shadow-sm" alt="" />
-              {isMajestic && <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-1 rounded-lg border-2 border-white"><Crown size={10} /></div>}
+            <Link to={`/profile/${post.author_id}`} className="relative group">
+              <img src={author.avatar_url} className="w-14 h-14 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-105" alt="" />
+              {isMajestic && <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-1.5 rounded-lg border-2 border-white shadow-lg"><Crown size={12} /></div>}
             </Link>
             <div>
               <div className="flex items-center gap-2">
@@ -84,27 +106,27 @@ const PostCard: React.FC<{
               </p>
             </div>
           </div>
-          <button className="text-gray-300 hover:text-gray-900"><MoreHorizontal /></button>
+          <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
         </div>
 
-        <div className={`text-gray-800 leading-relaxed ${isMajestic ? 'text-2xl font-serif italic border-l-4 border-amber-200 pl-8 mb-8' : 'text-lg font-medium mb-8'}`}>
+        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif italic border-l-4 border-amber-200 pl-8 mb-8' : 'text-lg font-medium mb-8'}`}>
           {post.content}
         </div>
 
         <div className="flex items-center justify-between pt-8 border-t border-gray-50">
           <div className="flex gap-4">
-            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 hover:scale-110 transition-transform">
-              <ThumbsUp size={18} /> <span className="text-xs font-black">{reactions.useful}</span>
+            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 hover:scale-110 transition-transform bg-blue-50/50 px-4 py-2 rounded-xl">
+              <ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span>
             </button>
-            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 hover:scale-110 transition-transform">
-              <Lightbulb size={18} /> <span className="text-xs font-black">{reactions.relevant}</span>
+            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 hover:scale-110 transition-transform bg-emerald-50/50 px-4 py-2 rounded-xl">
+              <Lightbulb size={16} /> <span className="text-xs font-black">{reactions.relevant}</span>
             </button>
-            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 hover:scale-110 transition-transform">
-              <Sparkles size={18} /> <span className="text-xs font-black">{reactions.inspiring}</span>
+            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 hover:scale-110 transition-transform bg-amber-50/50 px-4 py-2 rounded-xl">
+              <Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span>
             </button>
           </div>
-          <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900">
-            <MessageCircle size={18} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
+          <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 px-4 py-2 rounded-xl">
+            <MessageCircle size={16} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
           </button>
         </div>
       </div>
@@ -124,10 +146,16 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     setLoading(true);
     if (isRealSupabase && supabase) { 
       try {
-        const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
         setPosts(data || []);
-      } catch (e) { setPosts(MOCK_POSTS); }
-    } else { setPosts(MOCK_POSTS); }
+      } catch (e) { 
+        console.warn("Using mock data due to connection error", e);
+        setPosts(MOCK_POSTS); 
+      }
+    } else { 
+      setPosts(MOCK_POSTS); 
+    }
     setLoading(false); 
   };
 
@@ -146,15 +174,18 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     };
     try {
       if (isRealSupabase && supabase) {
-        await supabase.from('posts').insert([postData]);
-        addToast("Onde propagée !", "success");
+        const { error } = await supabase.from('posts').insert([postData]);
+        if (error) throw error;
+        addToast("Onde citoyenne propagée !", "success");
+        fetchPosts();
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Simulé en local", "info");
+        addToast("Action enregistrée en local", "info");
       }
       setNewPostText('');
-      fetchPosts();
-    } catch (e) { addToast("Échec", "error"); }
+    } catch (e) { 
+      addToast("La cité rencontre une difficulté technique.", "error"); 
+    }
     finally { setSending(false); }
   };
 
@@ -166,18 +197,21 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
       </div>
 
       {user && (
-        <div className="bg-white rounded-[3rem] border border-gray-100 p-8 shadow-sm mb-16">
+        <div className="bg-white rounded-[3rem] border border-gray-100 p-8 shadow-sm mb-16 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-focus-within:rotate-12 transition-transform duration-700">
+            <Sparkles size={100} className="text-blue-600" />
+          </div>
           <textarea 
             value={newPostText} 
             onChange={e => setNewPostText(e.target.value)} 
             placeholder="Déposez une pierre à l'édifice..." 
-            className="w-full h-32 bg-gray-50/50 p-6 rounded-2xl outline-none mb-6 font-medium text-lg focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-50" 
+            className="w-full h-32 bg-gray-50/50 p-6 rounded-2xl outline-none mb-6 font-medium text-lg focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-50 relative z-10" 
           />
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+            <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer">
               {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
             </select>
-            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className="bg-gray-900 text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-30">
+            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className="bg-gray-900 text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-30 shadow-xl hover:bg-black active:scale-95 transition-all">
               {sending ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} 
               Diffuser l'Onde
             </button>
@@ -187,8 +221,21 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
       <div className="space-y-4">
         {loading ? (
-          <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" /></div>
-        ) : posts.map(p => <PostCard key={p.id} post={p} currentUser={user} onUpdate={fetchPosts} />)}
+          <>
+            <PostSkeleton />
+            <PostSkeleton />
+            <PostSkeleton />
+          </>
+        ) : (
+          posts.length > 0 ? (
+            posts.map(p => <PostCard key={p.id} post={p} currentUser={user} onUpdate={fetchPosts} />)
+          ) : (
+            <div className="p-20 text-center bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
+               <RefreshCw size={40} className="mx-auto mb-4 text-gray-200" />
+               <p className="text-gray-400 font-bold uppercase tracking-widest">Le fil est encore calme...</p>
+            </div>
+          )
+        )}
       </div>
     </div>
   );

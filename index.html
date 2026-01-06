@@ -21,7 +21,12 @@
               serif: ['Playfair Display', 'serif'],
               sans: ['Plus Jakarta Sans', 'sans-serif'],
             },
-            colors: { cercle: { blue: '#2563eb' } }
+            colors: { 
+              cercle: { 
+                blue: '#2563eb',
+                dark: '#0f172a'
+              } 
+            }
           }
         }
       }
@@ -30,41 +35,27 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap');
       body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfcfc; margin: 0; }
-      #critical-error {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: white;
-        z-index: 9999;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 2rem;
+      
+      /* Loader initial si le DNS est lent */
+      #initial-loader {
+        position: fixed; inset: 0; background: white; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.5s ease-out;
       }
-      .loader {
-        width: 48px;
-        height: 48px;
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #2563eb;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
+      .dot-pulse {
+        width: 12px; height: 12px; border-radius: 50%; background-color: #2563eb;
+        box-shadow: 9984px 0 0 0 #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 0 #2563eb;
+        animation: dotPulse 1.5s infinite linear;
+        position: relative; left: -9999px;
       }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes dotPulse {
+        0% { box-shadow: 9984px 0 0 -5px #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 2px #2563eb; }
+        25% { box-shadow: 9984px 0 0 0 #2563eb, 9999px 0 0 2px #2563eb, 10014px 0 0 -5px #2563eb; }
+        50% { box-shadow: 9984px 0 0 2px #2563eb, 9999px 0 0 -5px #2563eb, 10014px 0 0 0 #2563eb; }
+        75% { box-shadow: 9984px 0 0 0 #2563eb, 9999px 0 0 -5px #2563eb, 10014px 0 0 2px #2563eb; }
+        100% { box-shadow: 9984px 0 0 -5px #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 2px #2563eb; }
+      }
     </style>
-
-    <script>
-      // Détection d'échec de chargement des modules
-      window.addEventListener('error', function(e) {
-        if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') {
-          const errDiv = document.getElementById('critical-error');
-          if (errDiv) errDiv.style.display = 'flex';
-        }
-      }, true);
-
-      window.process = { env: { NODE_ENV: 'production' } };
-    </script>
 
     <script type="importmap">
 {
@@ -85,21 +76,22 @@
 </script>
 </head>
 <body>
-    <div id="root"></div>
-    
-    <div id="critical-error">
-        <div class="loader"></div>
-        <h2 style="font-family: serif; font-size: 24px; font-weight: bold; margin-bottom: 1rem;">Liaison DNS en cours...</h2>
-        <p style="color: #64748b; max-width: 400px; line-height: 1.6; margin-bottom: 2rem;">
-            Le domaine <b>cerclecitoyen.ci</b> est en cours de propagation. Votre navigateur ne trouve pas encore la nouvelle adresse. 
-            <br><br>
-            <i>Conseil : Essayez de désactiver le Wi-Fi sur votre téléphone pour tester en 4G.</i>
-        </p>
-        <button onclick="location.reload(true)" style="background: #2563eb; color: white; border: none; padding: 1rem 2rem; border-radius: 1rem; cursor: pointer; font-weight: bold;">
-            Forcer le rafraîchissement
-        </button>
+    <div id="initial-loader">
+        <div class="dot-pulse"></div>
+        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Ouverture du Cercle...</p>
     </div>
 
-    <script type="module" src="index.tsx"></script>
+    <div id="root"></div>
+
+    <script type="module">
+      import "./index.tsx";
+      window.addEventListener('load', () => {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(() => loader.remove(), 500);
+        }
+      });
+    </script>
 </body>
 </html>
