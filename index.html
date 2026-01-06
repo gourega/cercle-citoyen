@@ -24,6 +24,8 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Configuration Tailwind déplacée pour éviter les avertissements CSP si possible
+      window.tailwind = window.tailwind || {};
       window.tailwind.config = {
         theme: {
           extend: {
@@ -66,10 +68,11 @@
 
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // 2. Détection d'erreur critique de chargement (522/Réseau)
+      // 2. Détection d'erreur critique de chargement améliorée
       window.addEventListener('error', function(e) {
-        if (e.target.tagName === 'SCRIPT') {
-          document.getElementById('critical-error').style.display = 'flex';
+        if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') {
+          const errDiv = document.getElementById('critical-error');
+          if (errDiv) errDiv.style.display = 'flex';
         }
       }, true);
     </script>
@@ -97,10 +100,13 @@
     
     <!-- Écran de secours en cas d'erreur 522 persistante -->
     <div id="critical-error">
-        <div style="background: #fee2e2; color: #991b1b; padding: 2rem; border-radius: 2rem; max-width: 400px; border: 1px solid #fecaca;">
-            <h2 style="font-family: serif; margin-bottom: 1rem;">Connexion instable</h2>
-            <p style="font-size: 14px; line-height: 1.6;">Le serveur Cloudflare ne parvient pas à établir la liaison. Cela arrive souvent lors d'une mise à jour des certificats SSL ou d'un mode "Flexible" erroné.</p>
-            <button onclick="location.reload()" style="margin-top: 1.5rem; background: #991b1b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 1rem; cursor: pointer; font-weight: bold;">Réessayer</button>
+        <div style="background: #f8fafc; color: #1e293b; padding: 3rem; border-radius: 3rem; max-width: 450px; border: 1px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);">
+            <div style="background: #eff6ff; width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #2563eb;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </div>
+            <h2 style="font-family: serif; font-size: 24px; font-weight: bold; margin-bottom: 1rem;">Connexion à la Cité...</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #64748b;">Le serveur Cloudflare est en train d'établir la passerelle sécurisée vers cerclecitoyen.ci. Si cette page reste figée, vérifiez vos enregistrements DNS (supprimez les anciens enregistrements de type A).</p>
+            <button onclick="location.reload()" style="margin-top: 2rem; background: #1e293b; color: white; border: none; padding: 1rem 2rem; border-radius: 1.25rem; cursor: pointer; font-weight: bold; width: 100%; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;">Réessayer la liaison</button>
         </div>
     </div>
 
