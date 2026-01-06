@@ -12,9 +12,10 @@ import {
   CheckCircle,
   Bell,
   LogOut,
-  WifiOff,
+  Wifi,
   AlertTriangle,
-  ExternalLink
+  Globe,
+  ChevronRight
 } from 'lucide-react';
 
 // Pages
@@ -67,22 +68,22 @@ const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: Use
   return <>{children}</>;
 };
 
-const Navbar = ({ user, onLogout, connError }: { user: User | null, onLogout: () => void, connError: string | null }) => {
+const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: () => void, connStatus: { ok: boolean, message: string } | null }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<CitizenNotification[]>([
-    { id: '1', type: 'drum_call', title: 'Appel du Conseil', message: 'Un nouvel édit sur la souveraineté alimentaire vient d\'être publié.', timestamp: '10m', isRead: false },
-    { id: '2', type: 'award', title: 'Distinction', message: 'Vous avez reçu le badge "Pionnier" !', timestamp: '1h', isRead: false }
+    { id: '1', type: 'drum_call', title: 'Appel du Conseil', message: 'Bienvenue sur cerclecitoyen.ci ! Le réseau est désormais ouvert.', timestamp: '1m', isRead: false }
   ]);
+
+  const isPublicPage = ['/', '/manifesto', '/auth', '/welcome', '/legal'].includes(location.pathname);
 
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-md border-b border-gray-100 h-20 px-6 shadow-sm">
-        {connError && (
-          <div className="absolute top-0 inset-x-0 bg-rose-600 text-white text-[9px] py-1 px-4 flex items-center justify-center gap-4 font-black uppercase tracking-widest z-[110]">
-            <div className="flex items-center gap-1.5 animate-pulse"><AlertTriangle size={12} /> {connError}</div>
-            <a href="https://dash.cloudflare.com" target="_blank" className="underline flex items-center gap-1 opacity-80 hover:opacity-100">Vérifier Cloudflare <ExternalLink size={10}/></a>
+        {connStatus && (
+          <div className={`absolute top-0 inset-x-0 text-[8px] py-1 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest transition-colors duration-500 z-[110] ${connStatus.ok ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+            {connStatus.ok ? <Wifi size={10} /> : <AlertTriangle size={10} />} {connStatus.message}
           </div>
         )}
         <div className="max-w-7xl mx-auto h-full flex justify-between items-center">
@@ -97,21 +98,25 @@ const Navbar = ({ user, onLogout, connError }: { user: User | null, onLogout: ()
                 <NavLink to="/chat" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Palabres</NavLink>
                 <NavLink to="/map" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Carte</NavLink>
                 <NavLink to="/governance" className={({ isActive }) => `text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-900'}`}>Édits</NavLink>
-                <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 relative">
+                <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 relative transition-colors">
                   <Bell size={20} />
                   {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
                 </button>
-                <NavLink to="/profile" className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-transparent hover:ring-blue-100">
+                <NavLink to="/profile" className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-transparent hover:ring-blue-100 transition-all">
                   <img src={user.avatar} className="w-full h-full object-cover" alt="Moi" />
                 </NavLink>
                 <button onClick={onLogout} className="text-gray-400 hover:text-rose-600 transition-all"><LogOut size={18} /></button>
               </>
             ) : (
-              <Link to="/auth" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">Rejoindre la Cité</Link>
+              <div className="flex items-center gap-4">
+                <Link to="/auth" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 px-4">Se Connecter</Link>
+                <Link to="/manifesto" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-100">Rejoindre</Link>
+              </div>
             )}
           </div>
 
-          <div className="lg:hidden">
+          <div className="lg:hidden flex items-center gap-4">
+            {!user && <Link to="/auth" className="text-[10px] font-black uppercase text-blue-600">Entrer</Link>}
             <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>{isOpen ? <X size={28} /> : <Menu size={28} />}</button>
           </div>
         </div>
@@ -119,14 +124,25 @@ const Navbar = ({ user, onLogout, connError }: { user: User | null, onLogout: ()
 
       {/* Mobile Sidebar */}
       {isOpen && (
-        <div className="fixed inset-0 z-[110] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden">
-          <button onClick={() => setIsOpen(false)} className="absolute top-10 right-10"><X size={32} /></button>
-          <div className="mt-20 flex flex-col gap-8">
-            <NavLink to="/feed" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Fil d'Éveil</NavLink>
-            <NavLink to="/chat" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Palabres</NavLink>
-            <NavLink to="/map" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Carte d'Impact</NavLink>
-            <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Mon Profil</NavLink>
-            <button onClick={() => { onLogout(); setIsOpen(false); }} className="text-rose-600 text-left text-2xl font-serif font-bold">Déconnexion</button>
+        <div className="fixed inset-0 z-[150] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden">
+          <button onClick={() => setIsOpen(false)} className="absolute top-10 right-10 p-4"><X size={32} /></button>
+          <div className="mt-20 flex flex-col gap-10">
+            {user ? (
+              <>
+                <NavLink to="/feed" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Fil d'Éveil</NavLink>
+                <NavLink to="/chat" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Palabres</NavLink>
+                <NavLink to="/map" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Carte d'Impact</NavLink>
+                <NavLink to="/governance" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Le Conseil</NavLink>
+                <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Mon Profil</NavLink>
+                <button onClick={() => { onLogout(); setIsOpen(false); }} className="text-rose-600 text-left text-3xl font-serif font-bold">Déconnexion</button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Accueil</NavLink>
+                <NavLink to="/manifesto" onClick={() => setIsOpen(false)} className="text-3xl font-serif font-bold">Manifeste</NavLink>
+                <Link to="/auth" onClick={() => setIsOpen(false)} className="bg-blue-600 text-white py-6 rounded-3xl font-black text-center text-[11px] uppercase tracking-widest">Rejoindre la Cité</Link>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -134,12 +150,12 @@ const Navbar = ({ user, onLogout, connError }: { user: User | null, onLogout: ()
       {isNotifOpen && user && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} />}
 
       {user && (
-        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/90 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe">
-          <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
-          <NavLink to="/chat" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MessageSquare size={24} /></NavLink>
-          <NavLink to="/map" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MapIcon size={24} /></NavLink>
-          <NavLink to="/governance" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Gavel size={24} /></NavLink>
-          <NavLink to="/profile" className={({ isActive }) => `p-3 rounded-2xl ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><img src={user.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" /></NavLink>
+        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+          <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
+          <NavLink to="/chat" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MessageSquare size={24} /></NavLink>
+          <NavLink to="/map" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MapIcon size={24} /></NavLink>
+          <NavLink to="/governance" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Gavel size={24} /></NavLink>
+          <NavLink to="/profile" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><img src={user.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" /></NavLink>
         </div>
       )}
     </>
@@ -151,15 +167,15 @@ const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   const addToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   };
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-24 lg:bottom-10 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
+      <div className="fixed bottom-24 lg:bottom-10 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-full max-w-sm px-4 pointer-events-none">
         {toasts.map(t => (
-          <div key={t.id} className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-2 ${t.type === 'success' ? 'bg-emerald-600' : 'bg-gray-900'}`}>
-             <CheckCircle size={18} /> <span className="text-sm font-bold">{t.message}</span>
+          <div key={t.id} className={`px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-5 duration-500 ${t.type === 'success' ? 'bg-emerald-600' : t.type === 'error' ? 'bg-rose-600' : 'bg-gray-950'}`}>
+             <CheckCircle size={18} /> <span className="text-[11px] font-black uppercase tracking-widest">{t.message}</span>
           </div>
         ))}
       </div>
@@ -171,7 +187,7 @@ const App = () => {
   const [user, setUser] = useState<User | null>(() => {
     try { const saved = localStorage.getItem('cercle_user'); return saved ? JSON.parse(saved) : null; } catch (e) { return null; }
   });
-  const [connError, setConnError] = useState<string | null>(null);
+  const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
   const handleLogin = (u: User) => { 
     setUser(u); 
@@ -186,25 +202,18 @@ const App = () => {
   };
 
   useEffect(() => {
-    // Vérification périodique lors du déploiement
     const check = async () => {
       const status = await db.checkConnection();
-      if (!status.ok) setConnError(status.message);
-      else setConnError(null);
+      setConnStatus(status);
     };
     check();
-    const interval = setInterval(check, 15000); // Check toutes les 15s
+    const interval = setInterval(check, 30000); // Check toutes les 30s en production
 
     if (!isRealSupabase || !supabase) return () => clearInterval(interval);
 
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
       if (session?.user && !user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
         if (profile) {
           handleLogin({
             id: profile.id,
@@ -219,6 +228,9 @@ const App = () => {
             impactScore: profile.impact_score || 0
           });
         }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        localStorage.removeItem('cercle_user');
       }
     });
 
@@ -233,7 +245,7 @@ const App = () => {
       <Router>
         <ScrollToTop />
         <div className="min-h-screen flex flex-col bg-[#fcfcfc] pb-20 lg:pb-0">
-          <Navbar user={user} onLogout={handleLogout} connError={connError} />
+          <Navbar user={user} onLogout={handleLogout} connStatus={connStatus} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
