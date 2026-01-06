@@ -6,7 +6,7 @@ import {
   ShieldCheck, MessageCircle, RefreshCw, 
   Pencil, Crown, Share2, ChevronDown, ChevronUp,
   Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
-  Volume2, Play
+  Volume2, Play, Trash2
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
@@ -51,6 +51,7 @@ const PostCard: React.FC<{
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
+  const [deleting, setDeleting] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -114,6 +115,27 @@ const PostCard: React.FC<{
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm("Voulez-vous vraiment retirer cette onde du Cercle ?")) return;
+    
+    setDeleting(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').delete().eq('id', post.id);
+        if (error) throw error;
+        addToast("L'onde a été dissipée.", "success");
+      } else {
+        addToast("Retiré localement (Mode Démo).", "info");
+      }
+      onUpdate();
+    } catch (e) {
+      console.error(e);
+      addToast("La suppression a échoué.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleShare = () => {
     navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
     addToast("Lien de la réflexion copié !", "success");
@@ -123,6 +145,8 @@ const PostCard: React.FC<{
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isAuthor = currentUser?.id === post.author_id;
+  const isAdmin = currentUser?.role === Role.SUPER_ADMIN;
+  
   const TRUNCATE_LIMIT = 320; 
   const needsTruncation = post.content.length > TRUNCATE_LIMIT;
   const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, TRUNCATE_LIMIT) + '...' : post.content;
@@ -157,11 +181,27 @@ const PostCard: React.FC<{
                 {isReading ? "Le Griot parle..." : "Écouter la Sagesse"}
               </button>
             )}
-            {isAuthor && (
-              <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Modifier">
-                <Pencil size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">Modifier</span>
-              </button>
-            )}
+            
+            <div className="flex items-center gap-2">
+              {isAuthor && (
+                <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Modifier">
+                  <Pencil size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">Modifier</span>
+                </button>
+              )}
+              
+              {(isAuthor || isAdmin) && (
+                <button 
+                  onClick={handleDelete} 
+                  disabled={deleting}
+                  className="flex items-center gap-2 text-rose-600 bg-rose-50 px-4 py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm disabled:opacity-50" 
+                  title="Retirer"
+                >
+                  {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                  <span className="text-[9px] font-black uppercase tracking-widest">{isAdmin && !isAuthor ? "Médiation" : "Retirer"}</span>
+                </button>
+              )}
+            </div>
+            
             <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
           </div>
         </div>
