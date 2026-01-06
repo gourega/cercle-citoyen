@@ -5,13 +5,15 @@ import {
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
   ShieldCheck, MessageCircle, RefreshCw, 
   Pencil, Crown, Share2, ChevronDown, ChevronUp,
-  Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon
+  Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
+  Volume2, Play
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { CIRCLES_CONFIG } from '../constants.tsx';
 import { MOCK_POSTS } from '../lib/mocks.ts';
 import { useToast } from '../App.tsx';
+import { getGriotReading, decode, decodeAudioData } from '../lib/gemini.ts';
 
 const getRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
@@ -47,7 +49,9 @@ const PostCard: React.FC<{
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isReading, setIsReading] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -76,6 +80,32 @@ const PostCard: React.FC<{
     } catch (e) { addToast("Action enregistrée localement", "info"); }
   };
 
+  const handleListen = async () => {
+    if (isReading) return;
+    setIsReading(true);
+    try {
+      const base64Audio = await getGriotReading(post.content);
+      if (base64Audio) {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        }
+        const bytes = decode(base64Audio);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current);
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContextRef.current.destination);
+        source.onended = () => setIsReading(false);
+        source.start(0);
+      } else {
+        setIsReading(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setIsReading(false);
+      addToast("Le Griot n'a pu porter sa voix.", "error");
+    }
+  };
+
   const handleShare = () => {
     navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
     addToast("Lien de la réflexion copié !", "success");
@@ -85,7 +115,7 @@ const PostCard: React.FC<{
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isAuthor = currentUser?.id === post.author_id;
-  const TRUNCATE_LIMIT = 300; 
+  const TRUNCATE_LIMIT = 320; 
   const needsTruncation = post.content.length > TRUNCATE_LIMIT;
   const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, TRUNCATE_LIMIT) + '...' : post.content;
 
@@ -109,6 +139,16 @@ const PostCard: React.FC<{
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {isMajestic && (
+              <button 
+                onClick={handleListen} 
+                disabled={isReading}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest ${isReading ? 'bg-amber-100 text-amber-600 animate-pulse' : 'bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white'}`}
+              >
+                {isReading ? <Loader2 className="animate-spin" size={14} /> : <Volume2 size={14} />}
+                {isReading ? "Le Griot parle..." : "Écouter la Sagesse"}
+              </button>
+            )}
             {isAuthor && (
               <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Modifier">
                 <Pencil size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">Modifier</span>
@@ -122,14 +162,16 @@ const PostCard: React.FC<{
           {displayContent}
         </div>
 
-        {needsTruncation && (
-          <button 
-            onClick={() => setIsExpanded(!isExpanded)} 
-            className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.3em] mb-10 flex items-center gap-2 hover:bg-blue-50 px-5 py-3 rounded-full transition-all w-fit shadow-sm border border-blue-50"
-          >
-            {isExpanded ? <><ChevronUp size={14} /> Replier la Sagesse</> : <><ChevronDown size={14} /> Déplier la Sagesse</>}
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-4 mb-10">
+          {needsTruncation && (
+            <button 
+              onClick={() => setIsExpanded(!isExpanded)} 
+              className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.3em] flex items-center gap-2 hover:bg-blue-50 px-5 py-3 rounded-full transition-all w-fit shadow-sm border border-blue-50"
+            >
+              {isExpanded ? <><ChevronUp size={14} /> Replier</> : <><ChevronDown size={14} /> Déplier la pensée</>}
+            </button>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center justify-between pt-10 border-t border-gray-50 gap-6">
           <div className="flex flex-wrap gap-4">
@@ -190,19 +232,24 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
   const handleCreatePost = async () => {
     if (!newPostText.trim() || !user) return;
     setSending(true);
+    
+    // Détecter si le post doit être majestique (si c'est le Gardien qui publie)
+    const isMajestic = user.role === Role.SUPER_ADMIN;
+    
     const postData = { 
       author_id: user.id, 
       content: newPostText, 
       circle_type: selectedCircle, 
-      is_majestic: user.role === Role.SUPER_ADMIN,
+      is_majestic: isMajestic,
       reactions: { useful: 0, relevant: 0, inspiring: 0 },
       created_at: new Date().toISOString()
     };
+    
     try {
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('posts').insert([postData]);
         if (error) throw error;
-        addToast("Onde citoyenne propagée !", "success");
+        addToast(isMajestic ? "L'Édit a été promulgué." : "Onde citoyenne propagée !", "success");
         fetchPosts();
       } else {
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
