@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
 
-// Nettoyage rigoureux des variables d'environnement (enlève les quotes doubles ou simples accidentelles)
 const clean = (val: string) => val ? val.replace(/^["']|["']$/g, '').trim() : "";
 
 const finalUrl = clean(supabaseUrl);
@@ -12,7 +11,6 @@ const finalKey = clean(supabaseAnonKey);
 
 export const isRealSupabase = !!finalUrl && finalUrl.includes('.supabase.co') && !!finalKey;
 
-// Configuration optimisée pour la production (Cloudflare Pages)
 export const supabase = isRealSupabase
   ? createClient(finalUrl, finalKey, {
       auth: {
@@ -28,38 +26,37 @@ export const supabase = isRealSupabase
   : null;
 
 export const db = {
-  /**
-   * Vérifie la santé de la liaison entre le domaine et la base de données.
-   */
   async checkConnection() {
-    if (!supabase) return { ok: false, message: "Mode Démo (Config manquante)." };
+    if (!supabase) return { ok: false, message: "Mode Démo actif." };
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s de délai
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s pour un diagnostic rapide
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
-        .limit(1)
-        .abortSignal(controller.signal);
-
+      // Test de fetch direct pour voir si c'est le domaine ou l'API qui coince
+      const ping = await fetch(finalUrl + '/rest/v1/', { 
+        method: 'GET', 
+        headers: { 'apikey': finalKey },
+        signal: controller.signal 
+      });
+      
       clearTimeout(timeoutId);
 
-      if (error) {
-        console.error("Erreur liaison DB:", error);
-        return { 
-          ok: false, 
-          message: error.code === 'PGRST301' ? "Accès refusé (Clé invalide)." : "Liaison DB instable." 
-        };
+      if (ping.status === 401 || ping.ok) {
+        return { ok: true, message: "Liaison Souveraine Active" };
       }
-      return { ok: true, message: "Liaison Souveraine Active" };
+      
+      return { ok: false, message: "Erreur passerelle API (" + ping.status + ")" };
     } catch (e: any) {
       clearTimeout(timeoutId);
-      return { 
-        ok: false, 
-        message: e.name === 'AbortError' ? "Serveur distant injoignable (Timeout)." : "Erreur de propagation réseau." 
-      };
+      if (e.name === 'AbortError') return { ok: false, message: "Timeout : Liaison réseau trop lente." };
+      
+      // Si l'erreur est liée au SSL/Certificat, le fetch échouera ici
+      if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+        return { ok: false, message: "Blocage réseau : Vérifiez le mode SSL (doit être 'Complet')." };
+      }
+      
+      return { ok: false, message: "Erreur de propagation DNS." };
     }
   }
 };

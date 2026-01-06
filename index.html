@@ -43,25 +43,35 @@
       .font-serif { font-family: 'Playfair Display', serif; }
       .page-transition { animation: fadeIn 0.6s ease-out; }
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      
+      #critical-error {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: white;
+        z-index: 9999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+      }
     </style>
 
     <script>
+      // 1. Force HTTPS
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        location.replace(`https:${location.href.substring(location.protocol.length)}`);
+      }
+
       window.process = { env: { NODE_ENV: 'production' } };
       
-      // Gestionnaire d'erreurs global pour détecter les échecs de chargement réseau
+      // 2. Détection d'erreur critique de chargement (522/Réseau)
       window.addEventListener('error', function(e) {
-        if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') {
-          console.warn('Échec de chargement ressource, possible erreur 522/réseau.');
+        if (e.target.tagName === 'SCRIPT') {
+          document.getElementById('critical-error').style.display = 'flex';
         }
       }, true);
-
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('Souveraineté active'))
-            .catch(err => console.log('Mode dégradé active'));
-        });
-      }
     </script>
 
     <script type="importmap">
@@ -84,6 +94,16 @@
 </head>
 <body class="antialiased">
     <div id="root"></div>
+    
+    <!-- Écran de secours en cas d'erreur 522 persistante -->
+    <div id="critical-error">
+        <div style="background: #fee2e2; color: #991b1b; padding: 2rem; border-radius: 2rem; max-width: 400px; border: 1px solid #fecaca;">
+            <h2 style="font-family: serif; margin-bottom: 1rem;">Connexion instable</h2>
+            <p style="font-size: 14px; line-height: 1.6;">Le serveur Cloudflare ne parvient pas à établir la liaison. Cela arrive souvent lors d'une mise à jour des certificats SSL ou d'un mode "Flexible" erroné.</p>
+            <button onclick="location.reload()" style="margin-top: 1.5rem; background: #991b1b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 1rem; cursor: pointer; font-weight: bold;">Réessayer</button>
+        </div>
+    </div>
+
     <script type="module" src="index.tsx"></script>
 </body>
 </html>
