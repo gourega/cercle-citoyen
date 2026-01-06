@@ -55,13 +55,19 @@ const PostCard: React.FC<{
 
   useEffect(() => {
     const fetchAuthor = async () => {
+      // Si c'est un post mock ou local, on utilise l'auteur courant ou mock
+      if (post.author_id.startsWith('u') || post.author_id.includes('local')) {
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        return;
+      }
+      
       if (!isRealSupabase || !supabase) {
         setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
       try {
         const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-        setAuthor(data || { name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor(data ? { ...data, avatar_url: data.avatar_url } : { name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
       } catch (e) {
         setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
       }
@@ -77,7 +83,9 @@ const PostCard: React.FC<{
       if (isRealSupabase && supabase) {
         await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
       }
-    } catch (e) { addToast("Action enregistrée localement", "info"); }
+    } catch (e) { 
+      // Silencieux car on a déjà mis à jour l'UI
+    }
   };
 
   const handleListen = async () => {
@@ -212,18 +220,25 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchPosts = async () => {
     setLoading(true);
+    let finalPosts = [...MOCK_POSTS]; // On commence toujours avec les mocks comme base
+
     if (isRealSupabase && supabase) { 
       try {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        setPosts(data || []);
+        if (error) {
+           console.warn("DB posts table check failed:", error.message);
+        } else if (data && data.length > 0) {
+           // Fusionner les données de la DB avec les mocks (pour garder les posts de semence visibles au début)
+           finalPosts = [...data, ...MOCK_POSTS.filter(mp => !data.some(dp => dp.id === mp.id))];
+        }
       } catch (e) { 
-        console.warn("Using mock data due to connection error", e);
-        setPosts(MOCK_POSTS); 
+        console.warn("Connection difficulty, showing seeds.");
       }
-    } else { 
-      setPosts(MOCK_POSTS); 
     }
+    
+    // Trier par date décroissante
+    finalPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setPosts(finalPosts);
     setLoading(false); 
   };
 
@@ -233,9 +248,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     if (!newPostText.trim() || !user) return;
     setSending(true);
     
-    // Détecter si le post doit être majestique (si c'est le Gardien qui publie)
     const isMajestic = user.role === Role.SUPER_ADMIN;
-    
     const postData = { 
       author_id: user.id, 
       content: newPostText, 
@@ -248,18 +261,26 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     try {
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('posts').insert([postData]);
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase Insert Error:", error);
+          throw error;
+        }
         addToast(isMajestic ? "L'Édit a été promulgué." : "Onde citoyenne propagée !", "success");
         fetchPosts();
       } else {
+        // Enregistrement local pur
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Action enregistrée en local", "info");
+        addToast("Action enregistrée localement (Hors-ligne)", "info");
       }
       setNewPostText('');
       setIsBold(false);
       setIsItalic(false);
-    } catch (e) { 
-      addToast("La cité rencontre une difficulté technique.", "error"); 
+    } catch (e: any) { 
+      console.error("Post Creation Failure:", e);
+      // Fallback local en cas d'erreur DB (pour que l'utilisateur ne perde pas son texte)
+      setPosts(prev => [ { ...postData, id: 'local-err-' + Date.now() } as Post, ...prev]);
+      addToast(`La liaison DB est instable. Post sauvé localement.`, "info");
+      setNewPostText('');
     }
     finally { setSending(false); }
   };
