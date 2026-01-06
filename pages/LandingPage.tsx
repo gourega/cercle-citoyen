@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   LayoutGrid,
   MapPin,
-  Sparkles
+  Sparkles,
+  Zap,
+  Shield
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { CIRCLES_CONFIG } from '../constants.tsx';
@@ -109,17 +111,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     }
   };
 
-  const handleExploreMap = () => {
-    if (user) {
-      navigate('/map');
-    } else {
-      navigate('/manifesto');
-    }
-  };
-
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
       
+      {/* Texture de fond subtile */}
       <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]">
         <svg className="w-full h-full" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="400" cy="300" r="300" stroke="currentColor" strokeWidth="0.5" strokeDasharray="5 5" />
@@ -128,44 +123,55 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
       </div>
 
       <header className="relative z-20 pt-16 mb-16 flex flex-col items-center gap-8 text-center animate-in fade-in duration-1000">
-        <Logo size={60} showText={true} variant="blue" />
-        <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-5 py-2.5 rounded-full shadow-sm">
-          <ShieldCheck size={16} className="text-emerald-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-            Souveraineté numérique ivoirienne
-          </span>
+        <Logo size={64} showText={true} variant="blue" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-xl shadow-blue-100 animate-bounce-slow">
+            <Shield size={16} />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+              Souveraineté .CI Activée
+            </span>
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-[0.5em] text-gray-300">Territoire Numérique Ivoirien</p>
         </div>
       </header>
 
       <main className="relative z-10 w-full max-w-6xl px-6 flex flex-col items-center text-center">
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <h1 className="text-5xl md:text-8xl font-serif font-bold text-gray-900 leading-[1.05] mb-10 tracking-tighter">
-            Un espace pour <br />
-            <span className="text-blue-600 italic underline decoration-blue-100 underline-offset-[12px]">penser</span>, relier et <br />
-            agir.
+          <h1 className="text-6xl md:text-9xl font-serif font-bold text-gray-900 leading-[1] mb-12 tracking-tighter">
+            Penser.<br />
+            <span className="text-blue-600 italic underline decoration-blue-100 underline-offset-[12px]">Relier</span>.<br />
+            Agir.
           </h1>
 
-          <p className="text-gray-400 text-lg md:text-2xl max-w-2xl mx-auto mb-16 font-medium leading-relaxed">
-            Rejoignez une communauté de citoyens engagés pour un dialogue mature et tourné vers le progrès social de notre nation.
+          <p className="text-gray-400 text-xl md:text-3xl max-w-3xl mx-auto mb-20 font-medium leading-relaxed">
+            Le premier réseau social citoyen, éthique et souverain, dédié au progrès de la nation ivoirienne.
           </p>
         </div>
 
+        {/* Section Connexion */}
         <div id="login-section" className="w-full max-w-[540px] mb-32 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-          <div className="bg-white rounded-[4rem] shadow-prestige border border-gray-100 p-10 md:p-16 mb-10">
-            <div className="text-left mb-12">
-              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">Accès au Cercle</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">Saisissez vos identifiants citoyens</p>
+          <div className="bg-white rounded-[4rem] shadow-prestige border border-gray-100 p-10 md:p-16 mb-10 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000">
+              <Sparkles size={120} className="text-blue-600" />
+            </div>
+            
+            <div className="text-left mb-12 relative z-10">
+              <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">Le Cercle Citoyen</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Portail d'accès officiel .CI</p>
             </div>
 
             {user ? (
-              <div className="text-center py-6">
-                <p className="text-gray-500 mb-8 font-medium italic">Vous êtes déjà reconnu par le Cercle, citoyen.</p>
-                <Link to="/feed" className="w-full py-6 rounded-[2rem] bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-blue-100 flex items-center justify-center gap-3">
-                  Entrer dans la Cité <ArrowRight size={16} />
+              <div className="text-center py-6 relative z-10">
+                <div className="w-24 h-24 rounded-3xl mx-auto mb-8 ring-8 ring-blue-50 overflow-hidden shadow-2xl">
+                  <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                </div>
+                <p className="text-gray-500 mb-8 font-medium italic text-lg">Heureux de vous revoir, citoyen {user.pseudonym}.</p>
+                <Link to="/feed" className="w-full py-7 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-blue-100 flex items-center justify-center gap-3 hover:bg-black transition-all">
+                  Entrer dans la Cité <ArrowRight size={18} />
                 </Link>
               </div>
             ) : (
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleLogin} className="space-y-6 relative z-10">
                 {error && (
                   <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake duration-300">
                     <AlertCircle size={18} /> {error}
@@ -181,7 +187,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email citoyen"
-                    className="w-full bg-gray-50 border border-transparent py-6 pl-16 pr-6 rounded-3xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
+                    className="w-full bg-gray-50 border border-transparent py-7 pl-16 pr-6 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
                   />
                 </div>
 
@@ -193,7 +199,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mot de passe"
-                    className="w-full bg-gray-50 border border-transparent py-6 pl-16 pr-16 rounded-3xl outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
+                    className="w-full bg-gray-50 border border-transparent py-7 pl-16 pr-16 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold disabled:opacity-50"
                   />
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
                   <button 
@@ -208,13 +214,13 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 <button 
                   type="submit"
                   disabled={loading || success}
-                  className={`w-full py-7 rounded-3xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-2xl ${
+                  className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-2xl ${
                     success 
                       ? 'bg-emerald-500 text-white shadow-emerald-100' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-100 active:scale-95'
                   }`}
                 >
-                  {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Se connecter"}
+                  {loading ? <Loader2 className="animate-spin" /> : success ? <CheckCircle2 className="animate-in zoom-in" /> : "Rejoindre l'Éveil"}
                 </button>
               </form>
             )}
@@ -224,92 +230,38 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             <p className="text-gray-400 text-xs font-bold tracking-tight">Pas encore membre du Cercle ?</p>
             <Link 
               to="/manifesto" 
-              className="text-blue-600 font-black text-xs uppercase tracking-[0.3em] hover:text-blue-800 hover:underline transition-all underline-offset-4"
+              className="px-10 py-4 border border-gray-200 rounded-full text-gray-900 font-black text-[10px] uppercase tracking-[0.3em] hover:bg-gray-900 hover:text-white transition-all"
             >
-              DÉBUTER MON ÉVEIL
+              DÉCOUVRIR LE MANIFESTE
             </Link>
           </div>
         </div>
 
-        {/* RADAR D'IMPACT (VERSION CONDENSÉE AVEC REDIRECTION INTELLIGENTE) */}
-        <section className="w-full mb-40 animate-in fade-in duration-1000 delay-400">
-           <div className="flex flex-col items-center text-center">
-              <div className="inline-flex items-center gap-3 bg-blue-50 px-6 py-2 rounded-full mb-8 border border-blue-100">
-                <Globe size={14} className="text-blue-600" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-700">Le Radar de la Nation</span>
+        {/* Statistiques d'Impact */}
+        <section className="w-full mb-40 grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="flex flex-col items-center">
+              <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mb-6 text-blue-600 shadow-inner">
+                <Globe size={32} />
               </div>
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Empreinte Territoriale.</h2>
-              <p className="text-gray-400 max-w-xl text-lg font-medium leading-relaxed mb-12">
-                Le Cercle s'illumine partout où les citoyens s'unissent. Aperçu des ondes de changement en cours sur le territoire.
-              </p>
-              
-              <div className="w-full max-w-4xl bg-white border border-gray-100 rounded-[4rem] p-4 shadow-prestige relative overflow-hidden aspect-[21/9]">
-                <div className="absolute inset-0 bg-gray-50/50 flex items-center justify-center opacity-60">
-                  <svg className="w-full h-full p-10" viewBox="0 0 800 400" fill="none">
-                    <path d="M320 60 Q 370 30, 420 60 T 520 90 Q 570 120, 540 170 T 500 250 Q 470 290, 420 270 T 340 230 Q 300 190, 320 130 T 320 60" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-blue-200" />
-                  </svg>
-                  
-                  {/* Points du radar sur l'accueil - Teasing */}
-                  <PulsePoint x="48%" y="70%" city="Abidjan" action="Solidarité Active" color="bg-blue-600" />
-                  <PulsePoint x="40%" y="30%" city="Bouaké" action="Éveil Citoyen" color="bg-amber-600" />
-                </div>
-                
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent flex flex-col items-center justify-end pb-10">
-                   <button 
-                    onClick={handleExploreMap} 
-                    className="px-12 py-5 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3 active:scale-95 group"
-                   >
-                     Explorer l'Empreinte Complète <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                   </button>
-                   {!user && (
-                     <p className="mt-4 text-[9px] font-black uppercase text-gray-400 tracking-widest animate-pulse">
-                       Inscription requise pour la vue complète
-                     </p>
-                   )}
-                </div>
+              <h3 className="text-4xl font-serif font-bold text-gray-900 mb-2">100% .CI</h3>
+              <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Hébergement Souverain</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center mb-6 text-emerald-600 shadow-inner">
+                <Zap size={32} />
               </div>
-           </div>
+              <h3 className="text-4xl font-serif font-bold text-gray-900 mb-2">+45k</h3>
+              <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Points d'Impact</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-20 h-20 bg-amber-50 rounded-[2rem] flex items-center justify-center mb-6 text-amber-600 shadow-inner">
+                <ShieldCheck size={32} />
+              </div>
+              <h3 className="text-4xl font-serif font-bold text-gray-900 mb-2">Sûr</h3>
+              <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Confiance Citoyenne</p>
+            </div>
         </section>
 
-        <section className="w-full mb-40 animate-in fade-in duration-1000 delay-500">
-           <div className="flex flex-col items-center mb-20">
-              <div className="inline-flex items-center gap-3 bg-gray-100 px-6 py-2 rounded-full mb-8">
-                <LayoutGrid size={14} className="text-gray-400" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Les Piliers de l'Éveil</span>
-              </div>
-              <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6">Nos Cercles d'Échanges.</h2>
-              <p className="text-gray-400 max-w-xl text-lg font-medium leading-relaxed">
-                Douze dimensions thématiques pour couvrir l'intégralité du progrès social ivoirien.
-              </p>
-           </div>
-
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-              {CIRCLES_CONFIG.map((circle, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => handleCircleClick(circle.type)}
-                  className="bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden"
-                >
-                  <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:scale-150 transition-transform duration-700">
-                    {React.cloneElement(circle.icon as React.ReactElement<any>, { size: 120 })}
-                  </div>
-                  
-                  <div className={`w-14 h-14 ${circle.color} rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-500`}>
-                    {React.cloneElement(circle.icon as React.ReactElement<any>, { className: "w-6 h-6" })}
-                  </div>
-                  
-                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-4">{circle.type}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed font-medium mb-6 line-clamp-3">
-                    {circle.description}
-                  </p>
-                  
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
-                    {user ? "Entrer dans le Cercle" : "Découvrir le Manifeste"} <ArrowRight size={14} />
-                  </div>
-                </div>
-              ))}
-           </div>
-        </section>
       </main>
     </div>
   );
