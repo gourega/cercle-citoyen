@@ -22,6 +22,20 @@ export const MOCK_USERS: Record<string, User> = {
     impact_score: 120,
     civicStats: { thought: 65, link: 20, action: 15 }
   },
+  u2: {
+    id: 'u2',
+    name: 'Mairie de Bouaké',
+    email: 'contact@mairiebouake.ci',
+    pseudonym: 'BouakéOfficiel',
+    bio: 'Compte institutionnel de la commune de Bouaké. Agir pour nos citoyens.',
+    role: Role.MEMBER,
+    category: UserCategory.MUNICIPALITY,
+    isVerifiedEntity: true,
+    interests: ['Urbanisme', 'Social'],
+    avatar: 'https://picsum.photos/seed/bouake/150/150',
+    impactScore: 5400,
+    impact_score: 5400
+  },
   [ADMIN_ID]: {
     id: ADMIN_ID,
     name: 'Kouassi GOBLE Ouréga',
@@ -40,29 +54,32 @@ export const MOCK_USERS: Record<string, User> = {
 
 export const MOCK_POSTS: Post[] = [
   {
-    id: 'announcement-online-tests',
+    id: 'launch-official',
     author_id: ADMIN_ID,
     circle_type: CircleType.PEACE,
-    // Fix: isMajestic was replaced by is_majestic to match the Post interface
     is_majestic: true,
-    image_url: 'https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-512.png',
-    content: "📢 APPEL AU GRAND PALABRE NUMÉRIQUE : LE CERCLE EST PRÊT.\n\nCitoyennes, Citoyens, Frères et Sœurs de vision,\n\nL’heure n’est plus à l’attente, mais à l’expérience. Après des nuits de tissage technologique et de réflexion profonde, l'infrastructure de notre souveraineté numérique est debout. \n\nLe Cercle Citoyen ouvre ses portes pour sa phase de tests massifs en ligne.\n\nCe que nous attendons de vous :\n1. Éveillez votre profil citoyen.\n2. Lancez des étincelles sur le Fil d'Éveil.\n3. Invoquez l'Esprit dans l'Assemblée Directe.\n4. Tracez les sentiers d'impact sur le terrain.\n\nRejoignez-nous. Soyez les pionniers de la souveraineté.\n\nKouassi GOBLE Ouréga\nGardien du Cercle",
+    content: "**APPEL À LA SOUVERAINETÉ COLLECTIVE**\n\nFrères et Sœurs de Côte d'Ivoire,\n\nLe Cercle n'est pas qu'une plateforme, c'est un serment. Celui de ne plus être de simples spectateurs de notre destin, mais les architectes de notre progrès social.\n\nIci, nous ne cherchons pas le clic, mais l'impact. Nous ne cherchons pas le buzz, mais la vérité.\n\nBienvenue dans votre nouvelle demeure numérique.\n\nKouassi GOBLE Ouréga",
     created_at: new Date().toISOString(),
-    reactions: { useful: 520, relevant: 230, inspiring: 890 },
-    comments: [
-      // Fix: Added required id and created_at to the mock comment
-      { id: 'c1', author: "Amadou Koné", avatar: "https://picsum.photos/seed/amadou/50/50", content: "Enfin ! Une fierté pour notre nation.", created_at: new Date().toISOString() }
-    ]
+    reactions: { useful: 1240, relevant: 850, inspiring: 2100 },
+    comments: []
   },
   {
-    id: 'majestic-1',
-    author_id: ADMIN_ID,
-    circle_type: CircleType.GARDEN,
-    // Fix: isMajestic was replaced by is_majestic to match the Post interface
-    is_majestic: true,
-    content: "L'éveil citoyen n'est pas une destination, c'est une pratique quotidienne. Chaque dialogue responsable est une pierre à l'édifice de notre souveraineté.",
-    created_at: new Date(Date.now() - 86400000).toISOString(), 
-    reactions: { useful: 245, relevant: 110, inspiring: 420 },
+    id: 'inst-post-1',
+    author_id: 'u2',
+    circle_type: CircleType.URBAN,
+    isInstitutional: true,
+    content: "La Mairie de Bouaké lance aujourd'hui son premier 'Sentier d'Impact' sur la gestion participative des déchets dans le quartier Commerce. \n\nNous invitons tous les résidents à consulter la carte territoriale pour voir les points de collecte citoyenne.",
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    reactions: { useful: 340, relevant: 120, inspiring: 45 },
+    comments: []
+  },
+  {
+    id: 'citoyen-post-1',
+    author_id: 'u1',
+    circle_type: CircleType.AGRICULTURE,
+    content: "Hier, nous avons testé la première pompe solaire partagée dans notre coopérative à Boundiali. L'impact sur notre souveraineté alimentaire est immédiat. Merci au Cercle pour la mise en relation avec les ingénieurs d'Espace Thinkia !",
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    reactions: { useful: 89, relevant: 42, inspiring: 156 },
     comments: []
   }
 ];

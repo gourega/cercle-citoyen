@@ -86,7 +86,7 @@ const PostCard: React.FC<{
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isAuthor = currentUser?.id === post.author_id;
-  const TRUNCATE_LIMIT = 200; // Limite plus stricte pour un fil plus propre
+  const TRUNCATE_LIMIT = 280; 
   const needsTruncation = post.content.length > TRUNCATE_LIMIT;
   const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, TRUNCATE_LIMIT) + '...' : post.content;
 
@@ -96,13 +96,13 @@ const PostCard: React.FC<{
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link to={`/profile/${post.author_id}`} className="relative group">
-              <img src={author.avatar_url} className="w-14 h-14 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-105" alt="" />
+              <img src={author.avatar_url || author.avatar} className="w-14 h-14 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-105" alt="" />
               {isMajestic && <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-1.5 rounded-lg border-2 border-white shadow-lg"><Crown size={12} /></div>}
             </Link>
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-bold text-gray-900">{author.name}</p>
-                {author.role === Role.SUPER_ADMIN && <ShieldCheck size={16} className="text-amber-600" />}
+                {(author.role === Role.SUPER_ADMIN || author.isVerifiedEntity) && <ShieldCheck size={16} className={author.role === Role.SUPER_ADMIN ? "text-amber-600" : "text-blue-500"} />}
               </div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                 {getRelativeTime(post.created_at)} • {post.circle_type}
@@ -111,15 +111,15 @@ const PostCard: React.FC<{
           </div>
           <div className="flex items-center gap-2">
             {isAuthor && (
-              <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-600 hover:text-white transition-all transition-colors" title="Modifier">
-                <Pencil size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">Modifier</span>
+              <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-3 py-2 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Modifier">
+                <Pencil size={12} /> <span className="text-[8px] font-black uppercase tracking-widest">Modifier</span>
               </button>
             )}
             <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
           </div>
         </div>
 
-        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif font-medium italic border-l-4 border-amber-200 pl-8 mb-4' : 'text-lg font-normal mb-4'}`}>
+        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif font-semibold italic border-l-4 border-amber-200 pl-8 mb-6' : 'text-lg font-normal mb-4'}`}>
           {displayContent}
         </div>
 
@@ -128,7 +128,7 @@ const PostCard: React.FC<{
             onClick={() => setIsExpanded(!isExpanded)} 
             className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em] mb-8 flex items-center gap-2 hover:bg-blue-50 px-4 py-2 rounded-full transition-all w-fit"
           >
-            {isExpanded ? <><ChevronUp size={14} /> Réduire la pensée</> : <><ChevronDown size={14} /> Déplier la pensée</>}
+            {isExpanded ? <><ChevronUp size={14} /> Réduire</> : <><ChevronDown size={14} /> Lire la suite</>}
           </button>
         )}
 
@@ -146,7 +146,7 @@ const PostCard: React.FC<{
           </div>
           
           <div className="flex items-center gap-2">
-            <button onClick={handleShare} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 px-5 py-2.5 rounded-xl transition-all group" title="Partager">
+            <button onClick={handleShare} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-100/50 px-5 py-2.5 rounded-xl transition-all group" title="Partager">
               <Share2 size={16} className="group-hover:rotate-12 transition-transform" /> <span className="text-[10px] font-black uppercase tracking-widest">Partager</span>
             </button>
             <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 bg-gray-50 px-5 py-2.5 rounded-xl transition-all">
@@ -236,38 +236,37 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
               value={newPostText} 
               onChange={e => setNewPostText(e.target.value)} 
               placeholder="Déposez une pierre à l'édifice..." 
-              className={`w-full h-40 bg-gray-50/50 p-8 rounded-3xl outline-none mb-6 font-normal text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100/50 ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''}`} 
+              className={`w-full h-40 bg-gray-50/50 p-8 rounded-3xl outline-none mb-4 font-normal text-xl focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-100/30 ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''}`} 
             />
             
-            {/* TOOLBAR MISE EN FORME VISIBLE */}
-            <div className="flex items-center gap-4 mb-8 px-2 border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-2 mb-8 px-2">
               <button 
                 onClick={() => setIsBold(!isBold)} 
-                className={`p-3 rounded-xl transition-all ${isBold ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                className={`p-2.5 rounded-xl transition-all ${isBold ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
                 title="Gras"
               >
-                <Bold size={18} />
+                <Bold size={16} />
               </button>
               <button 
                 onClick={() => setIsItalic(!isItalic)} 
-                className={`p-3 rounded-xl transition-all ${isItalic ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                className={`p-2.5 rounded-xl transition-all ${isItalic ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
                 title="Italique"
               >
-                <Italic size={18} />
+                <Italic size={16} />
               </button>
-              <div className="w-px h-6 bg-gray-100 mx-2"></div>
-              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Émojis">
-                <Smile size={18} />
+              <div className="w-px h-5 bg-gray-100 mx-2"></div>
+              <button className="p-2.5 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Émojis">
+                <Smile size={16} />
               </button>
-              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Style de texte">
-                <TypeIcon size={18} />
+              <button className="p-2.5 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Style de texte">
+                <TypeIcon size={16} />
               </button>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10">
             <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Destination :</span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Cercle :</span>
               <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer shadow-sm hover:bg-gray-100 transition-all">
                 {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
               </select>
