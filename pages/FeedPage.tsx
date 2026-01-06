@@ -9,11 +9,11 @@ import {
   Flame, Award, Clock, Share2, ChevronDown, ChevronUp,
   Bold, Italic, Smile, MoreHorizontal
 } from 'lucide-react';
-import { User, CircleType, Role, Post, Comment } from '../types';
-import { supabase, isRealSupabase, db } from '../lib/supabase';
-import { CIRCLES_CONFIG } from '../constants';
-import { MOCK_POSTS } from '../lib/mocks';
-import { useToast } from '../App';
+import { User, CircleType, Role, Post, Comment } from '../types.ts';
+import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
+import { CIRCLES_CONFIG } from '../constants.tsx';
+import { MOCK_POSTS } from '../lib/mocks.ts';
+import { useToast } from '../App.tsx';
 
 const getRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
@@ -21,7 +21,7 @@ const getRelativeTime = (dateString: string) => {
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   if (diffInSeconds < 60) return "À l'instant";
   if (diffInSeconds < 3600) return `Il y a ${Math.floor(diffInSeconds / 60)}m`;
-  if (diffInSeconds < 86400) return `Il y a ${Math.floor(diffInSeconds / 3600)}h`;
+  if (diffInSeconds < 8400) return `Il y a ${Math.floor(diffInSeconds / 3600)}h`;
   return date.toLocaleDateString();
 };
 
@@ -54,6 +54,7 @@ const PostCard: React.FC<{
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
 
   useEffect(() => {
@@ -83,9 +84,17 @@ const PostCard: React.FC<{
     } catch (e) { addToast("Action enregistrée localement", "info"); }
   };
 
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
+    addToast("Lien de la réflexion copié !", "success");
+  };
+
   if (!author) return <PostSkeleton />;
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
+  const isAuthor = currentUser?.id === post.author_id;
+  const needsTruncation = post.content.length > 280;
+  const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, 280) + '...' : post.content;
 
   return (
     <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden animate-in fade-in duration-500 ${isMajestic ? 'ring-2 ring-amber-100 shadow-amber-50' : ''}`}>
@@ -106,15 +115,31 @@ const PostCard: React.FC<{
               </p>
             </div>
           </div>
-          <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
+          <div className="flex items-center gap-2">
+            {isAuthor && (
+              <button onClick={() => addToast("Édition bientôt disponible", "info")} className="p-2 text-gray-300 hover:text-blue-600 transition-colors" title="Modifier">
+                <Pencil size={18} />
+              </button>
+            )}
+            <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
+          </div>
         </div>
 
-        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif italic border-l-4 border-amber-200 pl-8 mb-8' : 'text-lg font-medium mb-8'}`}>
-          {post.content}
+        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-2xl font-serif italic border-l-4 border-amber-200 pl-8 mb-4' : 'text-lg font-normal mb-4'}`}>
+          {displayContent}
         </div>
 
-        <div className="flex items-center justify-between pt-8 border-t border-gray-50">
-          <div className="flex gap-4">
+        {needsTruncation && (
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)} 
+            className="text-blue-600 font-bold text-xs uppercase tracking-widest mb-6 flex items-center gap-2 hover:underline"
+          >
+            {isExpanded ? <><ChevronUp size={14} /> Réduire</> : <><ChevronDown size={14} /> Lire la suite</>}
+          </button>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between pt-8 border-t border-gray-50 gap-4">
+          <div className="flex flex-wrap gap-4">
             <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 hover:scale-110 transition-transform bg-blue-50/50 px-4 py-2 rounded-xl">
               <ThumbsUp size={16} /> <span className="text-xs font-black">{reactions.useful}</span>
             </button>
@@ -125,9 +150,15 @@ const PostCard: React.FC<{
               <Sparkles size={16} /> <span className="text-xs font-black">{reactions.inspiring}</span>
             </button>
           </div>
-          <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 px-4 py-2 rounded-xl">
-            <MessageCircle size={16} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
-          </button>
+          
+          <div className="flex items-center gap-2">
+            <button onClick={handleShare} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 px-4 py-2 rounded-xl transition-all" title="Partager">
+              <Share2 size={16} /> <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Partager</span>
+            </button>
+            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 px-4 py-2 rounded-xl transition-all">
+              <MessageCircle size={16} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -201,17 +232,37 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-focus-within:rotate-12 transition-transform duration-700">
             <Sparkles size={100} className="text-blue-600" />
           </div>
-          <textarea 
-            value={newPostText} 
-            onChange={e => setNewPostText(e.target.value)} 
-            placeholder="Déposez une pierre à l'édifice..." 
-            className="w-full h-32 bg-gray-50/50 p-6 rounded-2xl outline-none mb-6 font-medium text-lg focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-50 relative z-10" 
-          />
+          
+          <div className="relative z-10">
+            <textarea 
+              value={newPostText} 
+              onChange={e => setNewPostText(e.target.value)} 
+              placeholder="Déposez une pierre à l'édifice..." 
+              className="w-full h-32 bg-gray-50/50 p-6 rounded-2xl outline-none mb-4 font-normal text-lg focus:bg-white transition-all resize-none border-2 border-transparent focus:border-blue-50" 
+            />
+            
+            {/* TOOLBAR MISE EN FORME */}
+            <div className="flex items-center gap-6 mb-6 px-4">
+              <button className="text-gray-400 hover:text-blue-600 transition-colors" title="Gras">
+                <Bold size={20} />
+              </button>
+              <button className="text-gray-400 hover:text-blue-600 transition-colors" title="Italique">
+                <Italic size={20} />
+              </button>
+              <button className="text-gray-400 hover:text-blue-600 transition-colors" title="Émojis">
+                <Smile size={20} />
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
-            <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer">
-              {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
-            </select>
-            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className="bg-gray-900 text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-30 shadow-xl hover:bg-black active:scale-95 transition-all">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Cercle :</span>
+              <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer">
+                {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
+              </select>
+            </div>
+            <button onClick={handleCreatePost} disabled={sending || !newPostText.trim()} className="w-full sm:w-auto bg-gray-900 text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-30 shadow-xl hover:bg-black active:scale-95 transition-all">
               {sending ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} 
               Diffuser l'Onde
             </button>
