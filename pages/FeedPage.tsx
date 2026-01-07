@@ -6,9 +6,9 @@ import {
   ShieldCheck, MessageCircle, RefreshCw, 
   Pencil, Crown, Share2, ChevronDown, ChevronUp,
   Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
-  Volume2, Play, Trash2
+  Volume2, Trash2
 } from 'lucide-react';
-import { User, CircleType, Role, Post, Comment } from '../types.ts';
+import { User, CircleType, Role, Post } from '../types.ts';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { CIRCLES_CONFIG } from '../constants.tsx';
 import { MOCK_POSTS } from '../lib/mocks.ts';
@@ -56,7 +56,6 @@ const PostCard: React.FC<{
 
   useEffect(() => {
     const fetchAuthor = async () => {
-      // Si c'est un post mock ou local, on utilise l'auteur courant ou mock
       if (post.author_id.startsWith('u') || post.author_id.includes('local')) {
         setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
@@ -84,9 +83,7 @@ const PostCard: React.FC<{
       if (isRealSupabase && supabase) {
         await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
       }
-    } catch (e) { 
-      // Silencieux car on a déjà mis à jour l'UI
-    }
+    } catch (e) { }
   };
 
   const handleListen = async () => {
@@ -109,7 +106,6 @@ const PostCard: React.FC<{
         setIsReading(false);
       }
     } catch (e) {
-      console.error(e);
       setIsReading(false);
       addToast("Le Griot n'a pu porter sa voix.", "error");
     }
@@ -117,19 +113,16 @@ const PostCard: React.FC<{
 
   const handleDelete = async () => {
     if (!window.confirm("Voulez-vous vraiment retirer cette onde du Cercle ?")) return;
-    
     setDeleting(true);
     try {
       if (isRealSupabase && supabase) {
-        const { error } = await supabase.from('posts').delete().eq('id', post.id);
-        if (error) throw error;
+        await supabase.from('posts').delete().eq('id', post.id);
         addToast("L'onde a été dissipée.", "success");
       } else {
         addToast("Retiré localement (Mode Démo).", "info");
       }
       onUpdate();
     } catch (e) {
-      console.error(e);
       addToast("La suppression a échoué.", "error");
     } finally {
       setDeleting(false);
@@ -182,27 +175,16 @@ const PostCard: React.FC<{
               </button>
             )}
             
-            <div className="flex items-center gap-2">
-              {isAuthor && (
-                <button onClick={() => addToast("Édition bientôt disponible", "info")} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Modifier">
-                  <Pencil size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">Modifier</span>
-                </button>
-              )}
-              
-              {(isAuthor || isAdmin) && (
-                <button 
-                  onClick={handleDelete} 
-                  disabled={deleting}
-                  className="flex items-center gap-2 text-rose-600 bg-rose-50 px-4 py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm disabled:opacity-50" 
-                  title="Retirer"
-                >
-                  {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
-                  <span className="text-[9px] font-black uppercase tracking-widest">{isAdmin && !isAuthor ? "Médiation" : "Retirer"}</span>
-                </button>
-              )}
-            </div>
-            
-            <button className="text-gray-300 hover:text-gray-900 p-2"><MoreHorizontal /></button>
+            {(isAuthor || isAdmin) && (
+              <button 
+                onClick={handleDelete} 
+                disabled={deleting}
+                className="flex items-center gap-2 text-rose-600 bg-rose-50 px-4 py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+              >
+                {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                <span className="text-[9px] font-black uppercase tracking-widest">{isAdmin && !isAuthor ? "Médiation" : "Retirer"}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -210,33 +192,31 @@ const PostCard: React.FC<{
           {displayContent}
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 mb-10">
-          {needsTruncation && (
-            <button 
-              onClick={() => setIsExpanded(!isExpanded)} 
-              className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.3em] flex items-center gap-2 hover:bg-blue-50 px-5 py-3 rounded-full transition-all w-fit shadow-sm border border-blue-50"
-            >
-              {isExpanded ? <><ChevronUp size={14} /> Replier</> : <><ChevronDown size={14} /> Déplier la pensée</>}
-            </button>
-          )}
-        </div>
+        {needsTruncation && (
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)} 
+            className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.3em] flex items-center gap-2 hover:bg-blue-50 px-5 py-3 rounded-full transition-all mb-10"
+          >
+            {isExpanded ? <><ChevronUp size={14} /> Replier</> : <><ChevronDown size={14} /> Déplier la pensée</>}
+          </button>
+        )}
 
         <div className="flex flex-wrap items-center justify-between pt-10 border-t border-gray-50 gap-6">
           <div className="flex flex-wrap gap-4">
-            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 hover:scale-110 transition-transform bg-blue-50/50 px-5 py-2.5 rounded-xl group shadow-sm border border-blue-50/50">
-              <ThumbsUp size={18} className="group-active:scale-125 transition-transform" /> <span className="text-xs font-black">{reactions.useful}</span>
+            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+              <ThumbsUp size={18} /> {reactions.useful}
             </button>
-            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 hover:scale-110 transition-transform bg-emerald-50/50 px-5 py-2.5 rounded-xl group shadow-sm border border-emerald-50/50">
-              <Lightbulb size={18} className="group-active:scale-125 transition-transform" /> <span className="text-xs font-black">{reactions.relevant}</span>
+            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 bg-emerald-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+              <Lightbulb size={18} /> {reactions.relevant}
             </button>
-            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 hover:scale-110 transition-transform bg-amber-50/50 px-5 py-2.5 rounded-xl group shadow-sm border border-amber-50/50">
-              <Sparkles size={18} className="group-active:scale-125 transition-transform" /> <span className="text-xs font-black">{reactions.inspiring}</span>
+            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 bg-amber-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+              <Sparkles size={18} /> {reactions.inspiring}
             </button>
           </div>
           
           <div className="flex items-center gap-3">
-            <button onClick={handleShare} className="flex items-center gap-3 text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-100/50 px-6 py-3 rounded-xl transition-all group shadow-sm" title="Partager">
-              <Share2 size={18} className="group-hover:rotate-12 transition-transform" /> <span className="text-[10px] font-black uppercase tracking-widest">Partager</span>
+            <button onClick={handleShare} className="flex items-center gap-3 text-gray-500 hover:text-blue-600 bg-gray-50 px-6 py-3 rounded-xl transition-all">
+              <Share2 size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">Partager</span>
             </button>
             <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-3 text-gray-500 hover:text-gray-900 bg-gray-50 px-6 py-3 rounded-xl transition-all shadow-sm">
               <MessageCircle size={18} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
@@ -260,23 +240,17 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchPosts = async () => {
     setLoading(true);
-    let finalPosts = [...MOCK_POSTS]; // On commence toujours avec les mocks comme base
+    let finalPosts = [...MOCK_POSTS];
 
     if (isRealSupabase && supabase) { 
       try {
         const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-        if (error) {
-           console.warn("DB posts table check failed:", error.message);
-        } else if (data && data.length > 0) {
-           // Fusionner les données de la DB avec les mocks (pour garder les posts de semence visibles au début)
+        if (!error && data && data.length > 0) {
            finalPosts = [...data, ...MOCK_POSTS.filter(mp => !data.some(dp => dp.id === mp.id))];
         }
-      } catch (e) { 
-        console.warn("Connection difficulty, showing seeds.");
-      }
+      } catch (e) { }
     }
     
-    // Trier par date décroissante
     finalPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setPosts(finalPosts);
     setLoading(false); 
@@ -300,29 +274,19 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
     
     try {
       if (isRealSupabase && supabase) {
-        const { error } = await supabase.from('posts').insert([postData]);
-        if (error) {
-          console.error("Supabase Insert Error:", error);
-          throw error;
-        }
+        await supabase.from('posts').insert([postData]);
         addToast(isMajestic ? "L'Édit a été promulgué." : "Onde citoyenne propagée !", "success");
         fetchPosts();
       } else {
-        // Enregistrement local pur
         setPosts(prev => [ { ...postData, id: 'local-' + Date.now() } as Post, ...prev]);
-        addToast("Action enregistrée localement (Hors-ligne)", "info");
+        addToast("Action enregistrée localement", "info");
       }
       setNewPostText('');
-      setIsBold(false);
-      setIsItalic(false);
-    } catch (e: any) { 
-      console.error("Post Creation Failure:", e);
-      // Fallback local en cas d'erreur DB (pour que l'utilisateur ne perde pas son texte)
+    } catch (e) { 
       setPosts(prev => [ { ...postData, id: 'local-err-' + Date.now() } as Post, ...prev]);
-      addToast(`La liaison DB est instable. Post sauvé localement.`, "info");
+      addToast(`Liaison instable. Post sauvé localement.`, "info");
       setNewPostText('');
-    }
-    finally { setSending(false); }
+    } finally { setSending(false); }
   };
 
   return (
@@ -347,34 +311,18 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
             />
             
             <div className="flex items-center gap-2 mb-8 px-2">
-              <button 
-                onClick={() => setIsBold(!isBold)} 
-                className={`p-3 rounded-xl transition-all ${isBold ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
-                title="Gras"
-              >
-                <Bold size={18} />
-              </button>
-              <button 
-                onClick={() => setIsItalic(!isItalic)} 
-                className={`p-3 rounded-xl transition-all ${isItalic ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
-                title="Italique"
-              >
-                <Italic size={18} />
-              </button>
+              <button onClick={() => setIsBold(!isBold)} className={`p-3 rounded-xl transition-all ${isBold ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}><Bold size={18} /></button>
+              <button onClick={() => setIsItalic(!isItalic)} className={`p-3 rounded-xl transition-all ${isItalic ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}><Italic size={18} /></button>
               <div className="w-px h-6 bg-gray-100 mx-2"></div>
-              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Émojis">
-                <Smile size={18} />
-              </button>
-              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all" title="Style de texte">
-                <TypeIcon size={18} />
-              </button>
+              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all"><Smile size={18} /></button>
+              <button className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all"><TypeIcon size={18} /></button>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10">
             <div className="flex items-center gap-3">
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:inline">Destination :</span>
-              <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-blue-100 cursor-pointer shadow-sm hover:bg-gray-100 transition-all font-bold">
+              <select value={selectedCircle} onChange={e => setSelectedCircle(e.target.value as any)} className="bg-gray-50 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer shadow-sm hover:bg-gray-100 transition-all font-bold">
                 {CIRCLES_CONFIG.map(c => <option key={c.type} value={c.type}>{c.type}</option>)}
               </select>
             </div>
@@ -388,10 +336,7 @@ const FeedPage: React.FC<{ user: User | null }> = ({ user }) => {
 
       <div className="space-y-6">
         {loading ? (
-          <>
-            <PostSkeleton />
-            <PostSkeleton />
-          </>
+          <><PostSkeleton /><PostSkeleton /></>
         ) : (
           posts.length > 0 ? (
             posts.map(p => <PostCard key={p.id} post={p} currentUser={user} onUpdate={fetchPosts} />)

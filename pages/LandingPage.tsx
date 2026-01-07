@@ -7,14 +7,13 @@ import {
   Eye, 
   EyeOff, 
   AlertCircle, 
-  ShieldCheck, 
   Loader2, 
   Shield,
   ArrowLeft,
   Fingerprint,
-  Users,
   ShieldAlert,
-  Crown
+  Crown,
+  ChevronRight
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { User, Role, UserCategory } from '../types.ts';
@@ -79,7 +78,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     setError(null);
     try {
       if (isRealSupabase && supabase) {
-        // Signaler au profil que la récupération est demandée
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ status: 'recovery_requested' })
@@ -99,7 +97,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
-      <header className="relative z-20 pt-20 mb-20 flex flex-col items-center gap-10 text-center animate-in fade-in duration-1000">
+      <header className="relative z-20 pt-20 mb-16 flex flex-col items-center gap-10 text-center animate-in fade-in duration-1000">
         <Logo size={80} showText={true} variant="blue" />
         <div className="flex flex-col items-center gap-4">
           <div className="inline-flex items-center gap-3 bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10">
@@ -120,10 +118,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                {isRecoveryMode ? "SÉCURITÉ DU CERCLE" : "Authentification"}
+                {isRecoveryMode ? "SÉCURITÉ" : "Authentification"}
               </h2>
               <p className={`text-[11px] font-black uppercase tracking-[0.4em] ${isRecoveryMode ? 'text-amber-600' : 'text-blue-600'}`}>
-                {isRecoveryMode ? "DEMANDE D'INTERVENTION MANUELLE" : "PORTAIL CITOYEN SÉCURISÉ"}
+                {isRecoveryMode ? "INTERVENTION MANUELLE DU CONSEIL" : "PORTAIL CITOYEN SÉCURISÉ"}
               </p>
             </div>
 
@@ -133,14 +131,14 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                   <ShieldAlert size={40} />
                 </div>
                 <div className="space-y-4">
-                  <h3 className="text-2xl font-serif font-bold text-gray-900">Le Conseil a reçu votre appel</h3>
+                  <h3 className="text-2xl font-serif font-bold text-gray-900">Appel reçu</h3>
                   <p className="text-gray-500 leading-relaxed font-medium">
-                    Le Gardien va procéder à la validation humaine de votre identité.
+                    Le Gardien a été alerté. Il procédera à la validation humaine de votre demande.
                   </p>
                   <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
                     <p className="text-[10px] font-black uppercase text-amber-600 mb-2">Note de Souveraineté</p>
                     <p className="text-xs text-amber-900 font-bold leading-relaxed italic">
-                      "Aucun automate ne traite cette demande. Attendez d'être contacté par un membre du Conseil pour recevoir votre nouveau code d'accès."
+                      "Aucun automate ne traite cette demande. Attendez d'être recontacté pour votre accès."
                     </p>
                   </div>
                 </div>
@@ -182,7 +180,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 </div>
 
                 <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isRecoveryMode ? 'bg-amber-600 shadow-amber-100 hover:bg-amber-700' : 'bg-blue-600 shadow-blue-100 hover:bg-black'} text-white`}>
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "SOLLICITER LE GARDIEN" : "ENTRER DANS LE CERCLE"}
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "SOLLICITER LE CONSEIL" : "ENTRER DANS LE CERCLE"}
                 </button>
 
                 <div className="flex flex-col items-center gap-4 pt-4">
@@ -193,6 +191,13 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 </div>
               </form>
             )}
+          </div>
+          
+          <div className="mt-12 animate-in fade-in delay-500">
+            <p className="text-gray-400 text-sm font-medium italic mb-6">Envie d'agir pour la nation ?</p>
+            <button onClick={() => navigate('/auth')} className="inline-flex items-center gap-3 text-blue-600 font-black text-[11px] uppercase tracking-widest hover:translate-x-2 transition-all">
+              Rejoindre la Cité <ChevronRight size={16} />
+            </button>
           </div>
         </div>
       </main>
