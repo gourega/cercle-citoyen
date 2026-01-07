@@ -79,6 +79,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     setError(null);
     try {
       if (isRealSupabase && supabase) {
+        // Signaler au profil que la récupération est demandée
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ status: 'recovery_requested' })
@@ -119,10 +120,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                {isRecoveryMode ? "Aide du Gardien" : "Authentification"}
+                {isRecoveryMode ? "SÉCURITÉ DU CERCLE" : "Authentification"}
               </h2>
               <p className={`text-[11px] font-black uppercase tracking-[0.4em] ${isRecoveryMode ? 'text-amber-600' : 'text-blue-600'}`}>
-                {isRecoveryMode ? "PROCÉDURE D'URGENCE MANUELLE" : "PORTAIL CITOYEN SÉCURISÉ"}
+                {isRecoveryMode ? "DEMANDE D'INTERVENTION MANUELLE" : "PORTAIL CITOYEN SÉCURISÉ"}
               </p>
             </div>
 
@@ -134,7 +135,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 <div className="space-y-4">
                   <h3 className="text-2xl font-serif font-bold text-gray-900">Le Conseil a reçu votre appel</h3>
                   <p className="text-gray-500 leading-relaxed font-medium">
-                    Le Gardien **Kouassi GOBLE Ouréga** a été alerté. Il va procéder à la validation humaine de votre identité.
+                    Le Gardien va procéder à la validation humaine de votre identité.
                   </p>
                   <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
                     <p className="text-[10px] font-black uppercase text-amber-600 mb-2">Note de Souveraineté</p>
@@ -159,7 +160,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                       required 
                       value={email} 
                       onChange={e => setEmail(e.target.value)} 
-                      placeholder={isRecoveryMode ? "Email pour identification" : "Identifiant Citoyen (Email)"} 
+                      placeholder={isRecoveryMode ? "Identifiant à débloquer" : "Identifiant Citoyen (Email)"} 
                       className={`w-full border-2 py-8 pl-18 pr-8 rounded-[2rem] outline-none transition-all font-bold ${isRecoveryMode ? 'bg-amber-50/50 border-amber-100 focus:bg-white focus:border-amber-200' : 'bg-gray-50 border-transparent focus:bg-white focus:border-blue-100'}`} 
                     />
                   </div>
@@ -187,7 +188,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 <div className="flex flex-col items-center gap-4 pt-4">
                   <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-amber-600 transition-colors flex items-center gap-2 group">
                     {isRecoveryMode ? <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> : <ShieldAlert size={14} />} 
-                    {isRecoveryMode ? "RETOUR" : "ACCÈS BLOQUÉ : DEMANDER UNE INTERVENTION DU CONSEIL"}
+                    {isRecoveryMode ? "RETOUR" : "INTERVENTION DU CONSEIL (ACCÈS BLOQUÉ)"}
                   </button>
                 </div>
               </form>

@@ -165,7 +165,7 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
                     to="/admin" 
                     className={({ isActive }) => `flex items-center gap-2.5 px-5 py-2.5 rounded-2xl transition-all border-2 ${isActive ? 'bg-amber-600 text-white border-amber-600 shadow-xl' : 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-600 hover:text-white hover:border-amber-600 shadow-sm'}`}
                   >
-                    <Crown size={18} className={user.role === Role.SUPER_ADMIN ? "animate-pulse" : ""} />
+                    <Crown size={18} className="animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Conseil</span>
                   </NavLink>
                 )}
@@ -181,14 +181,14 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
               </>
             ) : (
               <div className="flex items-center gap-4">
-                <Link to="/auth" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 px-4">Se Connecter</Link>
-                <Link to="/manifesto" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-100">Rejoindre</Link>
+                <Link to="/auth" className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 px-4">S'inscrire</Link>
+                <Link to="/" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-100">Se Connecter</Link>
               </div>
             )}
           </div>
 
           <div className="lg:hidden flex items-center gap-4">
-            {!user && <Link to="/auth" className="text-[10px] font-black uppercase text-blue-600">Entrer</Link>}
+            {!user && <Link to="/auth" className="text-[10px] font-black uppercase text-blue-600">Inscription</Link>}
             <button className="p-2 text-gray-900" onClick={() => setIsOpen(!isOpen)}>{isOpen ? <X size={28} /> : <Menu size={28} />}</button>
           </div>
         </div>
@@ -216,11 +216,11 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
                   <NavLink to="/chat" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Palabres</NavLink>
                   <NavLink to="/live" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">L'Assemblée</NavLink>
                 </div>
-                {/* ... suite des liens ... */}
                 <div className="space-y-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Action</p>
                   <NavLink to="/map" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Carte Territoriale</NavLink>
                   <NavLink to="/quests" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Sentiers d'Impact</NavLink>
+                  <NavLink to="/exchange" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Marché Solidaire</NavLink>
                 </div>
                 <div className="h-px bg-gray-100 my-4"></div>
                 <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Mon Profil</NavLink>
@@ -236,8 +236,18 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
           </div>
         </div>
       )}
-      {/* ... reste de la Navbar ... */}
+
       {isNotifOpen && user && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} />}
+
+      {user && (
+        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+          <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
+          <NavLink to="/map" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MapIcon size={24} /></NavLink>
+          <NavLink to="/quests" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Target size={24} /></NavLink>
+          <NavLink to="/governance" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Gavel size={24} /></NavLink>
+          <NavLink to="/profile" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><img src={user.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" /></NavLink>
+        </div>
+      )}
     </>
   );
 };
@@ -282,10 +292,15 @@ const App = () => {
   };
 
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
     const check = async () => {
       const status = await db.checkConnection();
       setConnStatus(status);
     };
+    
     check();
     const statusInterval = setInterval(check, 60000); 
 
