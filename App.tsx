@@ -276,13 +276,29 @@ const App = () => {
   };
 
   useEffect(() => {
-    // CAPTURE IMMÉDIATE DU TOKEN AVANT LE ROUTAGE
-    const fullUrl = window.location.href;
-    const hash = window.location.hash;
-    if (fullUrl.includes('type=recovery') || hash.includes('type=recovery') || fullUrl.includes('access_token=')) {
-      console.log("App.tsx: Jeton de sécurité détecté, mémorisation en cours...");
-      sessionStorage.setItem('pending_recovery', 'true');
-    }
+    // CAPTURE ULTRA-AGRESSIVE DES JETONS SUPABASE
+    const checkUrlForRecovery = () => {
+      const fullUrl = window.location.href;
+      const hash = window.location.hash;
+      const search = window.location.search;
+      
+      const isRecovery = 
+        fullUrl.includes('type=recovery') || 
+        hash.includes('type=recovery') || 
+        search.includes('type=recovery') || 
+        fullUrl.includes('access_token=') ||
+        hash.includes('access_token=');
+
+      if (isRecovery) {
+        console.log("App.tsx: Jeton de sécurité critique détecté, activation du mode verrouillé.");
+        sessionStorage.setItem('pending_recovery', 'true');
+        // On ne recharge pas forcément, mais on s'assure que le stockage est prêt
+      }
+    };
+
+    checkUrlForRecovery();
+    // On revérifie toutes les secondes au cas où le router réécrit l'URL
+    const intervalId = setInterval(checkUrlForRecovery, 1000);
 
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
@@ -294,11 +310,19 @@ const App = () => {
     };
     
     check();
-    const interval = setInterval(check, 60000); 
+    const statusInterval = setInterval(check, 60000); 
 
-    if (!isRealSupabase || !supabase) return () => clearInterval(interval);
+    if (!isRealSupabase || !supabase) return () => {
+      clearInterval(intervalId);
+      clearInterval(statusInterval);
+    };
 
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
+      console.log("App Auth Event:", event);
+      if (event === 'PASSWORD_RECOVERY') {
+        sessionStorage.setItem('pending_recovery', 'true');
+      }
+      
       if (session?.user && !user) {
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
         if (profile) {
@@ -323,7 +347,8 @@ const App = () => {
 
     return () => {
       subscription.unsubscribe();
-      clearInterval(interval);
+      clearInterval(intervalId);
+      clearInterval(statusInterval);
     };
   }, [user]);
 
