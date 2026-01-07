@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
   Mail, 
   Lock, 
@@ -27,14 +27,44 @@ import { useToast } from '../App.tsx';
 
 const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: User | null }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToast } = useToast();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Détection du retour d'e-mail de récupération
+  useEffect(() => {
+    if (!isRealSupabase || !supabase) return;
+
+    // Vérifier si l'URL contient des fragments de récupération ou si Supabase émet l'événement
+    const checkRecovery = async () => {
+      const { data: { session } } = await (supabase.auth as any).getSession();
+      
+      // Si on a un hash avec access_token et que le type est recovery
+      if (window.location.hash.includes('type=recovery') || window.location.href.includes('type=recovery')) {
+        setIsUpdatingPassword(true);
+        addToast("Lien de récupération validé. Définissez votre nouveau mot de passe.", "info");
+      }
+    };
+
+    checkRecovery();
+
+    const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsUpdatingPassword(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [addToast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +103,12 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         setLoading(false);
       }
     } catch (err: any) {
-      setError("Identifiants incorrects ou problème de liaison DNS.");
+      console.error("Login error:", err);
+      if (err.message?.includes("Invalid login credentials")) {
+        setError("Identifiants incorrects. Vérifiez votre email et mot de passe.");
+      } else {
+        setError("Problème de liaison avec la base de données citoyenne.");
+      }
       setLoading(false);
     }
   };
@@ -85,14 +120,58 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     try {
       if (isRealSupabase && supabase) {
         const { error: recoveryError } = await (supabase.auth as any).resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/#/auth?type=recovery`,
+          redirectTo: `${window.location.origin}/#/`, // On revient ici
         });
         if (recoveryError) throw recoveryError;
         setSuccess(true);
         addToast("Le messager est en route vers votre email.", "success");
+        setIsRecoveryMode(false);
       }
     } catch (err: any) {
       setError("Échec de l'envoi. Vérifiez l'adresse email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinalPasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error: updateError } = await (supabase.auth as any).updateUser({
+          password: password
+        });
+        if (updateError) throw updateError;
+        
+        addToast("Votre accès a été sécurisé. Reconnexion en cours...", "success");
+        setSuccess(true);
+        
+        // Après mise à jour, on tente de récupérer le profil pour connecter l'utilisateur
+        const { data: { user: authUser } } = await (supabase.auth as any).getUser();
+        if (authUser) {
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+          if (profile) {
+            onLogin({
+              id: profile.id,
+              name: profile.name,
+              pseudonym: profile.pseudonym,
+              email: profile.email,
+              bio: profile.bio,
+              role: profile.role as Role,
+              category: (profile.category as UserCategory) || UserCategory.CITIZEN,
+              interests: [],
+              avatar: profile.avatar_url,
+              impactScore: profile.impact_score || 0
+            });
+            navigate('/feed');
+          }
+        }
+      }
+    } catch (err: any) {
+      setError("Échec de la mise à jour. Le lien a peut-être expiré.");
+    } finally {
       setLoading(false);
     }
   };
@@ -139,14 +218,14 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                {isRecoveryMode ? "Accès de Secours" : "Authentification"}
+                {isUpdatingPassword ? "Sécurisation" : isRecoveryMode ? "Accès de Secours" : "Authentification"}
               </h2>
               <p className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-600">
-                Portail Citoyen Sécurisé
+                {isUpdatingPassword ? "Définition du nouveau mot de passe" : "Portail Citoyen Sécurisé"}
               </p>
             </div>
 
-            {user ? (
+            {user && !isUpdatingPassword ? (
               <div className="text-center py-10 relative z-10">
                 <div className="w-32 h-32 rounded-[2.5rem] mx-auto mb-10 ring-[12px] ring-blue-50 overflow-hidden shadow-2xl transition-transform hover:scale-110 duration-500">
                   <img src={user.avatar} className="w-full h-full object-cover" alt="" />
@@ -157,32 +236,41 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 </Link>
               </div>
             ) : (
-              <form onSubmit={isRecoveryMode ? handlePasswordRecovery : handleLogin} className="space-y-8 relative z-10">
+              <form onSubmit={isUpdatingPassword ? handleFinalPasswordUpdate : isRecoveryMode ? handlePasswordRecovery : handleLogin} className="space-y-8 relative z-10">
                 {error && <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center gap-4 text-rose-600 text-xs font-bold animate-in shake"><AlertCircle size={20} /> {error}</div>}
                 
                 <div className="space-y-4">
-                  <div className="relative group">
-                    <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
-                  </div>
+                  {!isUpdatingPassword && (
+                    <div className="relative group">
+                      <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                      <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
+                    </div>
+                  )}
 
-                  {!isRecoveryMode && (
+                  {(isUpdatingPassword || !isRecoveryMode) && (
                     <div className="relative group">
                       <Lock className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                      <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
+                      <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} placeholder={isUpdatingPassword ? "Nouveau mot de passe" : "Mot de passe"} className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff size={22} /> : <Eye size={22} />}</button>
                     </div>
                   )}
                 </div>
 
                 <button type="submit" disabled={loading} className="w-full py-8 rounded-[2rem] bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl shadow-blue-100 hover:bg-black active:scale-95 disabled:opacity-50">
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "ENVOYER LE LIEN" : "REJOINDRE L'ÉVEIL"}
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : isUpdatingPassword ? "SÉCURISER L'ACCÈS" : isRecoveryMode ? "ENVOYER LE LIEN" : "REJOINDRE L'ÉVEIL"}
                 </button>
 
                 <div className="flex flex-col items-center gap-4 pt-4">
-                  <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2">
-                    {isRecoveryMode ? <ArrowLeft size={14} /> : <RefreshCw size={14} />} {isRecoveryMode ? "RETOUR" : "MOT DE PASSE OUBLIÉ ?"}
-                  </button>
+                  {!isUpdatingPassword && (
+                    <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2">
+                      {isRecoveryMode ? <ArrowLeft size={14} /> : <RefreshCw size={14} />} {isRecoveryMode ? "RETOUR" : "MOT DE PASSE OUBLIÉ ?"}
+                    </button>
+                  )}
+                  {isUpdatingPassword && (
+                    <button type="button" onClick={() => setIsUpdatingPassword(false)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-rose-600 transition-colors">
+                      ANNULER LA RÉINITIALISATION
+                    </button>
+                  )}
                 </div>
               </form>
             )}
