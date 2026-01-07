@@ -26,34 +26,34 @@ import {
   Eye
 } from 'lucide-react';
 
-// Pages
-import FeedPage from './pages/FeedPage.tsx';
-import ChatPage from './pages/ChatPage.tsx';
-import ActionMap from './pages/ActionMap.tsx';
-import ProfilePage from './pages/ProfilePage.tsx';
-import LandingPage from './pages/LandingPage.tsx';
-import GriotStudio from './pages/GriotStudio.tsx';
-import AuthPage from './pages/AuthPage.tsx';
-import ManifestoPage from './pages/ManifestoPage.tsx';
-import WelcomePage from './pages/WelcomePage.tsx';
-import GovernancePage from './pages/GovernancePage.tsx';
-import QuestsPage from './pages/QuestsPage.tsx';
-import LegalPage from './pages/LegalPage.tsx';
-import ImpactStudio from './pages/ImpactStudio.tsx';
-import CirclePage from './pages/CirclePage.tsx';
-import ResourceExchange from './pages/ResourceExchange.tsx';
-import AdminDashboard from './pages/AdminDashboard.tsx';
-import LiveAssembly from './pages/LiveAssembly.tsx';
-import TransparencyLedger from './pages/TransparencyLedger.tsx';
-import SentinelPage from './pages/SentinelPage.tsx';
+// Pages - Omit extensions for broader compatibility with Vite/Rollup resolution
+import FeedPage from './pages/FeedPage';
+import ChatPage from './pages/ChatPage';
+import ActionMap from './pages/ActionMap';
+import ProfilePage from './pages/ProfilePage';
+import LandingPage from './pages/LandingPage';
+import GriotStudio from './pages/GriotStudio';
+import AuthPage from './pages/AuthPage';
+import ManifestoPage from './pages/ManifestoPage';
+import WelcomePage from './pages/WelcomePage';
+import GovernancePage from './pages/GovernancePage';
+import QuestsPage from './pages/QuestsPage';
+import LegalPage from './pages/LegalPage';
+import ImpactStudio from './pages/ImpactStudio';
+import CirclePage from './pages/CirclePage';
+import ResourceExchange from './pages/ResourceExchange';
+import AdminDashboard from './pages/AdminDashboard';
+import LiveAssembly from './pages/LiveAssembly';
+import TransparencyLedger from './pages/TransparencyLedger';
+import SentinelPage from './pages/SentinelPage';
 
 // Components
-import Logo from './Logo.tsx';
-import Footer from './components/Footer.tsx';
-import GuardianAssistant from './components/GuardianAssistant.tsx';
-import NotificationDrawer from './components/NotificationDrawer.tsx';
-import { User, Role, CitizenNotification, UserCategory } from './types.ts';
-import { supabase, isRealSupabase, db } from './lib/supabase.ts';
+import Logo from './Logo';
+import Footer from './components/Footer';
+import GuardianAssistant from './components/GuardianAssistant';
+import NotificationDrawer from './components/NotificationDrawer';
+import { User, Role, CitizenNotification, UserCategory } from './types';
+import { supabase, isRealSupabase, db } from './lib/supabase';
 
 interface ToastContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
