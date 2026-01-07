@@ -21,7 +21,9 @@ import {
   BookText,
   Mic,
   ImageIcon,
-  Users
+  Users,
+  Crown,
+  ShieldCheck
 } from 'lucide-react';
 
 // Pages
@@ -153,7 +155,20 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
                 <NavDropdown label="Action" items={[{ to: '/map', icon: <MapIcon />, label: "Carte", desc: "Maillage territorial" }, { to: '/quests', icon: <Target />, label: "Sentiers", desc: "Quêtes d'impact social" }, { to: '/exchange', icon: <Handshake />, label: "Marché", desc: "Dons et solidarité" }]} />
                 <NavDropdown label="Studio" items={[{ to: '/griot', icon: <Video />, label: "Griot Studio", desc: "Vidéos de mobilisation" }, { to: '/impact', icon: <ImageIcon />, label: "Impact Studio", desc: "Visuels de vision" }]} />
                 <NavDropdown label="Lois" items={[{ to: '/governance', icon: <Gavel />, label: "Édits", desc: "Gouvernance et votes" }, { to: '/transparency', icon: <BookText />, label: "Transparence", desc: "Registre des flux" }]} />
+                
                 <div className="h-8 w-px bg-gray-100 ml-4"></div>
+                
+                {/* ACCÈS CONSEIL POUR LE GARDIEN */}
+                {user.role === Role.SUPER_ADMIN && (
+                  <NavLink 
+                    to="/admin" 
+                    className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${isActive ? 'bg-amber-50 text-amber-600 shadow-inner' : 'text-amber-500 hover:bg-amber-50/50'}`}
+                  >
+                    <Crown size={18} className="animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Conseil</span>
+                  </NavLink>
+                )}
+
                 <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 relative transition-colors">
                   <Bell size={20} />
                   {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
@@ -184,6 +199,16 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
           <div className="mt-20 flex flex-col gap-8">
             {user ? (
               <>
+                {/* SECTION CONSEIL MOBILE */}
+                {user.role === Role.SUPER_ADMIN && (
+                  <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2">
+                      <Crown size={14} /> Administration Suprême
+                    </p>
+                    <NavLink to="/admin" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold text-amber-900">Conseil du Gardien</NavLink>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Dialogue</p>
                   <NavLink to="/feed" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Fil d'Éveil</NavLink>
