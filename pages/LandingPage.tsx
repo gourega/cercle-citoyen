@@ -12,7 +12,9 @@ import {
   Shield,
   ArrowLeft,
   Fingerprint,
-  Users
+  Users,
+  ShieldAlert,
+  Crown
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { User, Role, UserCategory } from '../types.ts';
@@ -66,7 +68,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         setLoading(false);
       }
     } catch (err: any) {
-      setError("Identifiants incorrects ou accès non autorisé.");
+      setError("Accès refusé. Vérifiez vos codes ou sollicitez le Conseil.");
       setLoading(false);
     }
   };
@@ -77,21 +79,18 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     setError(null);
     try {
       if (isRealSupabase && supabase) {
-        // On signale au Conseil via le statut du profil
-        // Note: En production, on utiliserait une table de requêtes d'assistance dédiée
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ status: 'recovery_requested' })
           .eq('email', email);
         
-        // On affiche le succès pour confirmer que la demande est partie
         setRecoverySuccess(true);
-        addToast("Alerte transmise au Conseil.", "success");
+        addToast("Alerte de sécurité transmise au Gardien.", "success");
       } else {
         setRecoverySuccess(true);
       }
     } catch (err: any) {
-      setError("Le signal n'a pu être transmis au Conseil.");
+      setError("Échec de la liaison avec le Conseil.");
     } finally {
       setLoading(false);
     }
@@ -113,16 +112,16 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
       <main className="relative z-10 w-full max-w-6xl px-6 flex flex-col items-center text-center">
         <div className="w-full max-w-[540px] mb-40 animate-in fade-in slide-in-from-bottom-20 duration-1000">
-          <div className="bg-white rounded-[4rem] shadow-2xl border border-gray-50 p-10 md:p-20 relative overflow-hidden group">
+          <div className={`bg-white rounded-[4rem] shadow-2xl border-2 p-10 md:p-20 relative overflow-hidden group transition-all duration-500 ${isRecoveryMode ? 'border-amber-100 shadow-amber-50' : 'border-gray-50 shadow-gray-200/50'}`}>
             <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000 pointer-events-none">
-              <Fingerprint size={160} className="text-blue-600" />
+              {isRecoveryMode ? <Crown size={160} className="text-amber-600" /> : <Fingerprint size={160} className="text-blue-600" />}
             </div>
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                {isRecoveryMode ? "Aide du Conseil" : "Authentification"}
+                {isRecoveryMode ? "Aide du Gardien" : "Authentification"}
               </h2>
-              <p className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-600">
+              <p className={`text-[11px] font-black uppercase tracking-[0.4em] ${isRecoveryMode ? 'text-amber-600' : 'text-blue-600'}`}>
                 {isRecoveryMode ? "PROCÉDURE D'URGENCE MANUELLE" : "PORTAIL CITOYEN SÉCURISÉ"}
               </p>
             </div>
@@ -130,20 +129,17 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             {recoverySuccess ? (
               <div className="text-left animate-in zoom-in duration-500 space-y-8 relative z-10">
                 <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-600 shadow-inner">
-                  <Users size={40} />
+                  <ShieldAlert size={40} />
                 </div>
                 <div className="space-y-4">
-                  <h3 className="text-2xl font-serif font-bold text-gray-900">Demande prise en compte</h3>
+                  <h3 className="text-2xl font-serif font-bold text-gray-900">Le Conseil a reçu votre appel</h3>
                   <p className="text-gray-500 leading-relaxed font-medium">
-                    Votre appel a été déposé au pied du **Conseil des Gardiens**. 
+                    Le Gardien **Kouassi GOBLE Ouréga** a été alerté. Il va procéder à la validation humaine de votre identité.
                   </p>
-                  <p className="text-gray-600 leading-relaxed font-medium italic">
-                    Un administrateur va vérifier votre identité citoyenne et vous transmettra un **mot de passe provisoire** par vos canaux habituels.
-                  </p>
-                  <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
-                    <p className="text-[10px] font-black uppercase text-blue-600 mb-2">Note de sécurité</p>
-                    <p className="text-xs text-blue-900 font-bold leading-relaxed">
-                      Aucun e-mail automatique n'est envoyé. La sécurité du Cercle repose sur la validation humaine.
+                  <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
+                    <p className="text-[10px] font-black uppercase text-amber-600 mb-2">Note de Souveraineté</p>
+                    <p className="text-xs text-amber-900 font-bold leading-relaxed italic">
+                      "Aucun automate ne traite cette demande. Attendez d'être contacté par un membre du Conseil pour recevoir votre nouveau code d'accès."
                     </p>
                   </div>
                 </div>
@@ -157,8 +153,15 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 
                 <div className="space-y-4">
                   <div className="relative group">
-                    <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Votre Email Citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
+                    <Mail className={`absolute left-7 top-1/2 -translate-y-1/2 transition-colors ${isRecoveryMode ? 'text-amber-300' : 'text-gray-300'}`} size={20} />
+                    <input 
+                      type="email" 
+                      required 
+                      value={email} 
+                      onChange={e => setEmail(e.target.value)} 
+                      placeholder={isRecoveryMode ? "Email pour identification" : "Identifiant Citoyen (Email)"} 
+                      className={`w-full border-2 py-8 pl-18 pr-8 rounded-[2rem] outline-none transition-all font-bold ${isRecoveryMode ? 'bg-amber-50/50 border-amber-100 focus:bg-white focus:border-amber-200' : 'bg-gray-50 border-transparent focus:bg-white focus:border-blue-100'}`} 
+                    />
                   </div>
 
                   {!isRecoveryMode && (
@@ -169,21 +172,22 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                         required 
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
-                        placeholder="Mot de passe" 
-                        className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" 
+                        placeholder="Code Secret" 
+                        className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 transition-all font-bold" 
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff size={22} /> : <Eye size={22} />}</button>
                     </div>
                   )}
                 </div>
 
-                <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isRecoveryMode ? 'bg-amber-600 shadow-amber-100' : 'bg-blue-600 shadow-blue-100'} text-white hover:bg-black`}>
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "SOLLICITER LE CONSEIL" : "ENTRER DANS LE CERCLE"}
+                <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isRecoveryMode ? 'bg-amber-600 shadow-amber-100 hover:bg-amber-700' : 'bg-blue-600 shadow-blue-100 hover:bg-black'} text-white`}>
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "SOLLICITER LE GARDIEN" : "ENTRER DANS LE CERCLE"}
                 </button>
 
                 <div className="flex flex-col items-center gap-4 pt-4">
-                  <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2">
-                    {isRecoveryMode ? <ArrowLeft size={14} /> : <ShieldCheck size={14} />} {isRecoveryMode ? "RETOUR" : "ACCÈS BLOQUÉ / OUBLIÉ ?"}
+                  <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-amber-600 transition-colors flex items-center gap-2 group">
+                    {isRecoveryMode ? <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> : <ShieldAlert size={14} />} 
+                    {isRecoveryMode ? "RETOUR" : "ACCÈS BLOQUÉ : DEMANDER UNE INTERVENTION DU CONSEIL"}
                   </button>
                 </div>
               </form>
