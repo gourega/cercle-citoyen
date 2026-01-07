@@ -20,7 +20,7 @@ import {
   Handshake,
   BookText,
   Mic,
-  Image as ImageIcon,
+  ImageIcon,
   Users
 } from 'lucide-react';
 
@@ -64,26 +64,19 @@ export const useToast = () => {
   return context;
 };
 
-// --- OPTIMIZED SCROLL TO TOP ---
 const ScrollToTop = () => {
   const { pathname, search } = useLocation();
-  
   useEffect(() => {
-    // Forcer le scroll tout en haut lors de chaque changement de route ou paramètre
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    // Fallback pour les navigateurs plus anciens ou comportements erratiques
-    if (window.scrollY !== 0) window.scrollTo(0, 0);
   }, [pathname, search]);
-  
   return null;
 };
 
-const PrivateRoute = ({ children, user }: { children: React.ReactNode, user: User | null }) => {
+const PrivateRoute = ({ children, user }: { children?: React.ReactNode, user: User | null }) => {
   if (!user) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
-// --- NAVIGATION DROPDOWN COMPONENT ---
 const NavDropdown = ({ label, items }: { label: string, items: { to: string, icon: React.ReactNode, label: string, desc: string }[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<number | null>(null);
@@ -156,39 +149,11 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
           <div className="hidden lg:flex items-center gap-10">
             {user ? (
               <>
-                <NavDropdown 
-                  label="Dialogue" 
-                  items={[
-                    { to: '/feed', icon: <Home />, label: "Fil d'Éveil", desc: "Refléxions citoyennes" },
-                    { to: '/chat', icon: <MessageSquare />, label: "Palabres", desc: "Salle de discussion" },
-                    { to: '/live', icon: <Mic />, label: "L'Assemblée", desc: "Dialogue en temps réel" }
-                  ]} 
-                />
-                <NavDropdown 
-                  label="Action" 
-                  items={[
-                    { to: '/map', icon: <MapIcon />, label: "Carte", desc: "Maillage territorial" },
-                    { to: '/quests', icon: <Target />, label: "Sentiers", desc: "Quêtes d'impact social" },
-                    { to: '/exchange', icon: <Handshake />, label: "Marché", desc: "Dons et solidarité" }
-                  ]} 
-                />
-                <NavDropdown 
-                  label="Studio" 
-                  items={[
-                    { to: '/griot', icon: <Video />, label: "Griot Studio", desc: "Vidéos de mobilisation" },
-                    { to: '/impact', icon: <ImageIcon />, label: "Impact Studio", desc: "Visuels de vision" }
-                  ]} 
-                />
-                <NavDropdown 
-                  label="Lois" 
-                  items={[
-                    { to: '/governance', icon: <Gavel />, label: "Édits", desc: "Gouvernance et votes" },
-                    { to: '/transparency', icon: <BookText />, label: "Transparence", desc: "Registre des flux" }
-                  ]} 
-                />
-
+                <NavDropdown label="Dialogue" items={[{ to: '/feed', icon: <Home />, label: "Fil d'Éveil", desc: "Refléxions citoyennes" }, { to: '/chat', icon: <MessageSquare />, label: "Palabres", desc: "Salle de discussion" }, { to: '/live', icon: <Mic />, label: "L'Assemblée", desc: "Dialogue en temps réel" }]} />
+                <NavDropdown label="Action" items={[{ to: '/map', icon: <MapIcon />, label: "Carte", desc: "Maillage territorial" }, { to: '/quests', icon: <Target />, label: "Sentiers", desc: "Quêtes d'impact social" }, { to: '/exchange', icon: <Handshake />, label: "Marché", desc: "Dons et solidarité" }]} />
+                <NavDropdown label="Studio" items={[{ to: '/griot', icon: <Video />, label: "Griot Studio", desc: "Vidéos de mobilisation" }, { to: '/impact', icon: <ImageIcon />, label: "Impact Studio", desc: "Visuels de vision" }]} />
+                <NavDropdown label="Lois" items={[{ to: '/governance', icon: <Gavel />, label: "Édits", desc: "Gouvernance et votes" }, { to: '/transparency', icon: <BookText />, label: "Transparence", desc: "Registre des flux" }]} />
                 <div className="h-8 w-px bg-gray-100 ml-4"></div>
-
                 <button onClick={() => setIsNotifOpen(true)} className="p-2 text-gray-400 hover:text-blue-600 relative transition-colors">
                   <Bell size={20} />
                   {notifications.some(n => !n.isRead) && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
@@ -213,7 +178,6 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
         </div>
       </nav>
 
-      {/* Mobile Sidebar */}
       {isOpen && (
         <div className="fixed inset-0 z-[150] bg-white flex flex-col p-10 animate-in slide-in-from-right duration-300 lg:hidden overflow-y-auto">
           <button onClick={() => setIsOpen(false)} className="absolute top-10 right-10 p-4"><X size={32} /></button>
@@ -272,7 +236,7 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
   );
 };
 
-const ToastProvider = ({ children }: { children: React.ReactNode }) => {
+const ToastProvider = ({ children }: { children?: React.ReactNode }) => {
   const [toasts, setToasts] = useState<{id: string, message: string, type: string}[]>([]);
   const addToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now().toString();
@@ -282,7 +246,7 @@ const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-24 lg:bottom-10 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-full max-w-sm px-4 pointer-events-none">
+      <div className="fixed bottom-24 lg:bottom-10 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-full max-sm px-4 pointer-events-none">
         {toasts.map(t => (
           <div key={t.id} className={`px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-3 text-white animate-in slide-in-from-bottom-5 duration-500 ${t.type === 'success' ? 'bg-emerald-600' : t.type === 'error' ? 'bg-rose-600' : 'bg-gray-950'}`}>
              <CheckCircle size={18} /> <span className="text-[11px] font-black uppercase tracking-widest">{t.message}</span>
@@ -312,7 +276,14 @@ const App = () => {
   };
 
   useEffect(() => {
-    // Désactiver la restauration automatique du scroll du navigateur
+    // CAPTURE IMMÉDIATE DU TOKEN AVANT LE ROUTAGE
+    const fullUrl = window.location.href;
+    const hash = window.location.hash;
+    if (fullUrl.includes('type=recovery') || hash.includes('type=recovery') || fullUrl.includes('access_token=')) {
+      console.log("App.tsx: Jeton de sécurité détecté, mémorisation en cours...");
+      sessionStorage.setItem('pending_recovery', 'true');
+    }
+
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }

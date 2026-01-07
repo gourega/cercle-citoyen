@@ -31,7 +31,11 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   
   const [showPassword, setShowPassword] = useState(false);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
+  // Utilisation immédiate du SessionStorage pour forcer l'état avant même le premier render
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(() => {
+    return sessionStorage.getItem('pending_recovery') === 'true';
+  });
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,39 +43,26 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Détection ultra-robuste de la récupération
+  // Détection de secours et nettoyage
   useEffect(() => {
+    // Si on vient de charger et qu'on a le flag, on s'assure que Supabase a fini son setup
+    if (isUpdatingPassword) {
+      addToast("Sécurisation de l'accès activée.", "info");
+    }
+
     if (!isRealSupabase || !supabase) return;
 
-    const checkSecurityToken = () => {
-      const href = window.location.href;
-      const hash = window.location.hash;
-      
-      // On cherche le type recovery soit dans l'URL complète soit dans le hash
-      if (href.includes('type=recovery') || hash.includes('type=recovery') || href.includes('access_token')) {
-        console.log("Flux de récupération détecté !");
-        setIsUpdatingPassword(true);
-        // On nettoie l'email pour forcer le formulaire de nouveau password
-        setEmail('');
-        return true;
-      }
-      return false;
-    };
-
-    // Vérification immédiate
-    checkSecurityToken();
-
-    // Abonnement aux changements d'état (Supabase détecte souvent le token lui-même)
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string) => {
-      console.log("Événement Auth détecté:", event);
+      console.log("Landing Auth Event:", event);
       if (event === 'PASSWORD_RECOVERY') {
         setIsUpdatingPassword(true);
+        sessionStorage.setItem('pending_recovery', 'true');
         setError(null);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isUpdatingPassword, addToast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,11 +101,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         setLoading(false);
       }
     } catch (err: any) {
-      console.error("Login error:", err);
       if (err.message?.includes("Invalid login credentials")) {
-        setError("Identifiants incorrects. Vérifiez votre email et mot de passe.");
+        setError("Identifiants incorrects. Vérifiez votre email.");
       } else {
-        setError("Problème de liaison avec la base de données citoyenne.");
+        setError("Liaison DB instable.");
       }
       setLoading(false);
     }
@@ -126,8 +116,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     setError(null);
     try {
       if (isRealSupabase && supabase) {
-        // Redirection vers l'URL avec le hash du routeur pour éviter le "nettoyage"
-        const redirectUrl = window.location.origin + '/#/';
+        // Redirection vers l'origine - App.tsx s'occupera de capter le token
+        const redirectUrl = window.location.origin;
         const { error: recoveryError } = await (supabase.auth as any).resetPasswordForEmail(email, {
           redirectTo: redirectUrl, 
         });
@@ -137,7 +127,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         setIsRecoveryMode(false);
       }
     } catch (err: any) {
-      setError("Échec de l'envoi. Vérifiez l'adresse email.");
+      setError("Échec de l'envoi. Vérifiez l'adresse.");
     } finally {
       setLoading(false);
     }
@@ -155,8 +145,9 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         
         if (updateError) throw updateError;
         
-        addToast("Votre accès a été sécurisé avec succès !", "success");
-        setSuccess(true);
+        // SUCCÈS : On nettoie TOUT
+        sessionStorage.removeItem('pending_recovery');
+        addToast("Votre accès a été sécurisé !", "success");
         
         const { data: { user: authUser } } = await (supabase.auth as any).getUser();
         if (authUser) {
@@ -177,28 +168,26 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             navigate('/feed');
           } else {
             setIsUpdatingPassword(false);
-            setPassword('');
             navigate('/auth');
           }
         }
       }
     } catch (err: any) {
-      console.error("Update error:", err);
-      setError("Échec de la mise à jour. Le lien a expiré.");
+      setError("Le lien de sécurité a expiré.");
     } finally {
       setLoading(false);
     }
   };
 
+  const cancelRecovery = () => {
+    sessionStorage.removeItem('pending_recovery');
+    setIsUpdatingPassword(false);
+    setPassword('');
+    setError(null);
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center page-transition">
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.02]">
-        <svg className="w-full h-full" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="400" cy="300" r="300" stroke="currentColor" strokeWidth="0.5" strokeDasharray="5 5" />
-          <path d="M0 300H800M400 0V600" stroke="currentColor" strokeWidth="0.5" />
-        </svg>
-      </div>
-
       <header className="relative z-20 pt-20 mb-20 flex flex-col items-center gap-10 text-center animate-in fade-in duration-1000">
         <Logo size={80} showText={true} variant="blue" />
         <div className="flex flex-col items-center gap-4">
@@ -208,85 +197,70 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               Souveraineté .CI Certifiée
             </span>
           </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-gray-300">Territoire d'Éveil Citoyen</p>
         </div>
       </header>
 
       <main className="relative z-10 w-full max-w-6xl px-6 flex flex-col items-center text-center">
-        <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
-          <h1 className="text-6xl md:text-[9rem] font-serif font-bold text-gray-900 leading-[0.9] mb-12 tracking-tighter">
-            Penser.<br />
-            <span className="text-blue-600 italic underline decoration-blue-100 underline-offset-[16px]">Relier</span>.<br />
-            Agir.
-          </h1>
-        </div>
-
-        <div className="w-full max-w-[540px] mb-40 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-300">
-          <div className="bg-white rounded-[4rem] shadow-2xl border border-gray-100 p-10 md:p-20 mb-12 relative overflow-hidden group">
+        <div className="w-full max-w-[540px] mb-40 animate-in fade-in slide-in-from-bottom-20 duration-1000">
+          <div className={`bg-white rounded-[4rem] shadow-2xl border-2 p-10 md:p-20 relative overflow-hidden group ${isUpdatingPassword ? 'border-emerald-100' : 'border-gray-50'}`}>
             <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000 pointer-events-none">
-              <Fingerprint size={160} className="text-blue-600" />
+              <Fingerprint size={160} className={isUpdatingPassword ? "text-emerald-600" : "text-blue-600"} />
             </div>
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
                 {isUpdatingPassword ? "Sécurisation" : isRecoveryMode ? "Accès de Secours" : "Authentification"}
               </h2>
-              <p className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-600">
-                {isUpdatingPassword ? "DÉFINIR LE NOUVEAU MOT DE PASSE" : "Portail Citoyen Sécurisé"}
+              <p className={`text-[11px] font-black uppercase tracking-[0.4em] ${isUpdatingPassword ? 'text-emerald-600' : 'text-blue-600'}`}>
+                {isUpdatingPassword ? "Nouveau mot de passe citoyen" : "Portail Citoyen Sécurisé"}
               </p>
             </div>
 
-            {user && !isUpdatingPassword ? (
-              <div className="text-center py-10 relative z-10">
-                <div className="w-32 h-32 rounded-[2.5rem] mx-auto mb-10 ring-[12px] ring-blue-50 overflow-hidden shadow-2xl transition-transform hover:scale-110 duration-500">
-                  <img src={user.avatar} className="w-full h-full object-cover" alt="" />
-                </div>
-                <Link to="/feed" className="w-full py-8 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-3xl shadow-blue-100 flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95">
-                  ENTRER DANS LE CERCLE <ChevronRight size={18} />
-                </Link>
+            <form onSubmit={isUpdatingPassword ? handleFinalPasswordUpdate : isRecoveryMode ? handlePasswordRecovery : handleLogin} className="space-y-8 relative z-10">
+              {error && <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center gap-4 text-rose-600 text-xs font-bold animate-in shake"><AlertCircle size={20} /> {error}</div>}
+              
+              <div className="space-y-4">
+                {!isUpdatingPassword && (
+                  <div className="relative group">
+                    <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
+                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
+                  </div>
+                )}
+
+                {(isUpdatingPassword || !isRecoveryMode) && (
+                  <div className="relative group">
+                    <Lock className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      required 
+                      autoFocus={isUpdatingPassword}
+                      value={password} 
+                      onChange={e => setPassword(e.target.value)} 
+                      placeholder={isUpdatingPassword ? "Définir nouveau mot de passe" : "Mot de passe"} 
+                      className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" 
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff size={22} /> : <Eye size={22} />}</button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <form onSubmit={isUpdatingPassword ? handleFinalPasswordUpdate : isRecoveryMode ? handlePasswordRecovery : handleLogin} className="space-y-8 relative z-10">
-                {error && <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center gap-4 text-rose-600 text-xs font-bold animate-in shake"><AlertCircle size={20} /> {error}</div>}
-                
-                <div className="space-y-4">
-                  {!isUpdatingPassword && (
-                    <div className="relative group">
-                      <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                      <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
-                    </div>
-                  )}
 
-                  {(isUpdatingPassword || !isRecoveryMode) && (
-                    <div className="relative group">
-                      <Lock className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                      <input 
-                        type={showPassword ? "text" : "password"} 
-                        required 
-                        autoFocus={isUpdatingPassword}
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        placeholder={isUpdatingPassword ? "Nouveau mot de passe" : "Mot de passe"} 
-                        className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" 
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff size={22} /> : <Eye size={22} />}</button>
-                    </div>
-                  )}
-                </div>
+              <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isUpdatingPassword ? 'bg-emerald-600 shadow-emerald-100' : 'bg-blue-600 shadow-blue-100'} text-white hover:bg-black`}>
+                {loading ? <Loader2 className="animate-spin" size={20} /> : isUpdatingPassword ? "SÉCURISER L'ACCÈS" : isRecoveryMode ? "ENVOYER LE LIEN" : "REJOINDRE L'ÉVEIL"}
+              </button>
 
-                <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isUpdatingPassword ? 'bg-emerald-600 shadow-emerald-100' : 'bg-blue-600 shadow-blue-100'} text-white hover:bg-black`}>
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : isUpdatingPassword ? "SÉCURISER L'ACCÈS" : isRecoveryMode ? "ENVOYER LE LIEN" : "REJOINDRE L'ÉVEIL"}
-                </button>
-
-                <div className="flex flex-col items-center gap-4 pt-4">
-                  {!isUpdatingPassword && (
-                    <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2">
-                      {isRecoveryMode ? <ArrowLeft size={14} /> : <RefreshCw size={14} />} {isRecoveryMode ? "RETOUR" : "MOT DE PASSE OUBLIÉ ?"}
-                    </button>
-                  )}
-                </div>
-              </form>
-            )}
+              <div className="flex flex-col items-center gap-4 pt-4">
+                {!isUpdatingPassword && (
+                  <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2">
+                    {isRecoveryMode ? <ArrowLeft size={14} /> : <RefreshCw size={14} />} {isRecoveryMode ? "RETOUR" : "MOT DE PASSE OUBLIÉ ?"}
+                  </button>
+                )}
+                {isUpdatingPassword && (
+                  <button type="button" onClick={cancelRecovery} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-rose-600 transition-colors">
+                    ANNULER ET RETOURNER À L'ACCUEIL
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       </main>
