@@ -103,7 +103,7 @@ export interface Comment {
   avatar: string;
   content: string;
   created_at: string;
-  parent_id?: string; // Pour les réponses aux commentaires
+  parent_id?: string;
 }
 
 export interface Post {
@@ -187,4 +187,27 @@ export interface ImpactProof {
   comment: string;
   timestamp: string;
   isValidated: boolean;
+}
+
+// --- TYPES SENTINELLE VERTE ---
+export type WasteNature = 
+  | 'Ménagers'
+  | 'Volumineux'
+  | 'Construction'
+  | 'Verts'
+  | 'Spéciaux';
+
+export interface WasteReport {
+  id: string;
+  timestamp: string;
+  image: string;
+  clean_vision?: string;
+  author_id: string;
+  city: string;
+  sector: string;
+  nature: WasteNature;
+  status: string;
+  description: string;
+  action_plan: string[];
+  insight: string;
 }

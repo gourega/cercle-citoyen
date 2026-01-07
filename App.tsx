@@ -21,7 +21,9 @@ import {
   BookText,
   Mic,
   ImageIcon,
-  Crown
+  Crown,
+  ShieldCheck,
+  Eye
 } from 'lucide-react';
 
 // Pages
@@ -43,6 +45,7 @@ import ResourceExchange from './pages/ResourceExchange.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import LiveAssembly from './pages/LiveAssembly.tsx';
 import TransparencyLedger from './pages/TransparencyLedger.tsx';
+import SentinelPage from './pages/SentinelPage.tsx';
 
 // Components
 import Logo from './Logo.tsx';
@@ -150,17 +153,16 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
             {user ? (
               <>
                 <NavDropdown label="Dialogue" items={[{ to: '/feed', icon: <Home />, label: "Fil d'Éveil", desc: "Refléxions citoyennes" }, { to: '/chat', icon: <MessageSquare />, label: "Palabres", desc: "Salle de discussion" }, { to: '/live', icon: <Mic />, label: "L'Assemblée", desc: "Dialogue en temps réel" }]} />
-                <NavDropdown label="Action" items={[{ to: '/map', icon: <MapIcon />, label: "Carte", desc: "Maillage territorial" }, { to: '/quests', icon: <Target />, label: "Sentiers", desc: "Quêtes d'impact social" }, { to: '/exchange', icon: <Handshake />, label: "Marché", desc: "Dons et solidarité" }]} />
+                <NavDropdown label="Action" items={[{ to: '/map', icon: <MapIcon />, label: "Carte", desc: "Maillage territorial" }, { to: '/quests', icon: <Target />, label: "Sentiers", desc: "Quêtes d'impact social" }, { to: '/sentinel', icon: <ShieldCheck />, label: "Sentinelle", desc: "Éveil environnemental" }, { to: '/exchange', icon: <Handshake />, label: "Marché", desc: "Dons et solidarité" }]} />
                 <NavDropdown label="Studio" items={[{ to: '/griot', icon: <Video />, label: "Griot Studio", desc: "Vidéos de mobilisation" }, { to: '/impact', icon: <ImageIcon />, label: "Impact Studio", desc: "Visuels de vision" }]} />
                 <NavDropdown label="Lois" items={[{ to: '/governance', icon: <Gavel />, label: "Édits", desc: "Gouvernance et votes" }, { to: '/transparency', icon: <BookText />, label: "Transparence", desc: "Registre des flux" }]} />
                 
                 <div className="h-8 w-px bg-gray-100 mx-2"></div>
                 
-                {/* ACCÈS CONSEIL GARDIEN - VISIBILITÉ RENFORCÉE */}
                 {user.role === Role.SUPER_ADMIN && (
                   <NavLink 
                     to="/admin" 
-                    className={({ isActive }) => `flex items-center gap-2.5 px-6 py-2.5 rounded-2xl transition-all border-2 border-amber-200 animate-in zoom-in duration-500 ${isActive ? 'bg-amber-600 text-white border-amber-600 shadow-xl' : 'bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white hover:border-amber-600 shadow-amber-100 shadow-lg'}`}
+                    className={({ isActive }) => `flex items-center gap-2.5 px-6 py-2.5 rounded-2xl transition-all border-2 border-amber-200 ${isActive ? 'bg-amber-600 text-white border-amber-600 shadow-xl' : 'bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white hover:border-amber-600 shadow-amber-100 shadow-lg'}`}
                   >
                     <Crown size={18} className="animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">CONSEIL</span>
@@ -198,7 +200,7 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
             {user ? (
               <>
                 {user.role === Role.SUPER_ADMIN && (
-                  <div className="bg-amber-600 p-10 rounded-[3rem] shadow-2xl shadow-amber-200 mb-4 border-2 border-amber-400 animate-in slide-in-from-top duration-700">
+                  <div className="bg-amber-600 p-10 rounded-[3rem] shadow-2xl shadow-amber-200 mb-4 border-2 border-amber-400">
                     <p className="text-[10px] font-black uppercase tracking-widest text-amber-200 mb-4 flex items-center gap-2">
                       <Crown size={14} className="animate-pulse" /> Sagesse du Gardien
                     </p>
@@ -212,7 +214,12 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
                   <NavLink to="/chat" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Palabres</NavLink>
                   <NavLink to="/live" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">L'Assemblée</NavLink>
                 </div>
-                {/* ... (suite du menu inchangée) */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Action</p>
+                  <NavLink to="/map" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Carte Territoriale</NavLink>
+                  <NavLink to="/quests" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Sentiers d'Impact</NavLink>
+                  <NavLink to="/sentinel" onClick={() => setIsOpen(false)} className="block text-2xl font-serif font-bold">Sentinelle Verte</NavLink>
+                </div>
                 <div className="h-px bg-gray-100 my-4"></div>
                 <NavLink to="/profile" onClick={() => setIsOpen(false)} className="text-2xl font-serif font-bold">Mon Profil</NavLink>
                 <button onClick={() => { onLogout(); setIsOpen(false); }} className="text-rose-600 text-left text-2xl font-serif font-bold">Déconnexion</button>
@@ -227,13 +234,22 @@ const Navbar = ({ user, onLogout, connStatus }: { user: User | null, onLogout: (
           </div>
         </div>
       )}
-      {/* ... reste du composant */}
+
       {isNotifOpen && user && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))} />}
+
+      {user && (
+        <div className="fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-md border-t border-gray-100 h-20 px-6 flex justify-between items-center lg:hidden pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+          <NavLink to="/feed" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Home size={24} /></NavLink>
+          <NavLink to="/map" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><MapIcon size={24} /></NavLink>
+          <NavLink to="/quests" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><Target size={24} /></NavLink>
+          <NavLink to="/sentinel" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><ShieldCheck size={24} /></NavLink>
+          <NavLink to="/profile" className={({ isActive }) => `p-3 rounded-2xl transition-all ${isActive ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><img src={user.avatar} className="w-6 h-6 rounded-lg object-cover" alt="" /></NavLink>
+        </div>
+      )}
     </>
   );
 };
 
-// ... Reste de App.tsx (ToastProvider, App component) inchangé
 const ToastProvider = ({ children }: { children?: React.ReactNode }) => {
   const [toasts, setToasts] = useState<{id: string, message: string, type: string}[]>([]);
   const addToast = (message: string, type: 'success' | 'error' | 'info') => {
@@ -338,6 +354,7 @@ const App = () => {
               <Route path="/governance" element={<PrivateRoute user={user}><GovernancePage user={user} /></PrivateRoute>} />
               <Route path="/transparency" element={<TransparencyLedger />} />
               <Route path="/quests" element={<PrivateRoute user={user}><QuestsPage /></PrivateRoute>} />
+              <Route path="/sentinel" element={<PrivateRoute user={user}><SentinelPage user={user!} /></PrivateRoute>} />
               <Route path="/griot" element={<PrivateRoute user={user}><GriotStudio /></PrivateRoute>} />
               <Route path="/impact" element={<PrivateRoute user={user}><ImpactStudio user={user} /></PrivateRoute>} />
               <Route path="/exchange" element={<PrivateRoute user={user}><ResourceExchange user={user} /></PrivateRoute>} />
