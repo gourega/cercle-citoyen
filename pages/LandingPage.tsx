@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Mail, 
   Lock, 
@@ -9,11 +9,10 @@ import {
   AlertCircle, 
   ShieldCheck, 
   Loader2, 
-  Sparkles,
   Shield,
   ArrowLeft,
   Fingerprint,
-  MessageSquare
+  Users
 } from 'lucide-react';
 import Logo from '../Logo.tsx';
 import { User, Role, UserCategory } from '../types.ts';
@@ -58,43 +57,41 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               avatar: profile.avatar_url,
               impactScore: profile.impact_score || 0
             };
-            setTimeout(() => {
-              onLogin(loggedInUser);
-              navigate('/feed');
-            }, 500);
+            onLogin(loggedInUser);
+            navigate('/feed');
           }
         }
       } else {
-        setError('Mode démo actif. Utilisez un compte fictif.');
+        setError('Accès restreint en mode maintenance.');
         setLoading(false);
       }
     } catch (err: any) {
-      setError("Identifiants incorrects ou accès restreint.");
+      setError("Identifiants incorrects ou accès non autorisé.");
       setLoading(false);
     }
   };
 
-  const handleNotifyAdminRecovery = async (e: React.FormEvent) => {
+  const handleSolicitCouncil = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       if (isRealSupabase && supabase) {
-        // Au lieu d'un lien email, on signale au profil qu'il a besoin d'aide
-        // Si la table n'existe pas ou le champ n'existe pas, on simule l'envoi
+        // On signale au Conseil via le statut du profil
+        // Note: En production, on utiliserait une table de requêtes d'assistance dédiée
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ status: 'recovery_requested' })
           .eq('email', email);
         
-        // On affiche le succès même si l'email n'existe pas pour éviter le "user enumeration"
+        // On affiche le succès pour confirmer que la demande est partie
         setRecoverySuccess(true);
-        addToast("Appel au Conseil transmis.", "success");
+        addToast("Alerte transmise au Conseil.", "success");
       } else {
         setRecoverySuccess(true);
       }
     } catch (err: any) {
-      setError("Échec de la transmission.");
+      setError("Le signal n'a pu être transmis au Conseil.");
     } finally {
       setLoading(false);
     }
@@ -123,39 +120,45 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                {isRecoveryMode ? "Accès de Secours" : "Authentification"}
+                {isRecoveryMode ? "Aide du Conseil" : "Authentification"}
               </h2>
               <p className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-600">
-                {isRecoveryMode ? "APPEL AU CONSEIL DES GARDIENS" : "PORTAIL CITOYEN SÉCURISÉ"}
+                {isRecoveryMode ? "PROCÉDURE D'URGENCE MANUELLE" : "PORTAIL CITOYEN SÉCURISÉ"}
               </p>
             </div>
 
             {recoverySuccess ? (
               <div className="text-left animate-in zoom-in duration-500 space-y-8 relative z-10">
-                <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600">
-                  <ShieldCheck size={40} />
+                <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-600 shadow-inner">
+                  <Users size={40} />
                 </div>
                 <div className="space-y-4">
-                  <h3 className="text-2xl font-serif font-bold text-gray-900">Demande en cours d'examen</h3>
+                  <h3 className="text-2xl font-serif font-bold text-gray-900">Demande prise en compte</h3>
                   <p className="text-gray-500 leading-relaxed font-medium">
-                    L'alerte a été transmise au **Conseil des Gardiens**. Un administrateur va examiner votre identité citoyenne et vous attribuer un **accès provisoire**.
+                    Votre appel a été déposé au pied du **Conseil des Gardiens**. 
                   </p>
-                  <p className="text-xs text-blue-600 font-bold italic bg-blue-50 p-4 rounded-2xl">
-                    "La sécurité du Cercle est la garantie de notre liberté."
+                  <p className="text-gray-600 leading-relaxed font-medium italic">
+                    Un administrateur va vérifier votre identité citoyenne et vous transmettra un **mot de passe provisoire** par vos canaux habituels.
                   </p>
+                  <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
+                    <p className="text-[10px] font-black uppercase text-blue-600 mb-2">Note de sécurité</p>
+                    <p className="text-xs text-blue-900 font-bold leading-relaxed">
+                      Aucun e-mail automatique n'est envoyé. La sécurité du Cercle repose sur la validation humaine.
+                    </p>
+                  </div>
                 </div>
                 <button onClick={() => { setIsRecoveryMode(false); setRecoverySuccess(false); }} className="w-full py-6 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">
                   RETOUR À L'ENTRÉE
                 </button>
               </div>
             ) : (
-              <form onSubmit={isRecoveryMode ? handleNotifyAdminRecovery : handleLogin} className="space-y-8 relative z-10">
+              <form onSubmit={isRecoveryMode ? handleSolicitCouncil : handleLogin} className="space-y-8 relative z-10">
                 {error && <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center gap-4 text-rose-600 text-xs font-bold animate-in shake"><AlertCircle size={20} /> {error}</div>}
                 
                 <div className="space-y-4">
                   <div className="relative group">
                     <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
+                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Votre Email Citoyen" className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-8 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
                   </div>
 
                   {!isRecoveryMode && (
@@ -175,12 +178,12 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 </div>
 
                 <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isRecoveryMode ? 'bg-amber-600 shadow-amber-100' : 'bg-blue-600 shadow-blue-100'} text-white hover:bg-black`}>
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "SOLICITER LE CONSEIL" : "REJOINDRE L'ÉVEIL"}
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : isRecoveryMode ? "SOLLICITER LE CONSEIL" : "ENTRER DANS LE CERCLE"}
                 </button>
 
                 <div className="flex flex-col items-center gap-4 pt-4">
                   <button type="button" onClick={() => setIsRecoveryMode(!isRecoveryMode)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2">
-                    {isRecoveryMode ? <ArrowLeft size={14} /> : <ShieldCheck size={14} />} {isRecoveryMode ? "RETOUR" : "ACCÈS OUBLIÉ ?"}
+                    {isRecoveryMode ? <ArrowLeft size={14} /> : <ShieldCheck size={14} />} {isRecoveryMode ? "RETOUR" : "ACCÈS BLOQUÉ / OUBLIÉ ?"}
                   </button>
                 </div>
               </form>
