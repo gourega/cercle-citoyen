@@ -27,7 +27,6 @@ import { useToast } from '../App.tsx';
 
 const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: User | null }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { addToast } = useToast();
   
   const [showPassword, setShowPassword] = useState(false);
@@ -40,26 +39,34 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Détection du retour d'e-mail de récupération
+  // Détection robuste du retour de récupération
   useEffect(() => {
     if (!isRealSupabase || !supabase) return;
 
-    // Vérifier si l'URL contient des fragments de récupération ou si Supabase émet l'événement
-    const checkRecovery = async () => {
-      const { data: { session } } = await (supabase.auth as any).getSession();
-      
-      // Si on a un hash avec access_token et que le type est recovery
-      if (window.location.hash.includes('type=recovery') || window.location.href.includes('type=recovery')) {
+    const checkUrlForRecovery = () => {
+      const fullUrl = window.location.href;
+      // On vérifie partout : dans l'URL complète, le hash ou la query
+      if (fullUrl.includes('type=recovery') || fullUrl.includes('error_code=404')) {
         setIsUpdatingPassword(true);
-        addToast("Lien de récupération validé. Définissez votre nouveau mot de passe.", "info");
+        // On nettoie l'e-mail pour éviter les conflits
+        setEmail(''); 
+        return true;
       }
+      return false;
     };
 
-    checkRecovery();
+    // 1. Vérification immédiate à l'entrée
+    const detected = checkUrlForRecovery();
+    if (detected) {
+      addToast("Lien de sécurité détecté. Définissez votre nouveau mot de passe.", "info");
+    }
 
+    // 2. Écoute des événements d'authentification Supabase
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange(async (event: string) => {
+      console.log("Auth Event:", event);
       if (event === 'PASSWORD_RECOVERY') {
         setIsUpdatingPassword(true);
+        setError(null);
       }
     });
 
@@ -119,8 +126,9 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     setError(null);
     try {
       if (isRealSupabase && supabase) {
+        // Redirection vers l'URL de base qui sera captée par le useEffect au retour
         const { error: recoveryError } = await (supabase.auth as any).resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/#/`, // On revient ici
+          redirectTo: window.location.origin + window.location.pathname, 
         });
         if (recoveryError) throw recoveryError;
         setSuccess(true);
@@ -140,15 +148,17 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     setError(null);
     try {
       if (isRealSupabase && supabase) {
+        // C'est ici qu'on applique réellement le nouveau mot de passe
         const { error: updateError } = await (supabase.auth as any).updateUser({
           password: password
         });
+        
         if (updateError) throw updateError;
         
-        addToast("Votre accès a été sécurisé. Reconnexion en cours...", "success");
+        addToast("Votre accès a été sécurisé avec succès !", "success");
         setSuccess(true);
         
-        // Après mise à jour, on tente de récupérer le profil pour connecter l'utilisateur
+        // On tente de récupérer le profil pour connecter l'utilisateur immédiatement
         const { data: { user: authUser } } = await (supabase.auth as any).getUser();
         if (authUser) {
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
@@ -166,11 +176,16 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               impactScore: profile.impact_score || 0
             });
             navigate('/feed');
+          } else {
+            // Si pas de profil (cas rare), on renvoie vers l'accueil pour login normal
+            setIsUpdatingPassword(false);
+            setPassword('');
           }
         }
       }
     } catch (err: any) {
-      setError("Échec de la mise à jour. Le lien a peut-être expiré.");
+      console.error("Update error:", err);
+      setError("Échec de la mise à jour. Le lien a expiré (validité 1h).");
     } finally {
       setLoading(false);
     }
@@ -218,10 +233,10 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
             
             <div className="text-left mb-16 relative z-10">
               <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                {isUpdatingPassword ? "Sécurisation" : isRecoveryMode ? "Accès de Secours" : "Authentification"}
+                {isUpdatingPassword ? "Nouveau Mot de Passe" : isRecoveryMode ? "Accès de Secours" : "Authentification"}
               </h2>
               <p className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-600">
-                {isUpdatingPassword ? "Définition du nouveau mot de passe" : "Portail Citoyen Sécurisé"}
+                {isUpdatingPassword ? "Finalisez votre sécurité" : "Portail Citoyen Sécurisé"}
               </p>
             </div>
 
@@ -240,6 +255,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 {error && <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center gap-4 text-rose-600 text-xs font-bold animate-in shake"><AlertCircle size={20} /> {error}</div>}
                 
                 <div className="space-y-4">
+                  {/* Champ Email - Masqué en mode "Update" car inutile */}
                   {!isUpdatingPassword && (
                     <div className="relative group">
                       <Mail className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
@@ -247,17 +263,26 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     </div>
                   )}
 
+                  {/* Champ Mot de Passe - Utilisé pour Login OU Nouveau Password */}
                   {(isUpdatingPassword || !isRecoveryMode) && (
                     <div className="relative group">
                       <Lock className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                      <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} placeholder={isUpdatingPassword ? "Nouveau mot de passe" : "Mot de passe"} className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" />
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        autoFocus={isUpdatingPassword}
+                        value={password} 
+                        onChange={e => setPassword(e.target.value)} 
+                        placeholder={isUpdatingPassword ? "Votre nouveau mot de passe" : "Mot de passe"} 
+                        className="w-full bg-gray-50 border-2 border-transparent py-8 pl-18 pr-20 rounded-[2rem] outline-none focus:bg-white focus:border-blue-100 focus:ring-8 focus:ring-blue-50/50 transition-all font-bold" 
+                      />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-7 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors">{showPassword ? <EyeOff size={22} /> : <Eye size={22} />}</button>
                     </div>
                   )}
                 </div>
 
-                <button type="submit" disabled={loading} className="w-full py-8 rounded-[2rem] bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl shadow-blue-100 hover:bg-black active:scale-95 disabled:opacity-50">
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : isUpdatingPassword ? "SÉCURISER L'ACCÈS" : isRecoveryMode ? "ENVOYER LE LIEN" : "REJOINDRE L'ÉVEIL"}
+                <button type="submit" disabled={loading} className={`w-full py-8 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-3xl active:scale-95 disabled:opacity-50 ${isUpdatingPassword ? 'bg-emerald-600 shadow-emerald-100' : 'bg-blue-600 shadow-blue-100'} text-white hover:bg-black`}>
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : isUpdatingPassword ? "VALIDER LE CHANGEMENT" : isRecoveryMode ? "ENVOYER LE LIEN" : "REJOINDRE L'ÉVEIL"}
                 </button>
 
                 <div className="flex flex-col items-center gap-4 pt-4">
@@ -267,8 +292,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                     </button>
                   )}
                   {isUpdatingPassword && (
-                    <button type="button" onClick={() => setIsUpdatingPassword(false)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-rose-600 transition-colors">
-                      ANNULER LA RÉINITIALISATION
+                    <button type="button" onClick={() => { setIsUpdatingPassword(false); setPassword(''); }} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-rose-600 transition-colors">
+                      ANNULER ET RETOURNER À L'ACCUEIL
                     </button>
                   )}
                 </div>
