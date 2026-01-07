@@ -4,7 +4,7 @@ import {
   Crown, Loader2, RefreshCw, Terminal, Copy, Wifi, 
   Users, Zap, Target, Landmark, Search, Check, 
   X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
-  Database, Code
+  Database, Code, Lock, ShieldQuestion, Fingerprint
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../App.tsx';
@@ -12,83 +12,14 @@ import { Role, UserCategory } from '../types.ts';
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests' | 'database'>('stats');
+  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests' | 'security'>('stats');
   const [profiles, setProfiles] = useState<any[]>([]);
   const [pendingQuests, setPendingQuests] = useState<any[]>([]);
+  const [recoveryRequests, setRecoveryRequests] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeEdicts: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
-
-  const sqlSchema = `-- SCRIPT DE CONFIGURATION SÉCURISÉ CERCLE CITOYEN
--- Ce script vérifie l'existence des tables avant création pour éviter les erreurs.
-
--- 1. Table des Profils
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-  name TEXT,
-  pseudonym TEXT UNIQUE,
-  bio TEXT,
-  role TEXT DEFAULT 'Membre',
-  category TEXT DEFAULT 'Citoyen',
-  avatar_url TEXT,
-  impact_score INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 2. Table des Publications
-CREATE TABLE IF NOT EXISTS public.posts (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  circle_type TEXT NOT NULL,
-  is_majestic BOOLEAN DEFAULT FALSE,
-  reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. Activation du Realtime (Vérification intelligente)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables 
-    WHERE pubname = 'supabase_realtime' 
-    AND schemaname = 'public' 
-    AND tablename = 'posts'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE posts;
-  END IF;
-END $$;
-
--- 4. Table des Édits
-CREATE TABLE IF NOT EXISTS public.edicts (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  status TEXT DEFAULT 'voting',
-  votes_count INTEGER DEFAULT 0,
-  threshold INTEGER DEFAULT 500,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 5. Table des Votes
-CREATE TABLE IF NOT EXISTS public.votes (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  edict_id UUID REFERENCES public.edicts(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, edict_id)
-);
-
--- 6. Fonction de Vote
-CREATE OR REPLACE FUNCTION increment_edict_votes(row_id UUID)
-RETURNS void AS $$
-BEGIN
-  UPDATE edicts
-  SET votes_count = votes_count + 1
-  WHERE id = row_id;
-END;
-$$ LANGUAGE plpgsql;`;
 
   const fetchData = async () => {
     setLoading(true);
@@ -100,6 +31,7 @@ $$ LANGUAGE plpgsql;`;
         const { data: profs } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         if (profs) {
           setProfiles(profs);
+          setRecoveryRequests(profs.filter(p => p.status === 'recovery_requested'));
           setStats({ 
             totalUsers: profs.length, 
             totalPosts: 0, 
@@ -118,31 +50,25 @@ $$ LANGUAGE plpgsql;`;
 
   useEffect(() => { fetchData(); }, []);
 
-  const copySql = () => {
-    navigator.clipboard.writeText(sqlSchema);
-    addToast("Script SQL sécurisé copié !", "success");
+  const handleProcessRecovery = async (userId: string, email: string) => {
+    const tempPass = `CERCLE-${Math.floor(1000 + Math.random() * 9000)}`;
+    const sqlCommand = `UPDATE auth.users SET encrypted_password = crypt('${tempPass}', gen_salt('bf')) WHERE id = '${userId}';`;
+    
+    // On copie le SQL pour l'admin
+    navigator.clipboard.writeText(sqlCommand);
+    addToast(`Commande SQL copiée ! MDP Provisoire : ${tempPass}`, "success");
+
+    // On marque la requête comme traitée dans les profils
+    if (isRealSupabase && supabase) {
+      await supabase.from('profiles').update({ status: 'active' }).eq('id', userId);
+      fetchData();
+    }
   };
 
   const displayCitizens = profiles.filter(p => 
     p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.pseudonym?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const handleUpdateQuestStatus = async (questId: string, status: 'validated' | 'rejected') => {
-    if (isRealSupabase && supabase) {
-      try {
-        const { error } = await supabase.from('quests').update({ status }).eq('id', questId);
-        if (error) throw error;
-        addToast(status === 'validated' ? "Sentier approuvé !" : "Sentier écarté.", "success");
-        fetchData();
-      } catch (e) {
-        console.error("Quest update error:", e);
-        addToast("Erreur lors de la mise à jour.", "error");
-      }
-    } else {
-      addToast("Mode démo : Action non effectuée sur la base de données.", "info");
-    }
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
@@ -163,22 +89,78 @@ $$ LANGUAGE plpgsql;`;
             { id: 'stats', label: 'Impact', icon: Zap },
             { id: 'citizens', label: 'Membres', icon: Users },
             { id: 'quests', label: 'Sentiers', icon: Target },
-            { id: 'database', label: 'Base de Données', icon: Database },
+            { id: 'security', label: 'Sécurité', icon: ShieldAlert },
             { id: 'system', label: 'Système', icon: Wifi }
           ].map(tab => (
             <button 
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)} 
-              className={`flex items-center gap-3 px-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              className={`flex items-center gap-3 px-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${
                 activeTab === tab.id ? 'bg-white text-blue-600 shadow-xl' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               <tab.icon size={16} /> {tab.label}
-              {tab.id === 'quests' && pendingQuests.length > 0 && <span className="bg-rose-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[8px]">{pendingQuests.length}</span>}
+              {tab.id === 'security' && recoveryRequests.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[8px] animate-bounce">
+                  {recoveryRequests.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
+
+      {activeTab === 'security' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="mb-12">
+            <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Requêtes d'Accès de Secours</h3>
+            <p className="text-gray-400 font-medium">Les citoyens ci-dessous ne peuvent plus accéder au Cercle. Attribuez-leur un accès provisoire après vérification.</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8">
+            {recoveryRequests.length > 0 ? recoveryRequests.map(p => (
+              <div key={p.id} className="bg-white p-10 rounded-[3.5rem] border-2 border-amber-100 shadow-xl shadow-amber-50 flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="flex items-center gap-8">
+                   <div className="relative">
+                     <img src={p.avatar_url || p.avatar} className="w-20 h-20 rounded-3xl object-cover shadow-lg" alt="" />
+                     <div className="absolute -bottom-2 -right-2 bg-amber-500 text-white p-2 rounded-xl border-4 border-white shadow-md">
+                        <ShieldQuestion size={16} />
+                     </div>
+                   </div>
+                   <div>
+                     <h4 className="text-2xl font-serif font-bold text-gray-900">{p.name}</h4>
+                     <p className="text-sm font-bold text-blue-600">{p.email}</p>
+                     <p className="text-[10px] font-black uppercase text-gray-400 mt-2 tracking-widest">Inscrit le {new Date(p.created_at).toLocaleDateString()}</p>
+                   </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => handleProcessRecovery(p.id, p.email)}
+                    className="bg-gray-900 text-white px-8 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center gap-3 shadow-xl"
+                  >
+                    <Fingerprint size={18} className="text-amber-400" /> Attribuer MDP Provisoire
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      if (isRealSupabase && supabase) await supabase.from('profiles').update({ status: 'active' }).eq('id', p.id);
+                      fetchData();
+                    }}
+                    className="p-5 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all border border-gray-100"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <div className="py-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-[4rem] text-center">
+                 <ShieldCheck className="w-16 h-16 text-emerald-200 mx-auto mb-6" />
+                 <p className="text-gray-400 font-bold italic uppercase tracking-widest text-sm">Le territoire est calme. Aucune alerte de sécurité.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeTab === 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
@@ -194,34 +176,6 @@ $$ LANGUAGE plpgsql;`;
                 <p className="text-4xl font-serif font-bold text-gray-900">{s.value}</p>
              </div>
            ))}
-        </div>
-      )}
-
-      {activeTab === 'database' && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white p-12 rounded-[4rem] border border-gray-100 shadow-sm mb-12">
-            <div className="flex justify-between items-start mb-10">
-              <div>
-                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Configuration de Souveraineté</h3>
-                <p className="text-gray-400 font-medium">Copiez ce script et exécutez-le dans votre éditeur SQL Supabase pour créer les tables manquantes.</p>
-              </div>
-              <button onClick={copySql} className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all">
-                <Copy size={16} /> Copier le SQL
-              </button>
-            </div>
-            <div className="bg-gray-950 p-8 rounded-[2rem] text-blue-300 font-mono text-xs overflow-x-auto max-h-[500px] border-4 border-gray-900 shadow-inner">
-              <pre>{sqlSchema}</pre>
-            </div>
-          </div>
-          <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-100 flex items-start gap-6">
-            <ShieldAlert className="text-amber-600 shrink-0" size={32} />
-            <div className="text-amber-900">
-              <h4 className="font-bold text-lg mb-2">Note sur la Sécurité</h4>
-              <p className="text-sm leading-relaxed opacity-80">
-                Après avoir créé les tables, assurez-vous d'activer les politiques **RLS (Row Level Security)** dans Supabase pour garantir que les citoyens ne puissent modifier que leurs propres données.
-              </p>
-            </div>
-          </div>
         </div>
       )}
 
@@ -270,8 +224,8 @@ $$ LANGUAGE plpgsql;`;
                          </div>
                       </td>
                       <td className="py-8">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${p.status === 'banned' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                          {p.status || 'Actif'}
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${p.status === 'banned' ? 'bg-rose-50 text-rose-600' : p.status === 'recovery_requested' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                          {p.status === 'recovery_requested' ? 'Aide requise' : (p.status || 'Actif')}
                         </span>
                       </td>
                       <td className="py-8 text-right">
@@ -305,10 +259,10 @@ $$ LANGUAGE plpgsql;`;
                   <h4 className="text-2xl font-serif font-bold text-gray-900 mb-4">{q.title}</h4>
                   <p className="text-gray-600 text-sm leading-relaxed mb-10 flex-grow">{q.description}</p>
                   <div className="flex gap-4">
-                    <button onClick={() => handleUpdateQuestStatus(q.id, 'validated')} className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
+                    <button className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
                        <Check size={18} /> Approuver
                     </button>
-                    <button onClick={() => handleUpdateQuestStatus(q.id, 'rejected')} className="flex-1 bg-rose-50 text-rose-600 py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-rose-100 transition-all flex items-center justify-center gap-3">
+                    <button className="flex-1 bg-rose-50 text-rose-600 py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-rose-100 transition-all flex items-center justify-center gap-3">
                        <X size={18} /> Écarter
                     </button>
                   </div>
