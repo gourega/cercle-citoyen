@@ -307,6 +307,7 @@ const App = () => {
           <Navbar user={user} onLogout={handleLogout} connStatus={connStatus} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
+              {/* Le point d'entrée principal "/" charge toujours la LandingPage */}
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
@@ -329,6 +330,7 @@ const App = () => {
               <Route path="/circles" element={<PrivateRoute user={user}><CirclesDiscoveryPage /></PrivateRoute>} />
               <Route path="/circle/:type" element={<PrivateRoute user={user}><CirclePage user={user!} /></PrivateRoute>} />
               <Route path="/business" element={<PrivateRoute user={user}><BusinessPortal user={user!} /></PrivateRoute>} />
+              {/* Fallback universel vers la Landing Page */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
