@@ -286,7 +286,7 @@ const App = () => {
     if (isRealSupabase && supabase) await (supabase.auth as any).signOut();
     setUser(null); 
     localStorage.removeItem('cercle_user'); 
-    window.location.hash = '/';
+    window.location.href = '/';
   };
 
   useEffect(() => {
@@ -307,7 +307,7 @@ const App = () => {
           <Navbar user={user} onLogout={handleLogout} connStatus={connStatus} />
           <main className={`flex-1 w-full mx-auto ${user ? 'pt-20' : ''}`}>
             <Routes>
-              {/* Le point d'entrée principal "/" charge toujours la LandingPage */}
+              {/* Le point d'entrée principal "/" charge toujours la LandingPage si pas connecté */}
               <Route path="/" element={<LandingPage onLogin={handleLogin} user={user} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
