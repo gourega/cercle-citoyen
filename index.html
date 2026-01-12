@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CERCLE CITOYEN | Penser. Relier. Agir.</title>
     
-    <!-- Désactivation du cache pour l'index pour éviter les versions fantômes -->
+    <!-- Désactivation totale du cache pour l'index -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -81,7 +81,7 @@
 <body>
     <div id="initial-loader">
         <div class="dot-pulse"></div>
-        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Ouverture du Cercle...</p>
+        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Récupération du Portail Officiel...</p>
     </div>
 
     <div id="root"></div>
@@ -89,30 +89,53 @@
     <script type="module" src="./index.tsx"></script>
     
     <script>
-      // Enregistrement du Service Worker pour forcer la mise à jour
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js').then(function(registration) {
-            console.log('SW registered');
-            registration.onupdatefound = () => {
-              const installingWorker = registration.installing;
-              if (installingWorker == null) return;
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    // Nouveau contenu disponible, on recharge
+      // GESTION UNIFIÉE DU SERVICE WORKER ET DU CACHE
+      async function initializeApp() {
+        // 1. Purge immédiate pour éliminer les "pages fantômes"
+        if ('serviceWorker' in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+              await registration.unregister();
+              console.log('Ancien SW purgé');
+            }
+          } catch (e) { console.error('Erreur purge SW:', e); }
+        }
+
+        if ('caches' in window) {
+          try {
+            const keys = await caches.keys();
+            for (let key of keys) {
+              await caches.delete(key);
+              console.log('Cache vidé:', key);
+            }
+          } catch (e) { console.error('Erreur purge cache:', e); }
+        }
+
+        // 2. Réenregistrement propre avec chemin relatif pour éviter les erreurs d'origine
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            console.log('Nouveau SW enregistré sur l\'origine correcte');
+            reg.onupdatefound = () => {
+              const worker = reg.installing;
+              if (worker) {
+                worker.onstatechange = () => {
+                  if (worker.state === 'installed' && navigator.serviceWorker.controller) {
                     window.location.reload();
                   }
-                }
-              };
+                };
+              }
             };
-          }).catch(function(err) {
-            console.log('SW registration failed: ', err);
+          }).catch(err => {
+            console.warn('Echec enregistrement SW (attendu en local):', err);
           });
-        });
+        }
       }
 
-      // Suppression du loader
+      // Lancement de la décontamination au démarrage
+      initializeApp();
+
+      // Gestion de l'affichage du loader
       window.addEventListener('load', () => {
         setTimeout(() => {
           const loader = document.getElementById('initial-loader');

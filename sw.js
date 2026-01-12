@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cercle-citoyen-v16'; // Incrémenté pour forcer la mise à jour
+const CACHE_NAME = 'cercle-citoyen-v100'; // Version forcée
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -9,9 +9,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+          return caches.delete(cacheName); // Supprime TOUT pour être sûr
         })
       );
     })
@@ -20,17 +18,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // Ne pas intercepter Supabase
-  if (url.hostname.includes('supabase.co')) {
-    return;
-  }
-
-  // Stratégie : Réseau d'abord pour l'index
+  // Pas de cache pour les navigations pendant la phase de nettoyage
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/'))
-    );
+    event.respondWith(fetch(event.request));
+    return;
   }
 });

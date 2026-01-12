@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Mail, 
@@ -36,6 +36,9 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Si l'utilisateur est déjà connecté, on peut choisir de le rediriger ou de garder la landing
+  // Mais ici on s'assure juste que l'UI est celle de la Landing Page "officielle" sans bandeaux.
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,8 +111,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
   return (
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center">
       
-      {/* EN-TÊTE INSTITUTIONNELLE (HEADER) */}
-      <header className="w-full h-24 px-6 md:px-12 flex items-center justify-between bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-[100] transition-all">
+      {/* HEADER INSTITUTIONNEL - AUCUN BANDEAU VERT ICI */}
+      <header className="w-full h-24 px-6 md:px-12 flex items-center justify-between bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-[100] transition-all">
         <Logo size={40} showText={true} variant="blue" />
         
         <nav className="hidden lg:flex items-center gap-12">
@@ -239,7 +242,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         <div className="mt-12 w-32 h-2 bg-blue-600 rounded-full"></div>
       </section>
 
-      {/* SECTION ÉCOSYSTÈME (AVANT LE PIED DE PAGE) */}
+      {/* SECTION ÉCOSYSTÈME */}
       <section className="w-full max-w-7xl px-8 py-32 border-t border-slate-50">
         <div className="text-center mb-24">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] mb-8 shadow-inner">
@@ -278,12 +281,11 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         </div>
       </section>
 
-      {/* PIED DE PAGE INSTITUTIONNEL (CONFORME À L'IMAGE) */}
+      {/* PIED DE PAGE INSTITUTIONNEL */}
       <footer className="w-full pt-24 pb-16 bg-white border-t border-gray-100 relative z-10">
         <div className="max-w-7xl mx-auto px-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8 mb-20">
             
-            {/* Colonne 1 : Logo & Vision */}
             <div className="flex flex-col items-center md:items-start text-center md:text-left space-y-8">
               <Logo size={42} showText={true} variant="blue" />
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400 leading-relaxed max-w-sm">
@@ -291,7 +293,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               </p>
             </div>
 
-            {/* Colonne 2 : Contact & Support */}
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
               <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-900 mb-8 flex items-center gap-3">
                 <span className="w-6 h-0.5 bg-blue-600"></span> CONTACT & SUPPORT
@@ -312,7 +313,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
               </div>
             </div>
 
-            {/* Colonne 3 : Cadre Légal */}
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
               <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-900 mb-8 flex items-center gap-3">
                 <span className="w-6 h-0.5 bg-blue-600"></span> CADRE LÉGAL
@@ -327,7 +327,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
 
           </div>
 
-          {/* Ligne de Copyright */}
           <div className="pt-10 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3 text-blue-600/40">
               <ShieldCheck size={18} />
