@@ -1,9 +1,17 @@
-// SW RESET 1.1.1
-// Ce fichier est intentionnellement vide pour forcer la suppression du cache.
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', () => {
-  caches.keys().then(names => {
-    for (let name of names) caches.delete(name);
-  });
-  self.clients.claim();
+// KILLS ALL CACHES ON LOAD
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map(k => caches.delete(k)));
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (e) => {
+  // Désactive totalement le cache pour cette phase de reset
+  return;
 });
