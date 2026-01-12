@@ -1,35 +1,37 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
+// Récupération sécurisée des variables d'environnement
+const supabaseUrl = (process.env.VITE_SUPABASE_URL || "").trim();
+const supabaseAnonKey = (process.env.VITE_SUPABASE_ANON_KEY || "").trim();
 
-const clean = (val: string) => val ? val.replace(/^["']|["']$/g, '').trim() : "";
+// Nettoyage des guillemets éventuels
+const clean = (val: string) => val.replace(/^["']|["']$/g, '');
 
 const finalUrl = clean(supabaseUrl);
 const finalKey = clean(supabaseAnonKey);
 
-export const isRealSupabase = !!finalUrl && finalUrl.includes('.supabase.co') && !!finalKey;
+// Vérification si Supabase est réellement utilisable
+export const isRealSupabase = !!finalUrl && finalUrl.startsWith('https://') && !!finalKey;
 
-export const supabase = isRealSupabase
+export const supabase = isRealSupabase 
   ? createClient(finalUrl, finalKey, {
       auth: {
         persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storageKey: 'cercle_citoyen_auth'
+        autoRefreshToken: true
       }
     })
   : null;
 
 export const db = {
-  async checkConnection(): Promise<{ok: boolean, message: string}> {
-    if (!supabase) return { ok: false, message: "Mode Déconnecté" };
+  async checkConnection() {
+    if (!supabase) return { ok: false, message: "Mode Démo" };
     try {
-      const { error } = await supabase.from('profiles').select('id').limit(1);
+      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
       if (error) throw error;
-      return { ok: true, message: "Système Connecté" };
-    } catch (e: any) {
-      return { ok: false, message: "Liaison Instable" };
+      return { ok: true, message: "Connecté" };
+    } catch (e) {
+      console.warn("Supabase Error:", e);
+      return { ok: false, message: "Hors-ligne" };
     }
   }
 };

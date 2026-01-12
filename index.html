@@ -2,91 +2,28 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CERCLE CITOYEN | Portail Officiel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CERCLE | Le Réseau Social Citoyen</title>
     
-    <!-- ANTI-CACHE AGRESSIF -->
+    <!-- Version 2.0.0 - Forçage Réseau -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-
-    <script>
-      /**
-       * RESET TOTAL - VERSION 1.1.1
-       * Force le navigateur à supprimer l'ancienne "Page Fantôme".
-       */
-      (async function forceReset() {
-        const CURRENT_VERSION = 'cercle_v1.1.1';
-        
-        if (localStorage.getItem('app_version') !== CURRENT_VERSION) {
-          console.log('--- RÉINITIALISATION DU PORTAIL ---');
-          
-          // 1. Suppression des Service Workers (la cause du problème)
-          if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let reg of registrations) {
-              await reg.unregister();
-            }
-          }
-
-          // 2. Vidage des caches de fichiers
-          if ('caches' in window) {
-            const names = await caches.keys();
-            for (let name of names) {
-              await caches.delete(name);
-            }
-          }
-
-          // 3. Nettoyage mémoire
-          localStorage.clear();
-          sessionStorage.clear();
-          
-          // 4. Marquage et Rechargement forcé depuis le serveur (bypass cache)
-          localStorage.setItem('app_version', CURRENT_VERSION);
-          window.location.reload(true);
-        }
-      })();
-    </script>
-
-    <link rel="manifest" href="manifest.json?v=1.1.1">
-    <link rel="canonical" href="https://cerclecitoyen.ci">
-    <meta name="theme-color" content="#2563eb">
-    <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
-
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      window.tailwind = window.tailwind || {};
       window.tailwind.config = {
         theme: {
           extend: {
-            fontFamily: {
-              serif: ['Playfair Display', 'serif'],
-              sans: ['Plus Jakarta Sans', 'sans-serif'],
-            },
-            colors: { cercle: { blue: '#2563eb', dark: '#0f172a' } }
+            colors: {
+              gold: { 500: '#D4AF37', 600: '#B8860B' },
+              cercle: '#1e293b'
+            }
           }
         }
       }
     </script>
-    
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap');
-      body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfcfc; margin: 0; padding: 0; }
-      #initial-loader {
-        position: fixed; inset: 0; background: white; z-index: 9999;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-      }
-      .dot-pulse {
-        width: 12px; height: 12px; border-radius: 50%; background-color: #2563eb;
-        box-shadow: 9984px 0 0 0 #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 0 #2563eb;
-        animation: dotPulse 1.5s infinite linear;
-        position: relative; left: -9999px;
-      }
-      @keyframes dotPulse {
-        0% { box-shadow: 9984px 0 0 -5px #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 2px #2563eb; }
-        50% { box-shadow: 9984px 0 0 2px #2563eb, 9999px 0 0 -5px #2563eb, 10014px 0 0 0 #2563eb; }
-        100% { box-shadow: 9984px 0 0 -5px #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 2px #2563eb; }
-      }
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+      body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
     </style>
 
     <script type="importmap">
@@ -107,33 +44,8 @@
 }
 </script>
 </head>
-<body>
-    <div id="initial-loader">
-        <div class="dot-pulse"></div>
-        <p style="margin-top: 40px; font-weight: 800; font-size: 11px; letter-spacing: 0.4em; color: #1e293b; text-transform: uppercase;">Réinitialisation du Portail...</p>
-    </div>
-
+<body class="antialiased">
     <div id="root"></div>
-
-    <script type="module" src="./index.tsx?v=1.1.1"></script>
-    
-    <script>
-      // Désactivation du Service Worker pour cette version
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          for(let registration of registrations) { registration.unregister(); }
-        });
-      }
-
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const loader = document.getElementById('initial-loader');
-          if (loader) {
-            loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 500);
-          }
-        }, 1000);
-      });
-    </script>
+    <script type="module" src="./index.tsx?v=200"></script>
 </body>
 </html>
