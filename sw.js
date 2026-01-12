@@ -1,7 +1,5 @@
+const CACHE_NAME = 'cercle-citoyen-v16'; // Incrémenté pour forcer la mise à jour
 
-const CACHE_NAME = 'cercle-citoyen-v15';
-
-// Pas de pré-mise en cache agressive pour éviter les conflits de version en production
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -10,7 +8,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => caches.delete(cacheName))
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
       );
     })
   );
@@ -20,17 +22,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. NE JAMAIS intercepter les requêtes vers Supabase ou Cloudflare API
-  if (url.hostname.includes('supabase.co') || url.hostname.includes('cloudflare.com')) {
+  // Ne pas intercepter Supabase
+  if (url.hostname.includes('supabase.co')) {
     return;
   }
 
-  // 2. NE JAMAIS intercepter les liens magiques ou tokens d'auth
-  if (url.hash.includes('access_token') || url.search.includes('type=')) {
-    return;
-  }
-
-  // 3. Stratégie simple : Réseau d'abord, sinon rien (pour éviter la 522 fantôme du cache)
+  // Stratégie : Réseau d'abord pour l'index
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('/'))

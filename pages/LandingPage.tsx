@@ -109,8 +109,8 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
     <div className="relative min-h-screen w-full bg-[#fcfcfc] overflow-x-hidden flex flex-col items-center">
       
       {/* EN-TÊTE INSTITUTIONNELLE (HEADER) */}
-      <header className="w-full h-24 px-6 md:px-12 flex items-center justify-between bg-white/70 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-[100] transition-all">
-        <Logo size={36} showText={true} variant="blue" />
+      <header className="w-full h-24 px-6 md:px-12 flex items-center justify-between bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-[100] transition-all">
+        <Logo size={40} showText={true} variant="blue" />
         
         <nav className="hidden lg:flex items-center gap-12">
           {['La Vision', 'L\'Impact', 'Les Cercles', 'Le Conseil'].map((item) => (
@@ -126,12 +126,12 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         <div className="flex items-center gap-4">
            <button 
              onClick={() => navigate('/auth')}
-             className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-200"
+             className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-200"
            >
              ESPACE CITOYEN
            </button>
            <button className="lg:hidden p-3 bg-gray-50 rounded-xl text-gray-400">
-             <Menu size={20} />
+             <Menu size={24} />
            </button>
         </div>
       </header>
@@ -171,7 +171,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 <div className="space-y-4">
                   <h3 className="text-3xl font-serif font-bold text-slate-900">Demande Enregistrée</h3>
                   <p className="text-slate-500 leading-relaxed font-medium text-lg px-4">
-                    Le Gardien a été alerté. Une vérification humaine sera effectuée sous peu pour restaurer votre accès.
+                    Le Gardien a été alerté. Une vérification humaine sera effectuée sous peu.
                   </p>
                 </div>
                 <button onClick={() => { setIsRecoveryMode(false); setRecoverySuccess(false); }} className="w-full py-8 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-black transition-all shadow-xl">
@@ -191,7 +191,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                       value={email} 
                       onChange={e => setEmail(e.target.value)} 
                       placeholder={isRecoveryMode ? "Votre Email à débloquer" : "Identifiant (Email)"} 
-                      className={`w-full bg-slate-50/50 border-2 py-8 pl-20 pr-9 rounded-[2.5rem] outline-none transition-all font-bold text-lg placeholder:text-slate-300 text-slate-800 ${isRecoveryMode ? 'border-amber-100 focus:bg-white focus:border-amber-300' : 'border-transparent focus:bg-white focus:border-blue-200'}`} 
+                      className={`w-full bg-slate-50/50 border-2 py-9 pl-20 pr-9 rounded-[2.5rem] outline-none transition-all font-bold text-lg placeholder:text-slate-300 text-slate-800 ${isRecoveryMode ? 'border-amber-100 focus:bg-white focus:border-amber-300' : 'border-transparent focus:bg-white focus:border-blue-200'}`} 
                     />
                   </div>
 
@@ -204,7 +204,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
                         placeholder="Code Secret" 
-                        className="w-full bg-slate-50/50 border-2 border-transparent py-8 pl-20 pr-24 rounded-[2.5rem] outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-lg placeholder:text-slate-300 text-slate-800" 
+                        className="w-full bg-slate-50/50 border-2 border-transparent py-9 pl-20 pr-24 rounded-[2.5rem] outline-none focus:bg-white focus:border-blue-100 transition-all font-bold text-lg placeholder:text-slate-300 text-slate-800" 
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-9 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors">
                         {showPassword ? <EyeOff size={26} /> : <Eye size={26} />}
@@ -225,13 +225,6 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
                 </div>
               </form>
             )}
-          </div>
-          
-          <div className="mt-16 text-center animate-in fade-in delay-700">
-             <p className="text-slate-400 text-sm font-medium italic mb-8">"L'engagement citoyen est le moteur du progrès social."</p>
-             <button onClick={() => navigate('/auth')} className="inline-flex items-center gap-4 text-blue-600 font-black text-[12px] uppercase tracking-[0.3em] hover:translate-x-2 transition-all">
-                Demander un profil citoyen <ChevronRight size={18} />
-             </button>
           </div>
         </div>
 
@@ -285,7 +278,7 @@ const LandingPage = ({ onLogin, user }: { onLogin: (user: User) => void, user: U
         </div>
       </section>
 
-      {/* PIED DE PAGE (CONFORME À VOTRE VISION) */}
+      {/* PIED DE PAGE INSTITUTIONNEL (CONFORME À L'IMAGE) */}
       <footer className="w-full pt-24 pb-16 bg-white border-t border-gray-100 relative z-10">
         <div className="max-w-7xl mx-auto px-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8 mb-20">
