@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
@@ -24,28 +23,21 @@ export const supabase = isRealSupabase
 
 export const db = {
   async checkConnection(retries = 2): Promise<{ok: boolean, message: string}> {
-    if (!supabase) return { ok: false, message: "Mode Démo (Hors-ligne)" };
+    if (!supabase) return { ok: false, message: "Mode Déconnecté" };
 
     for (let i = 0; i <= retries; i++) {
       try {
-        // Un simple ping sur la table profiles (juste l'ID pour minimiser les données)
         const { error } = await supabase.from('profiles').select('id').limit(1);
         if (error) throw error;
-        return { ok: true, message: "Liaison Souveraine Active" };
+        return { ok: true, message: "Système Opérationnel" };
       } catch (e: any) {
-        console.warn(`Connection attempt ${i + 1} failed:`, e.message);
         if (i < retries) {
-          // Attendre 1s avant de réessayer
           await new Promise(resolve => setTimeout(resolve, 1000));
           continue;
         }
-        
-        if (e.message?.includes('Failed to fetch')) {
-          return { ok: false, message: "Réseau instable..." };
-        }
-        return { ok: false, message: "Liaison instable" };
+        return { ok: false, message: "Connexion instable" };
       }
     }
-    return { ok: false, message: "Liaison instable" };
+    return { ok: false, message: "Erreur de liaison" };
   }
 };

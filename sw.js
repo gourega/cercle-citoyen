@@ -1,26 +1,18 @@
-const CACHE_NAME = 'cercle-citoyen-v100'; // Version forcée
-
+// SW Pass-through : Aucune mise en cache pour forcer la mise à jour réseau
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          return caches.delete(cacheName); // Supprime TOUT pour être sûr
-        })
-      );
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map(key => caches.delete(key)));
     })
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pas de cache pour les navigations pendant la phase de nettoyage
-  if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  // Ne rien mettre en cache, tout demander au réseau
+  return;
 });

@@ -5,10 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CERCLE CITOYEN | Penser. Relier. Agir.</title>
     
-    <!-- Désactivation totale du cache pour l'index -->
+    <!-- Force le navigateur à ne JAMAIS mettre en cache l'index principal -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+
+    <script>
+      // LE PURGEUR NUCLÉAIRE (Anti-Page Fantôme)
+      (function() {
+        const PURGE_KEY = 'cercle_purge_v101';
+        if (!localStorage.getItem(PURGE_KEY)) {
+          console.log('Détection d\'une version potentiellement obsolète. Lancement de la purge...');
+          
+          // 1. Désenregistre tous les Service Workers
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for(let registration of registrations) {
+                registration.unregister();
+              }
+            });
+          }
+          
+          // 2. Vide tous les caches de l'API Cache
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (let name of names) caches.delete(name);
+            });
+          }
+
+          // 3. Marque comme purgé et force un rechargement complet sans cache
+          localStorage.setItem(PURGE_KEY, 'true');
+          window.location.reload(true);
+        }
+      })();
+    </script>
 
     <link rel="manifest" href="manifest.json">
     <link rel="canonical" href="https://cerclecitoyen.ci">
@@ -81,7 +111,7 @@
 <body>
     <div id="initial-loader">
         <div class="dot-pulse"></div>
-        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Récupération du Portail Officiel...</p>
+        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Chargement du Portail Officiel...</p>
     </div>
 
     <div id="root"></div>
@@ -89,53 +119,17 @@
     <script type="module" src="./index.tsx"></script>
     
     <script>
-      // GESTION UNIFIÉE DU SERVICE WORKER ET DU CACHE
-      async function initializeApp() {
-        // 1. Purge immédiate pour éliminer les "pages fantômes"
-        if ('serviceWorker' in navigator) {
-          try {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let registration of registrations) {
-              await registration.unregister();
-              console.log('Ancien SW purgé');
-            }
-          } catch (e) { console.error('Erreur purge SW:', e); }
-        }
-
-        if ('caches' in window) {
-          try {
-            const keys = await caches.keys();
-            for (let key of keys) {
-              await caches.delete(key);
-              console.log('Cache vidé:', key);
-            }
-          } catch (e) { console.error('Erreur purge cache:', e); }
-        }
-
-        // 2. Réenregistrement propre avec chemin relatif pour éviter les erreurs d'origine
-        if ('serviceWorker' in navigator) {
+      // Réenregistrement propre sans cache agressif
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
           navigator.serviceWorker.register('./sw.js').then(reg => {
-            console.log('Nouveau SW enregistré sur l\'origine correcte');
-            reg.onupdatefound = () => {
-              const worker = reg.installing;
-              if (worker) {
-                worker.onstatechange = () => {
-                  if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                    window.location.reload();
-                  }
-                };
-              }
-            };
+            console.log('Nouveau SW enregistré.');
           }).catch(err => {
-            console.warn('Echec enregistrement SW (attendu en local):', err);
+            console.warn('SW Register failed:', err);
           });
-        }
+        });
       }
 
-      // Lancement de la décontamination au démarrage
-      initializeApp();
-
-      // Gestion de l'affichage du loader
       window.addEventListener('load', () => {
         setTimeout(() => {
           const loader = document.getElementById('initial-loader');
