@@ -1,18 +1,22 @@
-// SW Pass-through : Aucune mise en cache pour forcer la mise à jour réseau
+// SW KILLER : Ne met rien en cache et vide les anciens caches
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.map(key => caches.delete(key)));
-    })
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          console.log('Suppression du cache zombie:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ne rien mettre en cache, tout demander au réseau
+  // Mode Pass-through : Network Only
   return;
 });

@@ -5,36 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CERCLE CITOYEN | Penser. Relier. Agir.</title>
     
-    <!-- Force le navigateur à ne JAMAIS mettre en cache l'index principal -->
+    <!-- ANTI-CACHE TOTAL AU NIVEAU HTTP -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
     <script>
-      // LE PURGEUR NUCLÉAIRE (Anti-Page Fantôme)
-      (function() {
-        const PURGE_KEY = 'cercle_purge_v101';
-        if (!localStorage.getItem(PURGE_KEY)) {
-          console.log('Détection d\'une version potentiellement obsolète. Lancement de la purge...');
+      /**
+       * SCRIPT DE DÉCONTAMINATION ABSOLUE (Anti-Cache Zombie)
+       * Ce script s'exécute AVANT le chargement de React pour nettoyer le navigateur.
+       */
+      (async function purgeNuclear() {
+        const VERSION = 'force_update_v105'; // Incrémenté pour forcer un nouveau cycle
+        
+        if (localStorage.getItem('cercle_version') !== VERSION) {
+          console.log('--- PURGE DU CACHE EN COURS ---');
           
-          // 1. Désenregistre tous les Service Workers
+          // 1. Désenregistrer tous les Service Workers
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              for(let registration of registrations) {
-                registration.unregister();
-              }
-            });
-          }
-          
-          // 2. Vide tous les caches de l'API Cache
-          if ('caches' in window) {
-            caches.keys().then(function(names) {
-              for (let name of names) caches.delete(name);
-            });
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (let reg of regs) {
+              await reg.unregister();
+              console.log('SW unregistred');
+            }
           }
 
-          // 3. Marque comme purgé et force un rechargement complet sans cache
-          localStorage.setItem(PURGE_KEY, 'true');
+          // 2. Supprimer tous les caches de fichiers
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            for (let key of keys) {
+              await caches.delete(key);
+              console.log('Cache deleted:', key);
+            }
+          }
+
+          // 3. Nettoyer les données de stockage
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // 4. Marquer comme mis à jour et forcer le rechargement réseau
+          localStorage.setItem('cercle_version', VERSION);
+          console.log('Purge terminée. Rechargement...');
           window.location.reload(true);
         }
       })();
@@ -55,12 +66,7 @@
               serif: ['Playfair Display', 'serif'],
               sans: ['Plus Jakarta Sans', 'sans-serif'],
             },
-            colors: { 
-              cercle: { 
-                blue: '#2563eb',
-                dark: '#0f172a'
-              } 
-            }
+            colors: { cercle: { blue: '#2563eb', dark: '#0f172a' } }
           }
         }
       }
@@ -69,11 +75,9 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap');
       body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfcfc; margin: 0; }
-      
       #initial-loader {
         position: fixed; inset: 0; background: white; z-index: 9999;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: opacity 0.5s ease-out;
       }
       .dot-pulse {
         width: 12px; height: 12px; border-radius: 50%; background-color: #2563eb;
@@ -83,9 +87,7 @@
       }
       @keyframes dotPulse {
         0% { box-shadow: 9984px 0 0 -5px #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 2px #2563eb; }
-        25% { box-shadow: 9984px 0 0 0 #2563eb, 9999px 0 0 2px #2563eb, 10014px 0 0 -5px #2563eb; }
         50% { box-shadow: 9984px 0 0 2px #2563eb, 9999px 0 0 -5px #2563eb, 10014px 0 0 0 #2563eb; }
-        75% { box-shadow: 9984px 0 0 0 #2563eb, 9999px 0 0 -5px #2563eb, 10014px 0 0 2px #2563eb; }
         100% { box-shadow: 9984px 0 0 -5px #2563eb, 9999px 0 0 0 #2563eb, 10014px 0 0 2px #2563eb; }
       }
     </style>
@@ -111,22 +113,18 @@
 <body>
     <div id="initial-loader">
         <div class="dot-pulse"></div>
-        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Chargement du Portail Officiel...</p>
+        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Mise à jour du Portail Officiel...</p>
     </div>
 
     <div id="root"></div>
 
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="./index.tsx?v=1.0.5"></script>
     
     <script>
-      // Réenregistrement propre sans cache agressif
+      // Enregistrement ultra-léger du SW avec cache-busting
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            console.log('Nouveau SW enregistré.');
-          }).catch(err => {
-            console.warn('SW Register failed:', err);
-          });
+          navigator.serviceWorker.register('./sw.js?v=' + Date.now(), { scope: './' });
         });
       }
 
