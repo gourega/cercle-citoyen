@@ -22,22 +22,14 @@ export const supabase = isRealSupabase
   : null;
 
 export const db = {
-  async checkConnection(retries = 2): Promise<{ok: boolean, message: string}> {
+  async checkConnection(): Promise<{ok: boolean, message: string}> {
     if (!supabase) return { ok: false, message: "Mode Déconnecté" };
-
-    for (let i = 0; i <= retries; i++) {
-      try {
-        const { error } = await supabase.from('profiles').select('id').limit(1);
-        if (error) throw error;
-        return { ok: true, message: "Système Opérationnel" };
-      } catch (e: any) {
-        if (i < retries) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          continue;
-        }
-        return { ok: false, message: "Connexion instable" };
-      }
+    try {
+      const { error } = await supabase.from('profiles').select('id').limit(1);
+      if (error) throw error;
+      return { ok: true, message: "Système Connecté" };
+    } catch (e: any) {
+      return { ok: false, message: "Liaison Instable" };
     }
-    return { ok: false, message: "Erreur de liaison" };
   }
 };

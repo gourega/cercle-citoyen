@@ -3,55 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CERCLE CITOYEN | Penser. Relier. Agir.</title>
+    <title>CERCLE CITOYEN | Portail Officiel</title>
     
-    <!-- ANTI-CACHE TOTAL AU NIVEAU HTTP -->
+    <!-- ANTI-CACHE AGRESSIF -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
     <script>
       /**
-       * SCRIPT DE DÉCONTAMINATION ABSOLUE (Anti-Cache Zombie)
-       * Ce script s'exécute AVANT le chargement de React pour nettoyer le navigateur.
+       * RESET TOTAL - VERSION 1.1.1
+       * Force le navigateur à supprimer l'ancienne "Page Fantôme".
        */
-      (async function purgeNuclear() {
-        const VERSION = 'force_update_v105'; // Incrémenté pour forcer un nouveau cycle
+      (async function forceReset() {
+        const CURRENT_VERSION = 'cercle_v1.1.1';
         
-        if (localStorage.getItem('cercle_version') !== VERSION) {
-          console.log('--- PURGE DU CACHE EN COURS ---');
+        if (localStorage.getItem('app_version') !== CURRENT_VERSION) {
+          console.log('--- RÉINITIALISATION DU PORTAIL ---');
           
-          // 1. Désenregistrer tous les Service Workers
+          // 1. Suppression des Service Workers (la cause du problème)
           if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            for (let reg of regs) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let reg of registrations) {
               await reg.unregister();
-              console.log('SW unregistred');
             }
           }
 
-          // 2. Supprimer tous les caches de fichiers
+          // 2. Vidage des caches de fichiers
           if ('caches' in window) {
-            const keys = await caches.keys();
-            for (let key of keys) {
-              await caches.delete(key);
-              console.log('Cache deleted:', key);
+            const names = await caches.keys();
+            for (let name of names) {
+              await caches.delete(name);
             }
           }
 
-          // 3. Nettoyer les données de stockage
+          // 3. Nettoyage mémoire
           localStorage.clear();
           sessionStorage.clear();
           
-          // 4. Marquer comme mis à jour et forcer le rechargement réseau
-          localStorage.setItem('cercle_version', VERSION);
-          console.log('Purge terminée. Rechargement...');
+          // 4. Marquage et Rechargement forcé depuis le serveur (bypass cache)
+          localStorage.setItem('app_version', CURRENT_VERSION);
           window.location.reload(true);
         }
       })();
     </script>
 
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=1.1.1">
     <link rel="canonical" href="https://cerclecitoyen.ci">
     <meta name="theme-color" content="#2563eb">
     <link rel="apple-touch-icon" href="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo-192.png">
@@ -74,7 +71,7 @@
     
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&family=Playfair+Display:wght@700&display=swap');
-      body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfcfc; margin: 0; }
+      body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfcfc; margin: 0; padding: 0; }
       #initial-loader {
         position: fixed; inset: 0; background: white; z-index: 9999;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -113,18 +110,18 @@
 <body>
     <div id="initial-loader">
         <div class="dot-pulse"></div>
-        <p style="margin-top: 40px; font-weight: 700; font-size: 10px; letter-spacing: 0.3em; color: #94a3b8; text-transform: uppercase;">Mise à jour du Portail Officiel...</p>
+        <p style="margin-top: 40px; font-weight: 800; font-size: 11px; letter-spacing: 0.4em; color: #1e293b; text-transform: uppercase;">Réinitialisation du Portail...</p>
     </div>
 
     <div id="root"></div>
 
-    <script type="module" src="./index.tsx?v=1.0.5"></script>
+    <script type="module" src="./index.tsx?v=1.1.1"></script>
     
     <script>
-      // Enregistrement ultra-léger du SW avec cache-busting
+      // Désactivation du Service Worker pour cette version
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=' + Date.now(), { scope: './' });
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for(let registration of registrations) { registration.unregister(); }
         });
       }
 
@@ -135,7 +132,7 @@
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 500);
           }
-        }, 800);
+        }, 1000);
       });
     </script>
 </body>
