@@ -1,4 +1,4 @@
-// KILLS ALL CACHES ON LOAD
+// SCRIPT D'AUTO-DESTRUCTION DU SERVICE WORKER
 self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
@@ -11,7 +11,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Ne rien intercepter, laisser passer les requêtes vers le réseau direct
 self.addEventListener('fetch', (e) => {
-  // Désactive totalement le cache pour cette phase de reset
-  return;
+  return; 
 });

@@ -3,24 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CERCLE V4 - SYSTÈME PRÊT</title>
+    <title>CERCLE V4 - SYSTÈME RÉINITIALISÉ</title>
     
-    <!-- Meta tags pour interdire le cache -->
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <!-- Désactivation drastique du cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* CSS DE NEUTRALISATION : On tue le vert de l'ancienne version par la force */
-      body { background-color: #0a0c10 !important; margin: 0; overflow-x: hidden; }
-      #liaison-banner, .green-banner, .bg-green-600, .bg-emerald-600 { 
+      /* On force le noir avant même que le JS ne charge */
+      body { background-color: #0a0c10 !important; margin: 0; color: white; }
+      #liaison-banner, .green-banner, [class*="green"], [class*="emerald"] { 
         display: none !important; 
-        visibility: hidden !important; 
-        height: 0 !important;
+        opacity: 0 !important;
       }
-      #root { min-height: 100vh; background-color: #0a0c10; }
     </style>
+
+    <script type="module">
+      // --- LE BRISE-GLACE (Context Reset) ---
+      async function clearEverything() {
+        console.log("Tentative de purge du contexte...");
+        
+        // 1. Suppression des Service Workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            console.log("Service Worker trouvé et supprimé :", registration);
+            await registration.unregister();
+          }
+        }
+
+        // 2. Vidage des Caches de l'API Cache
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (let key of keys) {
+            await caches.delete(key);
+          }
+        }
+
+        // 3. Nettoyage Storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        console.log("Contexte nettoyé. Lancement V4.");
+      }
+
+      // On lance le nettoyage et ensuite on importe l'app
+      clearEverything().then(() => {
+        import("./index.tsx?v=" + Date.now());
+      });
+    </script>
 
     <script type="importmap">
 {
@@ -41,10 +74,14 @@
 </script>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="module">
-      // Force le rechargement du module avec un paramètre unique
-      import "./index.tsx?v=4.0.1-" + Date.now();
-    </script>
+    <div id="root">
+        <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; flex-direction:column; gap:20px;">
+            <div style="width:40px; height:40px; border:4px solid #2563eb; border-top-color:transparent; border-radius:50%; animate: spin 1s linear infinite;"></div>
+            <p style="text-transform:uppercase; letter-spacing:0.2em; font-size:10px; font-weight:900;">Réinitialisation du Contexte...</p>
+        </div>
+    </div>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </body>
 </html>
