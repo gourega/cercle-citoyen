@@ -3,35 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CERCLE CITOYEN</title>
+    <title>CERCLE CITOYEN | Réseau Social Souverain</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: sans-serif; }
+      /* Thème de base immédiat */
+      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
       #root { min-height: 100vh; background-color: #0a0c10; }
       
-      /* Message de secours caché par défaut */
-      #fallback-ui { 
-        display: none; 
-        position: fixed; 
-        inset: 0; 
-        z-index: 9999; 
-        background: #0a0c10; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center; 
-        padding: 20px;
-        text-align: center;
+      /* Loader Prestige */
+      #initial-loader {
+        position: fixed; inset: 0; background: #0a0c10; display: flex;
+        flex-direction: column; align-items: center; justify-content: center; z-index: 10000;
       }
-      
-      #version-tag {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        font-size: 8px;
-        color: rgba(255,255,255,0.2);
-        z-index: 9999;
-        pointer-events: none;
+      .spinner {
+        width: 50px; height: 50px; border: 3px solid rgba(59, 130, 246, 0.1);
+        border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Interface de secours si le JS échoue */
+      #fallback-ui {
+        display: none; position: fixed; inset: 0; z-index: 9999;
+        background: radial-gradient(circle at center, #1a1c2e 0%, #0a0c10 100%);
+        flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;
       }
     </style>
 
@@ -54,43 +49,50 @@
 </script>
 </head>
 <body>
-    <div id="root">
-      <!-- Indicateur de chargement initial -->
-      <div id="initial-loader" style="height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
-        <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-        <p style="font-size: 10px; letter-spacing: 0.2em; color: #4b5563; font-weight: 900; text-transform: uppercase;">Initialisation du Cercle...</p>
-      </div>
+    <div id="root"></div>
+
+    <!-- Écran de chargement initial -->
+    <div id="initial-loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px; font-size: 10px; font-weight: 900; letter-spacing: 0.3em; color: #3b82f6; text-transform: uppercase;">
+          Initialisation du Cercle...
+        </p>
     </div>
 
+    <!-- Interface de Secours (Diagnostic) -->
     <div id="fallback-ui">
-      <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 10px;">Erreur de Liaison</h2>
-      <p style="color: #9ca3af; max-width: 400px; margin-bottom: 20px;">Le système n'a pas pu charger les modules souverains. Cela arrive souvent après une mise à jour du serveur.</p>
-      <button onclick="location.reload(true)" style="background: #3b82f6; color: white; padding: 12px 24px; border-radius: 12px; font-weight: bold; border: none; cursor: pointer;">Forcer le Redémarrage</button>
+        <div style="background: rgba(239, 68, 68, 0.1); padding: 30px; border-radius: 30px; border: 1px solid rgba(239, 68, 68, 0.2); max-width: 400px;">
+          <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 15px;">Erreur de Liaison</h2>
+          <p style="color: #9ca3af; font-size: 14px; line-height: 1.6; margin-bottom: 25px;">
+            Le serveur de <b>cerclecitoyen.ci</b> ne parvient pas à délivrer les modules de l'application (Erreur MIME). 
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button onclick="location.reload(true)" style="background: #3b82f6; color: white; padding: 15px; border-radius: 15px; font-weight: bold; border: none; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Forcer le Redémarrage</button>
+            <p style="font-size: 9px; color: #4b5563; margin-top: 10px;">Mention : CERCLE-V4-SOUVERAINETÉ-ACTIVE</p>
+          </div>
+        </div>
     </div>
-
-    <div id="version-tag">CERCLE-V4-FIX-MIME</div>
-
-    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
     <script>
-      // Système de surveillance du chargement
+      // Surveillance du chargement
       window.addEventListener('error', function(e) {
-        if (e.message.includes('MIME') || e.message.includes('fetch')) {
+        if (e.message.includes('MIME') || e.message.includes('fetch') || e.message.includes('module')) {
           document.getElementById('fallback-ui').style.display = 'flex';
           document.getElementById('initial-loader').style.display = 'none';
         }
       }, true);
 
-      // Si après 5 secondes on est toujours sur le loader, on affiche l'aide
+      // Si après 6 secondes React n'a pas pris la main, on affiche le secours
       setTimeout(() => {
         const loader = document.getElementById('initial-loader');
-        if (loader && loader.offsetParent !== null) {
+        if (loader && loader.style.display !== 'none') {
           document.getElementById('fallback-ui').style.display = 'flex';
+          loader.style.display = 'none';
         }
-      }, 5000);
+      }, 6000);
     </script>
 
-    <!-- Chargement relatif strict -->
+    <!-- Point d'entrée de l'application -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
