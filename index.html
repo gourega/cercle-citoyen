@@ -3,24 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CERCLE V4 - SOUVERAINETÉ</title>
+    <title>CERCLE V4 - SYSTÈME SOUVERAIN</title>
     
+    <!-- Anti-cache strict pour les navigateurs -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* ASSASSIN DE STYLE : On tue le vert par principe */
-      body { background-color: #0a0c10 !important; margin: 0; color: white; }
+      /* Style critique pour masquer les éléments de l'ancienne version */
+      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: sans-serif; }
       #root { min-height: 100vh; background-color: #0a0c10; }
+      /* On force la disparition du bandeau vert par son ID ou sa classe */
+      #liaison-banner, .green-banner, .bg-green-600 { display: none !important; visibility: hidden !important; }
       
-      /* On masque tout ce qui ressemble à l'ancienne version par précaution */
-      #liaison-banner, .green-banner, [class*="green-600"], [class*="emerald-600"] { 
-        display: none !important; 
-        opacity: 0 !important;
-        height: 0 !important;
-        overflow: hidden !important;
+      /* Indicateur de version pour le débogage visuel */
+      #version-tag {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        font-size: 8px;
+        color: rgba(255,255,255,0.2);
+        z-index: 9999;
+        pointer-events: none;
       }
     </style>
 
@@ -44,45 +50,41 @@
 </head>
 <body>
     <div id="root"></div>
+    <div id="version-tag">CERCLE-V4-SOUVERAINETÉ-ACTIVE</div>
 
     <script type="module">
-      async function nukeZombie() {
-        console.log("Protocole de Nettoyage V4...");
-
-        // 1. Désenregistrement immédiat des SW
+      // PROTOCOLE DE PURGE ABSOLUE
+      async function forceUpdate() {
+        console.log("Démarrage de la Purge Système V4...");
+        
+        // 1. Suppression de TOUS les Service Workers enregistrés
         if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for(let reg of regs) {
-            await reg.unregister();
-            console.log("Ancien SW démantelé.");
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+            console.log("Service Worker démantelé.");
           }
         }
 
-        // 2. Vidage des caches API
+        // 2. Vidage de TOUS les caches du navigateur
         if ('caches' in window) {
-          const keys = await caches.keys();
-          for(let key of keys) await caches.delete(key);
-        }
-
-        // 3. Traque du bandeau vert dans le DOM (si le HTML est déjà pollué)
-        const killList = ["LIAISON SOUVERAINE", "Liaison Souveraine"];
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        let node;
-        while(node = walker.nextNode()) {
-          if (killList.some(text => node.textContent.includes(text))) {
-            const parent = node.parentElement;
-            if (parent) {
-               parent.style.display = 'none';
-               console.log("Élément zombie détecté et neutralisé.");
-            }
+          const cacheKeys = await caches.keys();
+          for (const key of cacheKeys) {
+            await caches.delete(key);
+            console.log("Cache vidé : " + key);
           }
         }
 
-        // 4. Chargement de l'App avec versioning temporel
-        import("./index.tsx?v=" + Date.now());
+        // 3. Nettoyage du stockage local pour forcer la reconnexion V4
+        localStorage.removeItem('cercle_user');
+        localStorage.removeItem('cercle_v4_reset');
+        
+        // 4. Chargement de l'application avec un paramètre unique pour briser le cache réseau
+        const timestamp = Date.now();
+        import("./index.tsx?v=" + timestamp);
       }
 
-      nukeZombie();
+      forceUpdate().catch(console.error);
     </script>
 </body>
 </html>

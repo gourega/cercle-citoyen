@@ -2,13 +2,17 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-// Forçage du thème sombre au niveau du document
+// Forçage visuel immédiat pour éviter le flash blanc ou vert
 document.body.style.backgroundColor = '#0a0c10';
 
 const container = document.getElementById('root');
-if (!container) throw new Error("Root element not found");
+if (!container) {
+  const rootDiv = document.createElement('div');
+  rootDiv.id = 'root';
+  document.body.appendChild(rootDiv);
+}
 
-const root = createRoot(container);
+const root = createRoot(document.getElementById('root')!);
 root.render(
   <React.StrictMode>
     <App />
