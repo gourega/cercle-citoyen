@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-// Forçage visuel immédiat pour éviter le flash blanc ou vert
+// Forçage immédiat du style du body pour enterrer les flashs visuels de l'ancienne version
 document.body.style.backgroundColor = '#0a0c10';
 
 const container = document.getElementById('root');
