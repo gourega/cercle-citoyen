@@ -9,21 +9,39 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        // SCRIPT DE SURVIE - EXÉCUTION AVANT TOUT LE RESTE
-        window.forceClean = function() {
+        // SCRIPT DE RÉINITIALISATION D'URGENCE (CRITIQUE)
+        window.forceClean = function(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            console.log("Tentative de réinitialisation...");
+            
             try {
+                // Nettoyage complet
                 localStorage.clear();
                 sessionStorage.clear();
-                // Suppression des cookies pour être sûr
-                document.cookie.split(";").forEach(function(c) { 
-                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-                });
-                // Rechargement forcé vers l'URL propre
-                const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
+                
+                // Nettoyage des cookies
+                var cookies = document.cookie.split(";");
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i];
+                    var eqPos = cookie.indexOf("=");
+                    var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                }
+
+                // Feedback visuel immédiat
+                document.body.style.opacity = '0.5';
+                
+                // Rechargement forcé avec paramètre anti-cache
+                var cleanUrl = window.location.origin + window.location.pathname + '?reset=' + Date.now();
                 window.location.replace(cleanUrl);
             } catch (e) {
-                alert("Erreur lors de la réinitialisation. Merci de rafraîchir manuellement.");
+                alert("Erreur critique. Merci de vider manuellement le cache de votre navigateur.");
             }
+            return false;
         };
     </script>
 
@@ -36,7 +54,10 @@
             -webkit-user-select: none !important;
         }
         
-        input, textarea { user-select: text !important; -webkit-user-select: text !important; }
+        input, textarea { 
+            user-select: text !important; 
+            -webkit-user-select: text !important; 
+        }
 
         body { 
             background-color: var(--bg); 
@@ -44,13 +65,13 @@
             color: #f1f5f9; 
             font-family: 'Inter', sans-serif; 
             overflow: hidden;
-            touch-action: manipulation;
+            touch-action: pan-y; /* Permet le scroll vertical mais bloque les gestes complexes */
         }
 
         #splash-screen {
             position: fixed; inset: 0; background: var(--bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9998;
+            z-index: 9000;
         }
 
         .loader-ring {
@@ -61,34 +82,37 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* ZONE BOUTON D'URGENCE */
         #emergency-trigger {
             position: fixed; 
-            bottom: 40px; 
+            bottom: 50px; 
             left: 0; 
             right: 0; 
             text-align: center;
-            z-index: 9999;
-            pointer-events: none;
+            z-index: 10000; /* Priorité absolue sur le splash screen */
+            padding: 20px;
         }
 
         .btn-reset {
             background: #1e293b;
             border: 2px solid #3b82f6;
-            color: #ffffff;
-            padding: 18px 36px;
-            border-radius: 20px;
-            font-size: 12px;
+            color: #ffffff !important;
+            padding: 20px 40px;
+            border-radius: 24px;
+            font-size: 13px;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 2px;
             cursor: pointer;
-            pointer-events: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            pointer-events: auto !important;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9);
             display: inline-block;
+            text-decoration: none;
+            -webkit-appearance: none;
         }
 
         .btn-reset:active {
-            transform: scale(0.90);
+            transform: scale(0.92);
             background: #3b82f6;
         }
     </style>
@@ -119,8 +143,17 @@
         <p style="margin-top: 20px; font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase; color: #475569;">CERCLE CITOYEN</p>
     </div>
 
+    <!-- Le bouton utilise ontouchstart pour bypasser Chrome Mobile "Touch to Search" -->
     <div id="emergency-trigger">
-        <button type="button" class="btn-reset" onmousedown="window.forceClean()" onclick="window.forceClean()">Réinitialiser l'application</button>
+        <button 
+            type="button" 
+            class="btn-reset" 
+            ontouchstart="window.forceClean(event)" 
+            onmousedown="window.forceClean(event)"
+            onclick="window.forceClean(event)"
+        >
+            Réinitialiser l'application
+        </button>
     </div>
 
     <script type="module" src="./index.tsx"></script>
