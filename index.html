@@ -5,41 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CERCLE CITOYEN | Souveraineté Numérique</title>
     
+    <!-- Icône Drapeau Côte d'Ivoire -->
+    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/128px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png">
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/512px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png">
+    <link rel="manifest" href="./manifest.json">
+
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        // SCRIPT DE RÉINITIALISATION D'URGENCE (CRITIQUE)
+        // SCRIPT DE RÉINITIALISATION DISCRET
         window.forceClean = function(event) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            
-            console.log("Tentative de réinitialisation...");
-            
-            try {
-                // Nettoyage complet
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (confirm("Réinitialiser l'application ?")) {
                 localStorage.clear();
                 sessionStorage.clear();
-                
-                // Nettoyage des cookies
-                var cookies = document.cookie.split(";");
-                for (var i = 0; i < cookies.length; i++) {
-                    var cookie = cookies[i];
-                    var eqPos = cookie.indexOf("=");
-                    var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-                }
-
-                // Feedback visuel immédiat
-                document.body.style.opacity = '0.5';
-                
-                // Rechargement forcé avec paramètre anti-cache
-                var cleanUrl = window.location.origin + window.location.pathname + '?reset=' + Date.now();
-                window.location.replace(cleanUrl);
-            } catch (e) {
-                alert("Erreur critique. Merci de vider manuellement le cache de votre navigateur.");
+                window.location.replace(window.location.origin + window.location.pathname + '?reset=' + Date.now());
             }
             return false;
         };
@@ -65,7 +46,7 @@
             color: #f1f5f9; 
             font-family: 'Inter', sans-serif; 
             overflow: hidden;
-            touch-action: pan-y; /* Permet le scroll vertical mais bloque les gestes complexes */
+            touch-action: pan-y;
         }
 
         #splash-screen {
@@ -81,40 +62,6 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ZONE BOUTON D'URGENCE */
-        #emergency-trigger {
-            position: fixed; 
-            bottom: 50px; 
-            left: 0; 
-            right: 0; 
-            text-align: center;
-            z-index: 10000; /* Priorité absolue sur le splash screen */
-            padding: 20px;
-        }
-
-        .btn-reset {
-            background: #1e293b;
-            border: 2px solid #3b82f6;
-            color: #ffffff !important;
-            padding: 20px 40px;
-            border-radius: 24px;
-            font-size: 13px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: pointer;
-            pointer-events: auto !important;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.9);
-            display: inline-block;
-            text-decoration: none;
-            -webkit-appearance: none;
-        }
-
-        .btn-reset:active {
-            transform: scale(0.92);
-            background: #3b82f6;
-        }
     </style>
 
     <script type="importmap">
@@ -141,19 +88,6 @@
     <div id="splash-screen">
         <div class="loader-ring"></div>
         <p style="margin-top: 20px; font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase; color: #475569;">CERCLE CITOYEN</p>
-    </div>
-
-    <!-- Le bouton utilise ontouchstart pour bypasser Chrome Mobile "Touch to Search" -->
-    <div id="emergency-trigger">
-        <button 
-            type="button" 
-            class="btn-reset" 
-            ontouchstart="window.forceClean(event)" 
-            onmousedown="window.forceClean(event)"
-            onclick="window.forceClean(event)"
-        >
-            Réinitialiser l'application
-        </button>
     </div>
 
     <script type="module" src="./index.tsx"></script>

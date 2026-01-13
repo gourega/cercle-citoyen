@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface LogoProps {
@@ -8,62 +7,53 @@ interface LogoProps {
   variant?: 'light' | 'dark' | 'amber' | 'blue' | 'rose';
 }
 
-const Logo: React.FC<LogoProps> = ({ className = "", size = 32, showText = true, variant = 'blue' }) => {
+const Logo: React.FC<LogoProps> = ({ className = "", size = 48, showText = true, variant = 'blue' }) => {
   const colors = {
-    dark: { accent: '#111827', text: 'text-gray-900', secondary: 'text-blue-600' },
-    light: { accent: '#ffffff', text: 'text-white', secondary: 'text-white/80' },
-    amber: { accent: '#d97706', text: 'text-amber-900', secondary: 'text-amber-600' },
-    blue: { accent: '#2563eb', text: 'text-gray-900', secondary: 'text-[#2563eb]' },
-    rose: { accent: '#e11d48', text: 'text-gray-900', secondary: 'text-rose-600' }
+    dark: { primary: '#111827', text: 'text-gray-900', secondary: 'text-blue-600' },
+    light: { primary: '#ffffff', text: 'text-white', secondary: 'text-white/80' },
+    amber: { primary: '#d97706', text: 'text-amber-900', secondary: 'text-amber-600' },
+    blue: { primary: '#3b82f6', text: 'text-gray-900', secondary: 'text-[#3b82f6]' },
+    rose: { primary: '#e11d48', text: 'text-gray-900', secondary: 'text-rose-600' }
   };
 
   const activeColor = colors[variant];
 
   return (
-    <div className={`flex items-center gap-4 ${className}`}>
-      {/* Icône avec animation de rotation fluide */}
+    <div className={`flex flex-col items-center gap-4 ${className}`}>
+      {/* Cercles Entrelacés SVG */}
       <div className="relative shrink-0">
         <svg 
-          width={size} 
+          width={size * 1.5} 
           height={size} 
-          viewBox="0 0 100 100" 
+          viewBox="0 0 120 80" 
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
-          className="animate-[spin_20s_linear_infinite]"
+          className="drop-shadow-xl"
         >
-          <circle cx="50" cy="50" r="45" stroke={activeColor.accent} strokeWidth="2" strokeDasharray="6 6" opacity="0.3" />
-          <path 
-            d="M50 20C33.43 20 20 33.43 20 50" 
-            stroke={activeColor.accent} 
-            strokeWidth="10" 
-            strokeLinecap="round"
-          />
-          <path 
-            d="M80 50C80 33.43 66.57 20 50 20" 
-            stroke={activeColor.accent} 
-            strokeWidth="10" 
-            strokeLinecap="round"
-            opacity="0.4"
-          />
-          <circle cx="50" cy="50" r="12" fill={activeColor.accent} />
+          {/* Cercle Gauche */}
+          <circle cx="40" cy="40" r="30" stroke={activeColor.primary} strokeWidth="8" opacity="0.8" />
+          {/* Cercle Droit */}
+          <circle cx="80" cy="40" r="30" stroke={activeColor.primary} strokeWidth="8" opacity="0.6" />
+          {/* Cercle Central Entrelacé */}
+          <circle cx="60" cy="50" r="25" stroke={activeColor.primary} strokeWidth="6" strokeDasharray="5 5" />
+          
+          {/* Point Central d'Impact */}
+          <circle cx="60" cy="40" r="6" fill={activeColor.primary} className="animate-pulse" />
         </svg>
       </div>
       
       {showText && (
-        <div className="flex flex-col">
+        <div className="flex flex-col items-center">
           <div className="flex items-center gap-2">
-            <span className={`text-xl md:text-2xl font-bold tracking-tight uppercase font-serif ${activeColor.text}`}>
-              CERCLE
-            </span>
-            <span className={`text-xl md:text-2xl font-bold tracking-tight uppercase font-serif ${activeColor.secondary}`}>
-              CITOYEN
+            <span className={`text-2xl md:text-3xl font-bold tracking-tighter uppercase font-serif ${activeColor.text}`}>
+              CERCLE<span className={activeColor.secondary}>.CI</span>
             </span>
           </div>
-          <div className="flex items-center justify-between text-[7px] md:text-[9px] font-black tracking-[0.45em] uppercase opacity-30 mt-0.5">
+          <div className="flex items-center justify-between w-full text-[8px] font-black tracking-[0.4em] uppercase opacity-40 mt-1">
             <span>PENSER</span>
-            <span className="mx-0.5">•</span>
+            <span>•</span>
             <span>RELIER</span>
-            <span className="mx-0.5">•</span>
+            <span>•</span>
             <span>AGIR</span>
           </div>
         </div>
