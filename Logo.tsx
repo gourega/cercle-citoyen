@@ -46,7 +46,7 @@ const Logo: React.FC<LogoProps> = ({ className = "", size = 48, showText = true,
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-2">
             <span className={`text-2xl md:text-3xl font-bold tracking-tighter uppercase font-serif ${activeColor.text}`}>
-              CERCLE<span className={activeColor.secondary}>.CI</span>
+              CERCLE <span className={activeColor.secondary}>CITOYEN</span>
             </span>
           </div>
           <div className="flex items-center justify-between w-full text-[8px] font-black tracking-[0.4em] uppercase opacity-40 mt-1">

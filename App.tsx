@@ -144,7 +144,7 @@ const DesktopNav = ({ user, onLogout }: { user: User, onLogout: () => void }) =>
     <nav className="hidden md:flex fixed top-0 inset-x-0 bg-slate-950/80 backdrop-blur-2xl border-b border-white/5 px-10 py-4 z-50 items-center justify-between">
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-blue-600/20">C</div>
-        <NavLink to="/" className="font-serif font-bold text-2xl tracking-tighter text-white">CERCLE<span className="text-blue-500">.CI</span></NavLink>
+        <NavLink to="/" className="font-serif font-bold text-2xl tracking-tighter text-white">CERCLE <span className="text-blue-500">CITOYEN</span></NavLink>
       </div>
       <div className="flex items-center gap-8">
         <NavLink to="/feed" className={({isActive}) => `text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isActive ? 'text-blue-500' : 'text-slate-500 hover:text-white'}`}>Fil d'Éveil</NavLink>
