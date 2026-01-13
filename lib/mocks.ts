@@ -4,8 +4,7 @@ import { User, Role, UserCategory, Post, CircleType, Contribution, EntityApplica
 export { Role, UserCategory, CircleType };
 export type { User, Post, Contribution, EntityApplication, Edict };
 
-// Identifiant réel de Kouassi GOBLE Ouréga
-export const ADMIN_ID = 'cdde4873-dd75-4c09-bcb2-6eb1aa960c12';
+export const ADMIN_ID = 'admin-suprême';
 
 export const MOCK_USERS: Record<string, User> = {
   u1: {
@@ -61,26 +60,6 @@ export const MOCK_POSTS: Post[] = [
     content: "**LE SACRE DE LA PAIX : AU-DELÀ DES URNES, LA FRATERNITÉ**\n\nFrères et Sœurs, le bruit des urnes s'est tu, mais l'écho des tensions résonne encore dans nos foyers et nos quartiers. Les cicatrices de ces périodes électorales ne doivent pas devenir les fossés de demain.\n\nLa démocratie est un outil, mais la Paix est notre fondation. Une élection n'est qu'un passage ; notre destin de peuple, lui, est éternel. Ici, dans ce Cercle, nous refusons que le sang ou la colère dictent notre marche.\n\nJ'appelle chaque citoyen au **Grand Palabre de la Réconciliation**. Ne cherchez pas qui a tort, cherchez comment nous pouvons, ensemble, recoudre le pagne déchiré de notre unité nationale. La Côte d'Ivoire ne se construit pas contre l'autre, elle se bâtit avec lui.\n\nKouassi GOBLE Ouréga",
     created_at: new Date().toISOString(),
     reactions: { useful: 2450, relevant: 1890, inspiring: 4200 },
-    comments: []
-  },
-  {
-    id: 'launch-official',
-    author_id: ADMIN_ID,
-    circle_type: CircleType.TECH,
-    is_majestic: true,
-    content: "**APPEL À LA SOUVERAINETÉ COLLECTIVE**\n\nLe Cercle n'est pas qu'une plateforme, c'est un serment. Celui de ne plus être de simples spectateurs de notre destin, mais les architectes de notre progrès social.\n\nIci, nous ne cherchons pas le clic, mais l'impact. Nous ne cherchons pas le buzz, mais la vérité.\n\nKouassi GOBLE Ouréga",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    reactions: { useful: 1240, relevant: 850, inspiring: 2100 },
-    comments: []
-  },
-  {
-    id: 'inst-post-1',
-    author_id: 'u2',
-    circle_type: CircleType.URBAN,
-    isInstitutional: true,
-    content: "La Mairie de Bouaké lance aujourd'hui son premier 'Sentier d'Impact' sur la gestion participative des déchets dans le quartier Commerce. \n\nNous invitons tous les résidents à consulter la carte territoriale pour voir les points de collecte citoyenne.",
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-    reactions: { useful: 340, relevant: 120, inspiring: 45 },
     comments: []
   }
 ];

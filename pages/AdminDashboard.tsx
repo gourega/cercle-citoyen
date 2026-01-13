@@ -6,9 +6,10 @@ import {
   X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
   Database, Code, Lock, ShieldQuestion, Fingerprint
 } from 'lucide-react';
-import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
-import { useToast } from '../App.tsx';
-import { Role, UserCategory } from '../types.ts';
+// Fix: remove extensions from imports
+import { supabase, isRealSupabase, db } from '../lib/supabase';
+import { useToast } from '../App';
+import { Role, UserCategory } from '../types';
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();

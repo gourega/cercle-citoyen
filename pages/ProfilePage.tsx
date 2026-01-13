@@ -4,7 +4,8 @@ import { useParams } from 'react-router-dom';
 import { User, Role } from '../types';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
-  Flame, Heart, Sparkles, Medal, Shield, Pencil, UserPlus, UserCheck, Users, MessageSquare
+  Flame, Heart, Sparkles, Medal, Shield, Pencil, UserPlus, UserCheck, Users, 
+  MessageSquare, Lock, Eye, EyeOff, ShieldAlert
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { useToast } from '../App';
@@ -65,6 +66,13 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const [syncing, setSyncing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  
+  // États pour le changement de mot de passe
+  const [showPwdFields, setShowPwdFields] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [pwdLoading, setPwdLoading] = useState(false);
+
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +127,27 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     } catch (e: any) { addToast("Erreur de sauvegarde", "error"); } finally { setSyncing(false); }
   };
 
+  const handleUpdatePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      addToast("Le mot de passe doit faire au moins 6 caractères.", "error");
+      return;
+    }
+    setPwdLoading(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await (supabase.auth as any).updateUser({ password: newPassword });
+        if (error) throw error;
+        addToast("Mot de passe mis à jour avec succès !", "success");
+        setNewPassword('');
+        setShowPwdFields(false);
+      }
+    } catch (e: any) {
+      addToast("Échec de la mise à jour.", "error");
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
   const toggleFollow = () => {
     setIsFollowing(!isFollowing);
     addToast(isFollowing ? `Soutien retiré à ${profile.name}` : `Vous soutenez désormais ${profile.name}`, "success");
@@ -169,7 +198,10 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                   </div>
                 ) : (
                   <>
-                    <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
+                    <div className="flex items-center gap-3">
+                      <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
+                      {profile.isVerifiedEntity && <ShieldCheck size={24} className="text-blue-500" />}
+                    </div>
                     <p className="text-gray-400 font-bold text-base tracking-wide flex items-center justify-center md:justify-start gap-2"><AtSign size={16} /> {profile.pseudonym}</p>
                     <div className="flex items-center justify-center md:justify-start gap-8 mt-6">
                        <div className="text-center md:text-left"><p className="text-xl font-bold text-gray-900">{isGuardian ? "1.2k" : "142"}</p><p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Soutiens</p></div>
@@ -198,6 +230,57 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                   <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6 px-1">Présentation</h3>
                   {isEditing ? <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all shadow-inner" placeholder="Décrivez votre vision..." /> : <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-10 rounded-[3rem] border border-gray-100/50 min-h-[300px] shadow-sm">{profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}</p>}
                 </section>
+
+                {isOwnProfile && (
+                  <section className="bg-gray-50 rounded-[3rem] p-10 border border-gray-100">
+                    <div className="flex items-center justify-between mb-8">
+                       <h3 className="font-serif font-bold text-2xl text-gray-900 flex items-center gap-3">
+                         <Lock size={20} className="text-blue-600" /> Sécurité du Compte
+                       </h3>
+                       <button 
+                         onClick={() => setShowPwdFields(!showPwdFields)}
+                         className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline"
+                       >
+                         {showPwdFields ? "Réduire" : "Changer mot de passe"}
+                       </button>
+                    </div>
+
+                    {showPwdFields ? (
+                      <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
+                        <div className="relative group">
+                          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" size={20} />
+                          <input 
+                            type={showPwd ? "text" : "password"}
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                            placeholder="Nouveau mot de passe (min. 6 car.)"
+                            className="w-full bg-white py-6 pl-16 pr-16 rounded-2xl outline-none shadow-sm focus:ring-4 focus:ring-blue-100 transition-all font-bold"
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => setShowPwd(!showPwd)}
+                            className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
+                          >
+                            {showPwd ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                        <button 
+                          onClick={handleUpdatePassword}
+                          disabled={pwdLoading}
+                          className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3"
+                        >
+                          {pwdLoading ? <Loader2 className="animate-spin" /> : <Shield size={16} />}
+                          Confirmer le nouveau mot de passe
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4 text-gray-400">
+                         <ShieldCheck size={40} className="opacity-20" />
+                         <p className="text-sm font-medium italic">Votre accès est protégé par l'infrastructure souveraine du Cercle.</p>
+                      </div>
+                    )}
+                  </section>
+                )}
             </div>
 
             <aside className="lg:sticky lg:top-24 space-y-10 self-start">
