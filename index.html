@@ -9,35 +9,35 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        // SCRIPT DE SURVIE - NETTOYAGE FORCE
-        const APP_VERSION = '4.4.0';
+        // SCRIPT DE SURVIE - EXÉCUTION PRIORITAIRE
+        const APP_VERSION = '4.5.0';
         
+        // Nettoyage automatique au changement de version
         if (localStorage.getItem('cercle_v') !== APP_VERSION) {
             localStorage.clear();
             sessionStorage.clear();
             localStorage.setItem('cercle_v', APP_VERSION);
-            
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(regs => {
-                    for(let r of regs) r.unregister();
-                });
-            }
+            console.log("Cache nettoyé pour v" + APP_VERSION);
         }
 
-        function forceClean() {
+        // Fonction de secours manuelle
+        window.forceClean = function() {
             localStorage.clear();
             sessionStorage.clear();
-            window.location.reload(true);
-        }
+            // Force le navigateur à ignorer le cache au rechargement
+            window.location.href = window.location.origin + window.location.pathname + '?refresh=' + Date.now();
+        };
     </script>
 
     <style>
         :root { --bg: #020617; --primary: #3b82f6; }
+        
         * { 
             -webkit-tap-highlight-color: transparent; 
-            user-select: none; /* Empêche la recherche Google au toucher */
+            user-select: none; 
         }
-        input, textarea { user-select: text; } /* Autorise la saisie dans les champs */
+        
+        input, textarea { user-select: text !important; }
 
         body { 
             background-color: var(--bg); 
@@ -51,7 +51,7 @@
         #splash-screen {
             position: fixed; inset: 0; background: var(--bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 999;
+            z-index: 9998;
         }
 
         .loader-ring {
@@ -63,21 +63,34 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         #emergency-trigger {
-            position: fixed; bottom: 30px; left: 0; right: 0; text-align: center;
-            z-index: 1000;
+            position: fixed; 
+            bottom: 40px; 
+            left: 0; 
+            right: 0; 
+            text-align: center;
+            z-index: 9999; /* Au-dessus de tout */
+            pointer-events: none;
         }
 
         .btn-reset {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #475569;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 10px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            color: #94a3b8;
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 2px;
             cursor: pointer;
+            pointer-events: auto; /* Force l'interaction */
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            transition: all 0.2s;
+        }
+
+        .btn-reset:active {
+            transform: scale(0.95);
+            background: #0f172a;
         }
     </style>
 
@@ -108,7 +121,7 @@
     </div>
 
     <div id="emergency-trigger">
-        <button class="btn-reset" onclick="forceClean()">Réinitialiser l'application</button>
+        <button type="button" class="btn-reset" onclick="window.forceClean()">Réinitialiser l'application</button>
     </div>
 
     <script type="module" src="./index.tsx"></script>
