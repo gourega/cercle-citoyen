@@ -3,34 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CERCLE CITOYEN | Réseau Social Souverain</title>
+    <title>CERCLE CITOYEN | Réseau Social</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* CSS Critique : S'affiche même si le JS échoue */
         :root { --bg: #0a0c10; --primary: #3b82f6; }
-        body { background-color: var(--bg) !important; margin: 0; color: white; font-family: system-ui, sans-serif; }
+        body { background-color: var(--bg); margin: 0; color: white; font-family: sans-serif; }
         
-        #root { min-height: 100vh; display: flex; flex-direction: column; }
-        
-        /* Splash Screen Permanent jusqu'au chargement */
         #splash-screen {
             position: fixed; inset: 0; background: var(--bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999; transition: opacity 0.5s ease;
+            z-index: 999;
         }
-        .logo-anim {
-            width: 80px; height: 80px; border: 4px solid rgba(59, 130, 246, 0.1);
-            border-top: 4px solid var(--primary); border-radius: 50%;
-            animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        .loader {
+            width: 50px; height: 50px; border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Interface de secours en cas d'erreur de serveur */
-        #critical-error {
-            display: none; position: fixed; inset: 0; background: #0f1117;
+        /* Bloc d'erreur si le serveur échoue */
+        #server-error {
+            display: none; position: fixed; inset: 0; background: #000;
             flex-direction: column; align-items: center; justify-content: center;
-            padding: 30px; text-align: center; z-index: 10000;
+            padding: 20px; text-align: center; z-index: 1000;
         }
     </style>
 
@@ -55,48 +51,43 @@
 <body>
     <div id="root"></div>
 
-    <!-- Écran de démarrage -->
     <div id="splash-screen">
-        <div class="logo-anim"></div>
-        <h1 style="margin-top: 30px; font-size: 14px; letter-spacing: 0.4em; font-weight: 900; color: var(--primary); text-transform: uppercase;">
-            Cercle Citoyen
-        </h1>
-        <p style="margin-top: 10px; font-size: 10px; color: #4b5563; font-style: italic;">Souveraineté Numérique Active</p>
+        <div class="loader"></div>
+        <p style="margin-top: 20px; color: #3b82f6; font-weight: bold; letter-spacing: 2px;">CERCLE CITOYEN</p>
     </div>
 
-    <!-- Secours Anti-Page Noire -->
-    <div id="critical-error">
-        <div style="background: rgba(239, 68, 68, 0.1); padding: 40px; border-radius: 40px; border: 1px solid rgba(239, 68, 68, 0.2); max-width: 450px;">
-            <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Lien Rompu</h2>
-            <p style="color: #9ca3af; font-size: 14px; line-height: 1.6; margin-bottom: 30px;">
-                Votre serveur refuse de charger le code de l'application (Erreur de type MIME). 
-                <br><br>
-                <b>Solution :</b> Actualisez la page en maintenant la touche <b>Maj (Shift)</b> enfoncée.
+    <div id="server-error">
+        <div style="border: 2px solid #ef4444; padding: 30px; border-radius: 20px; max-width: 400px; background: rgba(239, 68, 68, 0.1);">
+            <h2 style="color: #ef4444; margin-bottom: 15px;">⚠️ ERREUR SERVEUR</h2>
+            <p style="font-size: 14px; line-height: 1.5; color: #fca5a5;">
+                Votre serveur refuse de charger les fichiers de l'application (Erreur MIME). 
+                C'est ce qui cause l'écran noir.
             </p>
-            <button onclick="location.reload(true)" style="background: var(--primary); color: white; padding: 16px 32px; border-radius: 20px; font-weight: bold; border: none; cursor: pointer; width: 100%;">Réessayer la Connexion</button>
+            <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                Action : Contactez votre hébergeur pour autoriser les modules JavaScript ou renommez index.tsx en index.js.
+            </p>
+            <button onclick="location.reload()" style="margin-top: 20px; background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">Réessayer</button>
         </div>
     </div>
 
     <script>
-        // Surveillance active
+        // Surveillance du chargement
         window.addEventListener('error', function(e) {
-            if (e.message.includes('MIME') || e.message.includes('fetch') || e.message.includes('module')) {
-                document.getElementById('critical-error').style.display = 'flex';
+            if (e.message.includes('MIME') || e.message.includes('module')) {
+                document.getElementById('server-error').style.display = 'flex';
                 document.getElementById('splash-screen').style.display = 'none';
             }
         }, true);
 
-        // Si après 7 secondes rien ne se passe
+        // Si rien ne charge après 5 secondes
         setTimeout(() => {
-            if (document.getElementById('splash-screen').style.opacity !== '0' && 
-                document.getElementById('critical-error').style.display !== 'flex') {
-                document.getElementById('critical-error').style.display = 'flex';
+            if (document.getElementById('splash-screen').style.display !== 'none') {
+                document.getElementById('server-error').style.display = 'flex';
                 document.getElementById('splash-screen').style.display = 'none';
             }
-        }, 7000);
+        }, 5000);
     </script>
 
-    <!-- Chargement direct -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>

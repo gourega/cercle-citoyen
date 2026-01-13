@@ -1,17 +1,14 @@
 
-import React, { useState, createContext, useContext, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
-import { 
-  Home, Map, Sparkles, MessageSquare, User as UserIcon, 
-  Search, Bell, PlusCircle
-} from 'lucide-react';
+import { Home, Map, Sparkles, MessageSquare, User as UserIcon, PlusCircle, X } from 'lucide-react';
 import FeedPage from './pages/FeedPage';
 import ProfilePage from './pages/ProfilePage';
 import ActionMap from './pages/ActionMap';
 import LiveAssembly from './pages/LiveAssembly';
 import { User, Role, UserCategory } from './types';
 
-// --- TOAST SYSTEM ---
+// Define Toast types
 interface Toast {
   id: string;
   message: string;
@@ -19,71 +16,40 @@ interface Toast {
 }
 
 interface ToastContextType {
-  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-// Fix: Export useToast hook to resolve errors in sub-pages that import it from '../App'
+// Export useToast hook for other components to use
 export const useToast = () => {
   const context = useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within a ToastProvider');
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider');
+  }
   return context;
 };
 
-// Mock du citoyen actuel
-const CURRENT_CITIZEN: User = {
-  id: 'u-main',
-  name: 'Citoyen Engagé',
-  pseudonym: 'Souverain225',
-  bio: 'Pour une Côte d\'Ivoire forte et unie par le numérique.',
+const MOCK_ME: User = {
+  id: 'u-current',
+  name: 'Citoyen Ivoirien',
+  pseudonym: 'Patriote225',
+  bio: 'Engagé pour une Côte d\'Ivoire souveraine.',
   role: Role.MEMBER,
   category: UserCategory.CITIZEN,
-  interests: ['Tech', 'Social'],
+  interests: ['Civisme'],
   avatar: 'https://picsum.photos/seed/civ/200/200',
-  impactScore: 850
+  impactScore: 100
 };
 
 const Navigation = () => {
-  const tabs = [
-    { path: '/feed', icon: Home, label: 'Éveil' },
-    { path: '/map', icon: Map, label: 'Territoire' },
-    { path: '/live', icon: Sparkles, label: 'L\'Esprit', special: true },
-    { path: '/messages', icon: MessageSquare, label: 'Palabres' },
-    { path: '/profile', icon: UserIcon, label: 'Profil' }
-  ];
-
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-[#0a0c10]/90 backdrop-blur-xl border-t border-white/5 px-2 pb-8 pt-2 z-50 flex justify-around items-center md:top-0 md:bottom-auto md:px-20 md:py-4 md:border-b">
-      <div className="hidden md:flex items-center gap-2 mr-auto">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-black">C</div>
-        <span className="font-bold tracking-tighter text-xl italic">CERCLE<span className="text-blue-500">.CI</span></span>
-      </div>
-
-      <div className="flex justify-around items-center w-full md:w-auto md:gap-12">
-        {tabs.map((tab) => (
-          <NavLink 
-            key={tab.path} 
-            to={tab.path}
-            className={({ isActive }) => `flex flex-col items-center gap-1 transition-all ${
-              tab.special 
-                ? 'bg-blue-600 p-4 rounded-2xl -mt-10 shadow-xl shadow-blue-600/40 text-white scale-110' 
-                : isActive ? 'text-blue-500' : 'text-gray-500'
-            }`}
-          >
-            <tab.icon size={tab.special ? 24 : 22} />
-            {!tab.special && <span className="text-[9px] font-bold uppercase tracking-widest md:hidden">{tab.label}</span>}
-          </NavLink>
-        ))}
-      </div>
-
-      <div className="hidden md:flex items-center gap-6 ml-auto">
-        <button className="text-gray-400 hover:text-white"><Search size={20}/></button>
-        <button className="text-gray-400 hover:text-white"><Bell size={20}/></button>
-        <div className="w-10 h-10 rounded-xl bg-gray-800 border border-white/10 overflow-hidden">
-          <img src={CURRENT_CITIZEN.avatar} alt="Me" className="w-full h-full object-cover" />
-        </div>
-      </div>
+    <nav className="fixed bottom-0 inset-x-0 bg-black border-t border-white/10 p-4 z-50 flex justify-around items-center md:top-0 md:bottom-auto">
+      <NavLink to="/feed" className={({isActive}) => isActive ? "text-blue-500" : "text-gray-500"}><Home /></NavLink>
+      <NavLink to="/map" className={({isActive}) => isActive ? "text-blue-500" : "text-gray-500"}><Map /></NavLink>
+      <NavLink to="/live" className="bg-blue-600 p-3 rounded-full text-white -mt-10 md:mt-0 shadow-lg"><Sparkles /></NavLink>
+      <NavLink to="/messages" className={({isActive}) => isActive ? "text-blue-500" : "text-gray-500"}><MessageSquare /></NavLink>
+      <NavLink to="/profile" className={({isActive}) => isActive ? "text-blue-500" : "text-gray-500"}><UserIcon /></NavLink>
     </nav>
   );
 };
@@ -91,13 +57,25 @@ const Navigation = () => {
 const App: React.FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Function to add a toast notification
-  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
+  // Function to add a toast message
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    // Auto-remove toast after 5 seconds
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
+  }, []);
+
+  // Function to manually remove a toast
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  useEffect(() => {
+    // Masquer le splash screen une fois React prêt
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.style.display = 'none';
   }, []);
 
   return (
@@ -105,33 +83,30 @@ const App: React.FC = () => {
       <Router>
         <div className="min-h-screen bg-[#0a0c10] text-white">
           <Navigation />
-          
-          <main className="max-w-4xl mx-auto px-4 pt-4 pb-32 md:pt-28">
+          <main className="max-w-4xl mx-auto px-4 pb-24 pt-6 md:pt-24">
             <Routes>
-              <Route path="/" element={<FeedPage user={CURRENT_CITIZEN} />} />
-              <Route path="/feed" element={<FeedPage user={CURRENT_CITIZEN} />} />
+              <Route path="/" element={<FeedPage user={MOCK_ME} />} />
+              <Route path="/feed" element={<FeedPage user={MOCK_ME} />} />
               <Route path="/map" element={<ActionMap />} />
               <Route path="/live" element={<LiveAssembly />} />
-              <Route path="/profile" element={<ProfilePage currentUser={CURRENT_CITIZEN} onLogout={async () => {}} />} />
+              <Route path="/profile" element={<ProfilePage currentUser={MOCK_ME} onLogout={async () => {}} />} />
             </Routes>
           </main>
 
-          {/* Bouton de création flottant (Mobile) */}
-          <button className="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl z-40 active:scale-90 transition-transform">
-            <PlusCircle size={28} />
-          </button>
-
-          {/* Toast Notification Container */}
-          <div className="fixed top-24 right-4 z-[999] space-y-2 pointer-events-none">
-            {toasts.map(toast => (
-              <div 
-                key={toast.id} 
-                className={`p-4 rounded-2xl shadow-2xl text-white font-bold text-[10px] uppercase tracking-[0.2em] border border-white/10 animate-in slide-in-from-right duration-500 pointer-events-auto flex items-center gap-3 ${
-                  toast.type === 'error' ? 'bg-rose-600/90 backdrop-blur-xl' : toast.type === 'success' ? 'bg-emerald-600/90 backdrop-blur-xl' : 'bg-blue-600/90 backdrop-blur-xl'
-                }`}
+          {/* Global Toast Container */}
+          <div className="fixed top-4 right-4 z-[9999] space-y-2">
+            {toasts.map((toast) => (
+              <div
+                key={toast.id}
+                className={`flex items-center justify-between px-6 py-4 rounded-2xl shadow-2xl min-w-[300px] border border-white/10 backdrop-blur-md animate-in slide-in-from-right duration-300 ${
+                  toast.type === 'success' ? 'bg-emerald-600/90' : 
+                  toast.type === 'error' ? 'bg-rose-600/90' : 'bg-blue-600/90'
+                } text-white`}
               >
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                {toast.message}
+                <span className="font-bold text-sm">{toast.message}</span>
+                <button onClick={() => removeToast(toast.id)} className="ml-4 hover:opacity-70 transition-opacity">
+                  <X size={18} />
+                </button>
               </div>
             ))}
           </div>
