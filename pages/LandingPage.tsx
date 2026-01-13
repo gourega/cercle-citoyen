@@ -17,10 +17,10 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
     e.preventDefault();
     setLoading(true);
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email.trim().replace(/\.+$/, '').toLowerCase();
+    const targetEmail = 'cerclecitoyenci@gmail.com';
     
-    // Identifiants Maîtres : email précis + mot de passe précis
-    if (cleanEmail === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
+    if (cleanEmail === targetEmail && password === 'sagesse225') {
       setTimeout(() => {
         onLogin({
           id: 'admin',
@@ -37,14 +37,14 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
       }, 800);
     } else {
       setTimeout(() => {
-        addToast("ACCÈS REFUSÉ - CODES INVALIDES", "error");
+        addToast("ACCÈS REFUSÉ - VÉRIFIEZ VOS CODES", "error");
         setLoading(false);
       }, 600);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center py-12 px-6 selection:bg-blue-600 relative overflow-y-auto">
+    <div className="w-full flex flex-col items-center py-12 px-6 selection:bg-blue-600">
       <div className="w-full max-w-xl space-y-12">
         
         <header className="text-center space-y-8 animate-in fade-in duration-1000">
@@ -90,9 +90,14 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
                 <div className="relative">
                   <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
                   <input 
-                    type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    type="email" 
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)}
                     placeholder="nom@cercle.ci" 
                     className="w-full bg-slate-950 border border-white/5 py-5 pl-14 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all text-base"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
                     required
                   />
                 </div>
@@ -103,7 +108,9 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
                 <div className="relative">
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
                   <input 
-                    type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    type="password" 
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••" 
                     className="w-full bg-slate-950 border border-white/5 py-5 pl-14 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all text-base"
                     required
@@ -122,7 +129,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
           </div>
         )}
 
-        {/* Bouton de secours discret tout en bas */}
         <footer className="pt-20 pb-10 text-center">
           <button 
             type="button"

@@ -2,10 +2,9 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CERCLE CITOYEN | Souveraineté Numérique</title>
     
-    <!-- Icône Drapeau Côte d'Ivoire -->
     <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/128px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png">
     <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/512px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png">
     <link rel="manifest" href="./manifest.json">
@@ -14,7 +13,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        // SCRIPT DE RÉINITIALISATION DISCRET
         window.forceClean = function(event) {
             if (event) { event.preventDefault(); event.stopPropagation(); }
             if (confirm("Réinitialiser l'application ?")) {
@@ -31,23 +29,29 @@
         
         * { 
             -webkit-tap-highlight-color: transparent; 
+            box-sizing: border-box;
         }
         
-        input, textarea { 
-            user-select: text !important; 
-            -webkit-user-select: text !important; 
+        html, body {
+            background-color: var(--bg);
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            /* LIBÉRATION TOTALE DU SCROLL */
+            width: 100%;
+            height: auto !important;
+            min-height: 100% !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
         }
 
-        body { 
-            background-color: var(--bg); 
-            margin: 0; 
-            color: #f1f5f9; 
-            font-family: 'Inter', sans-serif; 
-            /* CORRECTION SCROLL : Permettre le défilement vertical */
-            overflow-x: hidden;
-            overflow-y: auto;
+        #root {
+            width: 100%;
             min-height: 100vh;
-            touch-action: pan-y;
+            display: block; /* Changement de flex à block pour un comportement de flux naturel */
         }
 
         #splash-screen {
@@ -63,6 +67,8 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        input, textarea { font-size: 16px !important; }
     </style>
 
     <script type="importmap">

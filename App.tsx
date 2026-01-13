@@ -74,7 +74,8 @@ const App: React.FC = () => {
   return (
     <ToastContext.Provider value={{ addToast }}>
       <Router>
-        <div className="min-h-screen bg-[#020617] text-slate-100 flex flex-col">
+        {/* Changement : le conteneur principal n'a plus de hauteur fixe restreinte */}
+        <div className="w-full bg-[#020617] text-slate-100 min-h-screen relative">
           {!user ? (
             <Routes>
               <Route path="/" element={<LandingPage onLogin={login} />} />
@@ -86,7 +87,8 @@ const App: React.FC = () => {
           ) : (
             <>
               <DesktopNav user={user} onLogout={logout} />
-              <main className="flex-1 max-w-6xl mx-auto w-full px-6 pt-6 md:pt-28 pb-32">
+              {/* Ajustement du padding top pour mobile vs desktop */}
+              <main className="max-w-6xl mx-auto w-full px-6 pt-10 md:pt-32 pb-32">
                 <Routes>
                   <Route path="/" element={<FeedPage user={user} />} />
                   <Route path="/feed" element={<FeedPage user={user} />} />
