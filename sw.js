@@ -1,5 +1,4 @@
-// CERCLE V4 - SCRIPT D'AUTO-DESTRUCTION
-// Ce script force le navigateur à oublier l'ancienne version.
+// CERCLE V4 - SCRIPT D'AUTO-DESTRUCTION AGRESSIF
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
