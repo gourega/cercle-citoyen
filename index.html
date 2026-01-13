@@ -31,8 +31,6 @@
         
         * { 
             -webkit-tap-highlight-color: transparent; 
-            user-select: none !important; 
-            -webkit-user-select: none !important;
         }
         
         input, textarea { 
@@ -45,7 +43,10 @@
             margin: 0; 
             color: #f1f5f9; 
             font-family: 'Inter', sans-serif; 
-            overflow: hidden;
+            /* CORRECTION SCROLL : Permettre le défilement vertical */
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 100vh;
             touch-action: pan-y;
         }
 

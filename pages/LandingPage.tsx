@@ -16,8 +16,11 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Identifiants Maîtres
-    if (email === 'admin@cercle.ci' || (email === 'cerclecitoyenci@gmail.com' && password === 'sagesse225')) {
+
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Identifiants Maîtres : email précis + mot de passe précis
+    if (cleanEmail === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
       setTimeout(() => {
         onLogin({
           id: 'admin',
@@ -31,17 +34,17 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
           impactScore: 19740
         });
         navigate('/feed');
-      }, 1000);
+      }, 800);
     } else {
       setTimeout(() => {
         addToast("ACCÈS REFUSÉ - CODES INVALIDES", "error");
         setLoading(false);
-      }, 800);
+      }, 600);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 selection:bg-blue-600 relative">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center py-12 px-6 selection:bg-blue-600 relative overflow-y-auto">
       <div className="w-full max-w-xl space-y-12">
         
         <header className="text-center space-y-8 animate-in fade-in duration-1000">
@@ -55,7 +58,7 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
           <div className="grid gap-6 animate-in slide-in-from-bottom-12 duration-700">
             <button 
               onClick={() => navigate('/manifesto')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] transition-all flex items-center justify-between shadow-2xl shadow-blue-900/40 group"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] transition-all flex items-center justify-between shadow-2xl shadow-blue-900/40 group active:scale-95"
             >
               <div className="flex items-center gap-6">
                 <BookOpen size={24} className="text-blue-200" />
@@ -66,7 +69,7 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
 
             <button 
               onClick={() => setShowLogin(true)}
-              className="w-full bg-slate-900 hover:bg-black text-slate-300 p-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] border border-white/5 transition-all flex items-center justify-between group"
+              className="w-full bg-slate-900 hover:bg-black text-slate-300 p-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] border border-white/5 transition-all flex items-center justify-between group active:scale-95"
             >
               <div className="flex items-center gap-6">
                 <Lock size={24} />
@@ -90,6 +93,7 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
                     type="email" value={email} onChange={e => setEmail(e.target.value)}
                     placeholder="nom@cercle.ci" 
                     className="w-full bg-slate-950 border border-white/5 py-5 pl-14 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all text-base"
+                    required
                   />
                 </div>
               </div>
@@ -102,13 +106,14 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
                     type="password" value={password} onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••" 
                     className="w-full bg-slate-950 border border-white/5 py-5 pl-14 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all text-base"
+                    required
                   />
                 </div>
               </div>
 
               <button 
                 type="submit" disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20 active:scale-95"
               >
                 {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={16} />}
                 {loading ? "VÉRIFICATION..." : "ENTRER DANS LE CERCLE"}
@@ -117,8 +122,8 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
           </div>
         )}
 
-        {/* Bouton de secours discret en bas */}
-        <footer className="pt-12 text-center">
+        {/* Bouton de secours discret tout en bas */}
+        <footer className="pt-20 pb-10 text-center">
           <button 
             type="button"
             onClick={() => (window as any).forceClean()}
