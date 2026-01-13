@@ -9,42 +9,42 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        // 1. TUER LES SERVICE WORKERS (Cause du blocage sur mobile)
+        // DESACTIVATION AGRESSIVE DES SERVICE WORKERS
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
-                for(let registration of registrations) {
-                    registration.unregister();
-                    console.log('Ancien Service Worker supprimé');
-                }
+                for(let registration of registrations) { registration.unregister(); }
             });
         }
 
-        // 2. NETTOYER LE CACHE LOCAL (V4 Force)
-        const VERSION = '4.1.0';
+        // FORCE RESET SI VERSION OBSOLETE
+        const VERSION = '4.2.0';
         if (localStorage.getItem('app_version') !== VERSION) {
             localStorage.clear();
             sessionStorage.clear();
             localStorage.setItem('app_version', VERSION);
-            // On force un rechargement propre sans cache une seule fois
-            window.location.reload(true);
+        }
+
+        function forceEmergencyReset() {
+            localStorage.clear();
+            sessionStorage.clear();
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    for(let r of regs) r.unregister();
+                    window.location.reload(true);
+                });
+            } else {
+                window.location.reload(true);
+            }
         }
     </script>
 
     <style>
         :root { --bg: #020617; --primary: #3b82f6; }
-        body { 
-            background-color: var(--bg); 
-            margin: 0; 
-            color: #f1f5f9; 
-            font-family: 'Inter', sans-serif; 
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .font-serif { font-family: 'Playfair Display', serif; }
+        body { background-color: var(--bg); margin: 0; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
         #splash-screen {
             position: fixed; inset: 0; background: var(--bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 999;
+            z-index: 999; transition: opacity 0.5s ease;
         }
         .loader-ring {
             width: 40px; height: 40px; border: 2px solid rgba(59, 130, 246, 0.1);
@@ -52,6 +52,11 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        #emergency-btn {
+            margin-top: 40px; padding: 10px 20px; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+            color: #475569; cursor: pointer; display: none;
+        }
     </style>
 
     <script type="importmap">
@@ -77,7 +82,14 @@
     <div id="splash-screen">
         <div class="loader-ring"></div>
         <p style="margin-top: 20px; font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase; color: #475569;">CERCLE CITOYEN</p>
+        <button id="emergency-btn" onclick="forceEmergencyReset()">Réinitialiser le cache</button>
     </div>
+    <script>
+        // Afficher le bouton de secours après 4 secondes si ça bloque
+        setTimeout(() => {
+            document.getElementById('emergency-btn').style.display = 'block';
+        }, 4000);
+    </script>
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
