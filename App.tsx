@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
+/* Import useNavigate from react-router-dom to fix the error on line 191 */
+import { HashRouter as Router, Routes, Route, NavLink, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { 
   Home, Map, Sparkles, MessageSquare, User as UserIcon, 
   X, Gavel, LayoutGrid, Lightbulb, ShieldCheck, Video, 
-  Heart, Settings, Bell, ChevronLeft, BookOpen, ShieldAlert
+  Heart, Settings, Bell, ChevronLeft, BookOpen, ShieldAlert,
+  Menu as MenuIcon, Layout
 } from 'lucide-react';
 
 // Pages & Components
@@ -44,6 +46,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isReady, setIsReady] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('cercle_user');
@@ -74,7 +77,6 @@ const App: React.FC = () => {
   return (
     <ToastContext.Provider value={{ addToast }}>
       <Router>
-        {/* Changement : le conteneur principal n'a plus de hauteur fixe restreinte */}
         <div className="w-full bg-[#020617] text-slate-100 min-h-screen relative">
           {!user ? (
             <Routes>
@@ -87,7 +89,6 @@ const App: React.FC = () => {
           ) : (
             <>
               <DesktopNav user={user} onLogout={logout} />
-              {/* Ajustement du padding top pour mobile vs desktop */}
               <main className="max-w-6xl mx-auto w-full px-6 pt-10 md:pt-32 pb-32">
                 <Routes>
                   <Route path="/" element={<FeedPage user={user} />} />
@@ -111,7 +112,8 @@ const App: React.FC = () => {
                   <Route path="*" element={<Navigate to="/feed" replace />} />
                 </Routes>
               </main>
-              <MobileNav />
+              <MobileNav onOpenMenu={() => setIsMobileMenuOpen(true)} />
+              {isMobileMenuOpen && <MobileMenuOverlay onClose={() => setIsMobileMenuOpen(false)} user={user} />}
               <GuardianAssistant />
             </>
           )}
@@ -135,11 +137,13 @@ const App: React.FC = () => {
 
 const DesktopNav = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
   const tools = [
-    { path: '/map', icon: Map, label: 'Carte' },
-    { path: '/circles', icon: LayoutGrid, label: 'Cercles' },
-    { path: '/ideas', icon: Lightbulb, label: 'Idées' },
-    { path: '/market', icon: Heart, label: 'Marché' },
-    { path: '/sentinel', icon: ShieldCheck, label: 'Sentinelle' }
+    { path: '/feed', label: "Fil d'Éveil" },
+    { path: '/messages', label: 'Palabre' },
+    { path: '/map', label: 'Carte' },
+    { path: '/circles', label: 'Cercles' },
+    { path: '/ideas', label: 'Idées' },
+    { path: '/market', label: 'Marché' },
+    { path: '/sentinel', label: 'Sentinelle' }
   ];
 
   return (
@@ -148,8 +152,7 @@ const DesktopNav = ({ user, onLogout }: { user: User, onLogout: () => void }) =>
         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-blue-600/20">C</div>
         <NavLink to="/" className="font-serif font-bold text-2xl tracking-tighter text-white">CERCLE <span className="text-blue-500">CITOYEN</span></NavLink>
       </div>
-      <div className="flex items-center gap-8">
-        <NavLink to="/feed" className={({isActive}) => `text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isActive ? 'text-blue-500' : 'text-slate-500 hover:text-white'}`}>Fil d'Éveil</NavLink>
+      <div className="flex items-center gap-6 lg:gap-8">
         {tools.map(t => (
           <NavLink key={t.path} to={t.path} className={({isActive}) => `text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isActive ? 'text-blue-500' : 'text-slate-500 hover:text-white'}`}>{t.label}</NavLink>
         ))}
@@ -158,10 +161,6 @@ const DesktopNav = ({ user, onLogout }: { user: User, onLogout: () => void }) =>
         </NavLink>
       </div>
       <div className="flex items-center gap-6">
-        <NavLink to="/messages" className="text-slate-500 hover:text-white transition-colors relative">
-          <MessageSquare size={20} />
-          <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-        </NavLink>
         <NavLink to="/profile" className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 overflow-hidden ring-2 ring-transparent hover:ring-blue-500 transition-all">
           <img src={user.avatar} className="w-full h-full object-cover" alt="" />
         </NavLink>
@@ -171,14 +170,14 @@ const DesktopNav = ({ user, onLogout }: { user: User, onLogout: () => void }) =>
   );
 }
 
-const MobileNav = () => (
+const MobileNav = ({ onOpenMenu }: { onOpenMenu: () => void }) => (
   <nav className="md:hidden fixed bottom-0 inset-x-0 bg-slate-950/90 backdrop-blur-3xl border-t border-white/5 px-2 pb-8 pt-2 z-50 flex justify-around items-center">
     <NavLink to="/feed" className={({isActive}) => `flex flex-col items-center gap-1 ${isActive ? 'text-blue-500' : 'text-slate-500'}`}>
       <Home size={22} /><span className="text-[8px] font-black uppercase tracking-widest">Fil</span>
     </NavLink>
-    <NavLink to="/circles" className={({isActive}) => `flex flex-col items-center gap-1 ${isActive ? 'text-blue-500' : 'text-slate-500'}`}>
-      <LayoutGrid size={22} /><span className="text-[8px] font-black uppercase tracking-widest">Cercles</span>
-    </NavLink>
+    <button onClick={onOpenMenu} className="flex flex-col items-center gap-1 text-slate-500">
+      <Layout size={22} /><span className="text-[8px] font-black uppercase tracking-widest">Menu</span>
+    </button>
     <NavLink to="/live" className="bg-blue-600 p-4 rounded-2xl -mt-12 shadow-2xl shadow-blue-600/40 text-white active:scale-90 transition-transform"><Sparkles size={28} /></NavLink>
     <NavLink to="/messages" className={({isActive}) => `flex flex-col items-center gap-1 ${isActive ? 'text-blue-500' : 'text-slate-500'}`}>
       <MessageSquare size={22} /><span className="text-[8px] font-black uppercase tracking-widest">Palabre</span>
@@ -188,5 +187,48 @@ const MobileNav = () => (
     </NavLink>
   </nav>
 );
+
+const MobileMenuOverlay = ({ onClose, user }: { onClose: () => void, user: User }) => {
+  /* Fix: Use the imported useNavigate from react-router-dom */
+  const navigate = useNavigate();
+  const tools = [
+    { path: '/map', icon: Map, label: 'Carte', color: 'bg-emerald-500/10 text-emerald-500' },
+    { path: '/circles', icon: LayoutGrid, label: 'Cercles', color: 'bg-blue-500/10 text-blue-500' },
+    { path: '/ideas', icon: Lightbulb, label: 'Idées', color: 'bg-yellow-500/10 text-yellow-500' },
+    { path: '/market', icon: Heart, label: 'Marché', color: 'bg-rose-500/10 text-rose-500' },
+    { path: '/sentinel', icon: ShieldCheck, label: 'Sentinelle', color: 'bg-teal-500/10 text-teal-500' },
+    { path: '/griot-studio', icon: Video, label: 'Griot', color: 'bg-amber-500/10 text-amber-500' },
+    { path: '/impact-studio', icon: Sparkles, label: 'Impact', color: 'bg-indigo-500/10 text-indigo-500' },
+    { path: '/governance', icon: Gavel, label: 'Édits', color: 'bg-slate-500/10 text-slate-400' }
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in slide-in-from-bottom-20 duration-500">
+      <header className="p-8 flex justify-between items-center border-b border-white/5">
+        <h2 className="text-2xl font-serif font-bold text-white tracking-tight">Toute la Cité</h2>
+        <button onClick={onClose} className="p-3 bg-white/5 rounded-2xl text-slate-400 hover:text-white transition-all"><X size={24} /></button>
+      </header>
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="grid grid-cols-2 gap-4">
+          {tools.map((t) => (
+            <button
+              key={t.path}
+              onClick={() => { navigate(t.path); onClose(); }}
+              className="flex flex-col items-center justify-center p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-all group active:scale-95"
+            >
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${t.color}`}>
+                <t.icon size={28} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 group-hover:text-white">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <footer className="p-10 border-t border-white/5 bg-slate-900/50">
+        <p className="text-[8px] font-black text-center text-slate-600 uppercase tracking-[0.5em]">CERCLE CITOYEN • V4.2.0</p>
+      </footer>
+    </div>
+  );
+};
 
 export default App;
