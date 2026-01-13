@@ -30,6 +30,8 @@
         * { 
             -webkit-tap-highlight-color: transparent; 
             box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         html, body {
@@ -38,7 +40,6 @@
             font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
-            /* LIBÉRATION TOTALE DU SCROLL */
             width: 100%;
             height: auto !important;
             min-height: 100% !important;
@@ -46,12 +47,14 @@
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
             position: relative;
+            /* Réduction globale de la taille de base */
+            font-size: 15px;
         }
 
         #root {
             width: 100%;
             min-height: 100vh;
-            display: block; /* Changement de flex à block pour un comportement de flux naturel */
+            display: block;
         }
 
         #splash-screen {
@@ -61,7 +64,7 @@
         }
 
         .loader-ring {
-            width: 40px; height: 40px; border: 2px solid rgba(59, 130, 246, 0.1);
+            width: 32px; height: 32px; border: 2px solid rgba(59, 130, 246, 0.1);
             border-top: 2px solid var(--primary); border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -94,7 +97,7 @@
     
     <div id="splash-screen">
         <div class="loader-ring"></div>
-        <p style="margin-top: 20px; font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase; color: #475569;">CERCLE CITOYEN</p>
+        <p style="margin-top: 20px; font-size: 9px; letter-spacing: 0.5em; text-transform: uppercase; color: #475569;">CERCLE CITOYEN</p>
     </div>
 
     <script type="module" src="./index.tsx"></script>
