@@ -5,22 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CERCLE CITOYEN - SOUVERAINETÉ</title>
     
+    <!-- Contrôle strict du cache pour éviter le retour du "Zombie" -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Styles critiques pour enterrer définitivement le "Zombie" vert */
-      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: sans-serif; }
+      /* Thème de base immédiat pour éviter le flash blanc */
+      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: sans-serif; overflow-x: hidden; }
       #root { min-height: 100vh; background-color: #0a0c10; }
       
-      /* On force la disparition de tout ce qui appartient à l'ancienne version (Liaison Souveraine) */
-      #liaison-banner, .green-banner, .bg-green-600, #zombie-overlay, [class*="green-"], [class*="emerald-"] { 
+      /* Masquage forcé des résidus visuels de l'ancienne version */
+      #liaison-banner, .green-banner, .bg-green-600, #zombie-overlay { 
         display: none !important; 
         visibility: hidden !important;
         opacity: 0 !important;
-        pointer-events: none !important;
       }
 
       #version-tag {
@@ -57,26 +57,21 @@
     <div id="version-tag">CERCLE-V4-SOUVERAINETÉ-ACTIVE</div>
 
     <script>
-      // Protocole de nettoyage immédiat des anciens Service Workers qui maintiennent le cache zombie
+      // Purge des anciens Service Workers en arrière-plan
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister().then(function() {
-              console.log('Système : Ancien Service Worker démantelé.');
-            });
-          }
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for(let r of regs) r.unregister();
         });
       }
-      
-      // Vidage forcé des caches du navigateur pour garantir le chargement des nouveaux modules
+      // Vidage des caches API
       if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) caches.delete(name);
+        caches.keys().then(keys => {
+          for(let k of keys) caches.delete(k);
         });
       }
     </script>
 
-    <!-- Entrée principale déclarée de façon statique pour permettre la transpilation correcte par l'environnement -->
+    <!-- Point d'entrée unique de l'application -->
     <script type="module" src="index.tsx"></script>
 </body>
 </html>
