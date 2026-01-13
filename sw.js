@@ -1,18 +1,14 @@
-// CERCLE V4 - SCRIPT D'AUTO-DESTRUCTION AGRESSIF
-self.addEventListener('install', () => {
+// Désactivation totale du Service Worker pour la V4
+self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.map(key => caches.delete(key)));
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((names) => {
+      return Promise.all(names.map(name => caches.delete(name)));
     }).then(() => {
       return self.registration.unregister();
-    }).then(() => {
-      return self.clients.matchAll().then(clients => {
-        clients.forEach(client => client.navigate(client.url));
-      });
     })
   );
 });
