@@ -3,26 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CERCLE CITOYEN - SOUVERAINETÉ</title>
+    <title>CERCLE CITOYEN</title>
     
-    <!-- Contrôle strict du cache pour éviter le retour du "Zombie" -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Thème de base immédiat pour éviter le flash blanc */
-      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: sans-serif; overflow-x: hidden; }
+      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: sans-serif; }
       #root { min-height: 100vh; background-color: #0a0c10; }
       
-      /* Masquage forcé des résidus visuels de l'ancienne version */
-      #liaison-banner, .green-banner, .bg-green-600, #zombie-overlay { 
-        display: none !important; 
-        visibility: hidden !important;
-        opacity: 0 !important;
+      /* Message de secours caché par défaut */
+      #fallback-ui { 
+        display: none; 
+        position: fixed; 
+        inset: 0; 
+        z-index: 9999; 
+        background: #0a0c10; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        padding: 20px;
+        text-align: center;
       }
-
+      
       #version-tag {
         position: fixed;
         bottom: 10px;
@@ -53,25 +54,43 @@
 </script>
 </head>
 <body>
-    <div id="root"></div>
-    <div id="version-tag">CERCLE-V4-SOUVERAINETÉ-ACTIVE</div>
+    <div id="root">
+      <!-- Indicateur de chargement initial -->
+      <div id="initial-loader" style="height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
+        <div style="width: 40px; height: 40px; border: 3px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="font-size: 10px; letter-spacing: 0.2em; color: #4b5563; font-weight: 900; text-transform: uppercase;">Initialisation du Cercle...</p>
+      </div>
+    </div>
+
+    <div id="fallback-ui">
+      <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 10px;">Erreur de Liaison</h2>
+      <p style="color: #9ca3af; max-width: 400px; margin-bottom: 20px;">Le système n'a pas pu charger les modules souverains. Cela arrive souvent après une mise à jour du serveur.</p>
+      <button onclick="location.reload(true)" style="background: #3b82f6; color: white; padding: 12px 24px; border-radius: 12px; font-weight: bold; border: none; cursor: pointer;">Forcer le Redémarrage</button>
+    </div>
+
+    <div id="version-tag">CERCLE-V4-FIX-MIME</div>
+
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
     <script>
-      // Purge des anciens Service Workers en arrière-plan
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          for(let r of regs) r.unregister();
-        });
-      }
-      // Vidage des caches API
-      if ('caches' in window) {
-        caches.keys().then(keys => {
-          for(let k of keys) caches.delete(k);
-        });
-      }
+      // Système de surveillance du chargement
+      window.addEventListener('error', function(e) {
+        if (e.message.includes('MIME') || e.message.includes('fetch')) {
+          document.getElementById('fallback-ui').style.display = 'flex';
+          document.getElementById('initial-loader').style.display = 'none';
+        }
+      }, true);
+
+      // Si après 5 secondes on est toujours sur le loader, on affiche l'aide
+      setTimeout(() => {
+        const loader = document.getElementById('initial-loader');
+        if (loader && loader.offsetParent !== null) {
+          document.getElementById('fallback-ui').style.display = 'flex';
+        }
+      }, 5000);
     </script>
 
-    <!-- Point d'entrée unique de l'application -->
-    <script type="module" src="index.tsx"></script>
+    <!-- Chargement relatif strict -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
