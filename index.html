@@ -9,42 +9,35 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
-        // DESACTIVATION AGRESSIVE DES SERVICE WORKERS
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for(let registration of registrations) { registration.unregister(); }
-            });
-        }
-
-        // FORCE RESET SI VERSION OBSOLETE
-        const VERSION = '4.2.0';
-        if (localStorage.getItem('app_version') !== VERSION) {
+        // SCRIPT DE SURVIE (Exécuté avant tout)
+        const APP_VERSION = '4.3.0';
+        
+        // Nettoyage si nouvelle version
+        if (localStorage.getItem('cercle_v') !== APP_VERSION) {
             localStorage.clear();
             sessionStorage.clear();
-            localStorage.setItem('app_version', VERSION);
-        }
-
-        function forceEmergencyReset() {
-            localStorage.clear();
-            sessionStorage.clear();
+            localStorage.setItem('cercle_v', APP_VERSION);
+            
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(regs => {
                     for(let r of regs) r.unregister();
-                    window.location.reload(true);
                 });
-            } else {
-                window.location.reload(true);
             }
+        }
+
+        function forceClean() {
+            localStorage.clear();
+            location.reload(true);
         }
     </script>
 
     <style>
         :root { --bg: #020617; --primary: #3b82f6; }
-        body { background-color: var(--bg); margin: 0; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
+        body { background-color: var(--bg); margin: 0; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden; }
         #splash-screen {
             position: fixed; inset: 0; background: var(--bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 999; transition: opacity 0.5s ease;
+            z-index: 999;
         }
         .loader-ring {
             width: 40px; height: 40px; border: 2px solid rgba(59, 130, 246, 0.1);
@@ -52,10 +45,10 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #emergency-btn {
-            margin-top: 40px; padding: 10px 20px; border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
-            color: #475569; cursor: pointer; display: none;
+        #emergency-link {
+            position: fixed; bottom: 20px; left: 0; right: 0; text-align: center;
+            font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 2px;
+            text-decoration: underline; cursor: pointer; z-index: 1000;
         }
     </style>
 
@@ -82,14 +75,8 @@
     <div id="splash-screen">
         <div class="loader-ring"></div>
         <p style="margin-top: 20px; font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase; color: #475569;">CERCLE CITOYEN</p>
-        <button id="emergency-btn" onclick="forceEmergencyReset()">Réinitialiser le cache</button>
     </div>
-    <script>
-        // Afficher le bouton de secours après 4 secondes si ça bloque
-        setTimeout(() => {
-            document.getElementById('emergency-btn').style.display = 'block';
-        }, 4000);
-    </script>
+    <div id="emergency-link" onclick="forceClean()">Réinitialiser si bloqué</div>
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
