@@ -7,27 +7,31 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Thème de base immédiat */
-      body { background-color: #0a0c10 !important; margin: 0; color: white; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
-      #root { min-height: 100vh; background-color: #0a0c10; }
-      
-      /* Loader Prestige */
-      #initial-loader {
-        position: fixed; inset: 0; background: #0a0c10; display: flex;
-        flex-direction: column; align-items: center; justify-content: center; z-index: 10000;
-      }
-      .spinner {
-        width: 50px; height: 50px; border: 3px solid rgba(59, 130, 246, 0.1);
-        border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;
-      }
-      @keyframes spin { to { transform: rotate(360deg); } }
+        /* CSS Critique : S'affiche même si le JS échoue */
+        :root { --bg: #0a0c10; --primary: #3b82f6; }
+        body { background-color: var(--bg) !important; margin: 0; color: white; font-family: system-ui, sans-serif; }
+        
+        #root { min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Splash Screen Permanent jusqu'au chargement */
+        #splash-screen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.5s ease;
+        }
+        .logo-anim {
+            width: 80px; height: 80px; border: 4px solid rgba(59, 130, 246, 0.1);
+            border-top: 4px solid var(--primary); border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-      /* Interface de secours si le JS échoue */
-      #fallback-ui {
-        display: none; position: fixed; inset: 0; z-index: 9999;
-        background: radial-gradient(circle at center, #1a1c2e 0%, #0a0c10 100%);
-        flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;
-      }
+        /* Interface de secours en cas d'erreur de serveur */
+        #critical-error {
+            display: none; position: fixed; inset: 0; background: #0f1117;
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px; text-align: center; z-index: 10000;
+        }
     </style>
 
     <script type="importmap">
@@ -51,48 +55,48 @@
 <body>
     <div id="root"></div>
 
-    <!-- Écran de chargement initial -->
-    <div id="initial-loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; font-size: 10px; font-weight: 900; letter-spacing: 0.3em; color: #3b82f6; text-transform: uppercase;">
-          Initialisation du Cercle...
-        </p>
+    <!-- Écran de démarrage -->
+    <div id="splash-screen">
+        <div class="logo-anim"></div>
+        <h1 style="margin-top: 30px; font-size: 14px; letter-spacing: 0.4em; font-weight: 900; color: var(--primary); text-transform: uppercase;">
+            Cercle Citoyen
+        </h1>
+        <p style="margin-top: 10px; font-size: 10px; color: #4b5563; font-style: italic;">Souveraineté Numérique Active</p>
     </div>
 
-    <!-- Interface de Secours (Diagnostic) -->
-    <div id="fallback-ui">
-        <div style="background: rgba(239, 68, 68, 0.1); padding: 30px; border-radius: 30px; border: 1px solid rgba(239, 68, 68, 0.2); max-width: 400px;">
-          <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 15px;">Erreur de Liaison</h2>
-          <p style="color: #9ca3af; font-size: 14px; line-height: 1.6; margin-bottom: 25px;">
-            Le serveur de <b>cerclecitoyen.ci</b> ne parvient pas à délivrer les modules de l'application (Erreur MIME). 
-          </p>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button onclick="location.reload(true)" style="background: #3b82f6; color: white; padding: 15px; border-radius: 15px; font-weight: bold; border: none; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Forcer le Redémarrage</button>
-            <p style="font-size: 9px; color: #4b5563; margin-top: 10px;">Mention : CERCLE-V4-SOUVERAINETÉ-ACTIVE</p>
-          </div>
+    <!-- Secours Anti-Page Noire -->
+    <div id="critical-error">
+        <div style="background: rgba(239, 68, 68, 0.1); padding: 40px; border-radius: 40px; border: 1px solid rgba(239, 68, 68, 0.2); max-width: 450px;">
+            <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Lien Rompu</h2>
+            <p style="color: #9ca3af; font-size: 14px; line-height: 1.6; margin-bottom: 30px;">
+                Votre serveur refuse de charger le code de l'application (Erreur de type MIME). 
+                <br><br>
+                <b>Solution :</b> Actualisez la page en maintenant la touche <b>Maj (Shift)</b> enfoncée.
+            </p>
+            <button onclick="location.reload(true)" style="background: var(--primary); color: white; padding: 16px 32px; border-radius: 20px; font-weight: bold; border: none; cursor: pointer; width: 100%;">Réessayer la Connexion</button>
         </div>
     </div>
 
     <script>
-      // Surveillance du chargement
-      window.addEventListener('error', function(e) {
-        if (e.message.includes('MIME') || e.message.includes('fetch') || e.message.includes('module')) {
-          document.getElementById('fallback-ui').style.display = 'flex';
-          document.getElementById('initial-loader').style.display = 'none';
-        }
-      }, true);
+        // Surveillance active
+        window.addEventListener('error', function(e) {
+            if (e.message.includes('MIME') || e.message.includes('fetch') || e.message.includes('module')) {
+                document.getElementById('critical-error').style.display = 'flex';
+                document.getElementById('splash-screen').style.display = 'none';
+            }
+        }, true);
 
-      // Si après 6 secondes React n'a pas pris la main, on affiche le secours
-      setTimeout(() => {
-        const loader = document.getElementById('initial-loader');
-        if (loader && loader.style.display !== 'none') {
-          document.getElementById('fallback-ui').style.display = 'flex';
-          loader.style.display = 'none';
-        }
-      }, 6000);
+        // Si après 7 secondes rien ne se passe
+        setTimeout(() => {
+            if (document.getElementById('splash-screen').style.opacity !== '0' && 
+                document.getElementById('critical-error').style.display !== 'flex') {
+                document.getElementById('critical-error').style.display = 'flex';
+                document.getElementById('splash-screen').style.display = 'none';
+            }
+        }, 7000);
     </script>
 
-    <!-- Point d'entrée de l'application -->
+    <!-- Chargement direct -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
