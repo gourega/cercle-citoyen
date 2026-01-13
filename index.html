@@ -5,15 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CERCLE CITOYEN | Réseau Social Souverain</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --bg: #0a0c10; --primary: #3b82f6; }
         body { 
             background-color: var(--bg); 
             margin: 0; 
-            color: white; 
+            color: #e2e8f0; 
             font-family: 'Inter', sans-serif; 
+            line-height: 1.8;
+            font-size: 18px;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
         }
@@ -31,12 +33,6 @@
             animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        #server-error {
-            display: none; position: fixed; inset: 0; background: #000;
-            flex-direction: column; align-items: center; justify-content: center;
-            padding: 30px; text-align: center; z-index: 1000;
-        }
 
         /* Scrollbar élégante */
         ::-webkit-scrollbar { width: 6px; }
@@ -70,32 +66,8 @@
         <div class="loader-ring"></div>
         <div style="margin-top: 30px; text-align: center;">
             <h1 style="font-size: 14px; letter-spacing: 0.6em; font-weight: 900; color: var(--primary); text-transform: uppercase;">Cercle Citoyen</h1>
-            <p style="font-size: 10px; color: #4b5563; margin-top: 10px; font-weight: bold;">SOUVERAINETÉ NUMÉRIQUE IVOIRIENNE</p>
         </div>
     </div>
-
-    <div id="server-error">
-        <div style="border: 2px solid #ef4444; padding: 40px; border-radius: 40px; max-width: 400px; background: rgba(239, 68, 68, 0.05); backdrop-blur-xl;">
-            <h2 style="color: #ef4444; font-size: 24px; font-weight: bold; margin-bottom: 20px;">ERREUR SERVEUR</h2>
-            <p style="color: #9ca3af; font-size: 14px; line-height: 1.6;">Le serveur refuse de charger les modules. Contactez votre hébergeur pour autoriser les fichiers .tsx ou transformez-les en .js.</p>
-            <button onclick="location.reload()" style="margin-top: 30px; background: #3b82f6; color: white; border: none; padding: 15px 30px; border-radius: 20px; font-weight: bold; cursor: pointer; width: 100%;">Réessayer</button>
-        </div>
-    </div>
-
-    <script>
-        window.addEventListener('error', function(e) {
-            if (e.message && (e.message.includes('MIME') || e.message.includes('module'))) {
-                document.getElementById('server-error').style.display = 'flex';
-                document.getElementById('splash-screen').style.display = 'none';
-            }
-        }, true);
-        setTimeout(() => {
-            if (document.getElementById('splash-screen').style.display !== 'none') {
-                document.getElementById('server-error').style.display = 'flex';
-                document.getElementById('splash-screen').style.display = 'none';
-            }
-        }, 10000);
-    </script>
 
     <script type="module" src="./index.tsx"></script>
 </body>

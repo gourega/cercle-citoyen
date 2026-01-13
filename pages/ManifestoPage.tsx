@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Quote, Target, Eye, CheckCircle2, ArrowRight } from 'lucide-react';
@@ -11,17 +10,11 @@ const ManifestoPage: React.FC = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
+        if (entry.isIntersecting) setIsVisible(true);
       },
       { threshold: 0.2 }
     );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
+    if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
 
@@ -31,99 +24,92 @@ const ManifestoPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-white min-h-screen">
-      {/* Header / Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-50 px-4 py-4">
+    <div className="bg-[#0a0c10] min-h-screen text-slate-300 selection:bg-blue-500">
+      <nav className="sticky top-0 z-50 bg-[#0a0c10]/80 backdrop-blur-md border-b border-white/5 px-6 py-6">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <Link to="/" className="flex items-center text-gray-400 hover:text-gray-900 transition-colors font-bold text-sm group">
-            <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour
+          <Link to="/" className="flex items-center text-slate-500 hover:text-white transition-colors font-bold text-sm group uppercase tracking-widest">
+            <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Retour
           </Link>
-          <span className="text-[11px] font-bold text-blue-600 text-right max-w-[280px] sm:max-w-none leading-tight">
-            Tu es invité à prendre connaissance du manifeste avant de rejoindre le Cercle.
+          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest text-right">
+            LECTURE OBLIGATOIRE DU MANIFESTE
           </span>
         </div>
       </nav>
 
-      <article className="max-w-4xl mx-auto px-6 py-20">
-        {/* Hero Section */}
-        <header className="text-center mb-24 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold text-gray-900 mb-8 leading-tight">
-            Manifeste <br />fondateur
+      <article className="max-w-3xl mx-auto px-6 py-24 md:py-32">
+        <header className="text-center mb-32 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <h1 className="text-6xl md:text-8xl font-serif font-bold text-white mb-10 leading-tight tracking-tighter">
+            Manifeste <br />Fondateur
           </h1>
-          <p className="text-xl md:text-2xl font-serif italic text-blue-600 mb-12">
-            Un espace pour penser, relier et agir
+          <p className="text-2xl md:text-3xl font-serif italic text-blue-500 mb-12">
+            "Penser. Relier. Agir."
           </p>
-          <div className="w-24 h-1 bg-gray-900 mx-auto"></div>
+          <div className="w-24 h-1 bg-blue-600 mx-auto rounded-full"></div>
         </header>
 
-        {/* Intro Section */}
-        <section className="space-y-8 text-lg md:text-xl text-gray-700 leading-relaxed mb-24">
+        <section className="space-y-12 text-xl md:text-2xl text-slate-300 leading-[1.8] mb-32">
           <div className="relative">
-            <Quote className="absolute -left-8 -top-8 w-16 h-16 text-gray-50 -z-10" />
-            <p className="first-letter:text-7xl first-letter:font-serif first-letter:font-bold first-letter:mr-3 first-letter:float-left first-letter:text-gray-900">
+            <Quote className="absolute -left-12 -top-12 w-24 h-24 text-white/5 -z-10" />
+            <p className="first-letter:text-8xl first-letter:font-serif first-letter:font-bold first-letter:mr-4 first-letter:float-left first-letter:text-white">
               Nous vivons une époque bruyante. Une époque où l’opinion précède souvent la réflexion, où l’indignation remplace l’analyse, et où l’engagement se confond trop facilement avec la mise en scène.
             </p>
           </div>
           <p>
-            Ce réseau est né d’un refus : le refus de l’indifférence, mais aussi le refus de la superficialité.
+            Ce réseau est né d’un refus : le refus de l’indifférence, mais aussi le refus de la superficialité qui gangrène nos échanges numériques.
           </p>
-          <p className="font-bold text-gray-900">
-            Il est né d’une conviction simple et exigeante : une société progresse lorsque ses citoyens pensent, dialoguent et agissent ensemble, avec lucidité et responsabilité.
+          <p className="font-bold text-white bg-blue-600/10 p-10 rounded-[2.5rem] border border-blue-500/20 shadow-inner">
+            Il est né d’une conviction simple et exigeante : une société progresse réellement lorsque ses citoyens pensent, dialoguent et agissent ensemble, avec lucidité et responsabilité.
+          </p>
+          <p>
+            Ici, nous ne cherchons pas le clic facile ou l'approbation éphémère. Nous cherchons l'impact durable sur notre territoire.
           </p>
         </section>
 
-        {/* Vision Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-24">
-          <div className="bg-gray-50 p-10 rounded-[2.5rem] border border-gray-100">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-              <Target className="w-6 h-6 text-blue-600" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-32">
+          <div className="bg-slate-900 p-12 rounded-[3rem] border border-white/5 shadow-2xl">
+            <div className="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-8 border border-blue-500/20">
+              <Target className="w-7 h-7 text-blue-500" />
             </div>
-            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">Pourquoi ce réseau existe</h2>
-            <ul className="space-y-4 text-sm font-medium text-gray-600">
-              <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" /> Refuser de se contenter de commenter le monde</li>
-              <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" /> Construire le civisme au quotidien</li>
-              <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" /> Croire au changement par la conscience</li>
-              <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0" /> L'engagement comme un devoir sincère</li>
+            <h2 className="text-2xl font-serif font-bold text-white mb-8">La Mission</h2>
+            <ul className="space-y-6 text-base font-medium text-slate-400">
+              <li className="flex gap-4"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> Comprendre avant de commenter</li>
+              <li className="flex gap-4"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> Construire le civisme local</li>
+              <li className="flex gap-4"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> Agir avec conscience et éthique</li>
+              <li className="flex gap-4"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> Protéger notre souveraineté</li>
             </ul>
           </div>
 
-          <div className="bg-blue-600 p-10 rounded-[2.5rem] text-white">
-            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-              <Eye className="w-6 h-6 text-white" />
+          <div className="bg-blue-600 p-12 rounded-[3rem] text-white shadow-2xl shadow-blue-900/40">
+            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-8">
+              <Eye className="w-7 h-7 text-white" />
             </div>
-            <h2 className="text-2xl font-serif font-bold mb-6">Notre vision</h2>
-            <p className="text-sm opacity-90 leading-relaxed mb-6">Nous croyons en une citoyenneté :</p>
-            <ul className="space-y-4 text-sm font-bold">
-              <li>• Éclairée (compréhension vs rumeur)</li>
-              <li>• Active (actes concrets)</li>
-              <li>• Inclusive (diversité des parcours)</li>
-              <li>• Responsable (impact des choix)</li>
+            <h2 className="text-2xl font-serif font-bold mb-8">L'Engagement</h2>
+            <p className="text-lg opacity-90 leading-relaxed mb-8">Nous bâtissons ensemble une citoyenneté :</p>
+            <ul className="space-y-6 text-base font-black uppercase tracking-widest">
+              <li>• ÉCLAIRÉE</li>
+              <li>• ACTIVE</li>
+              <li>• INCLUSIVE</li>
+              <li>• RESPONSABLE</li>
             </ul>
           </div>
         </div>
 
-        {/* Final Section with Scroll Reveal */}
         <section 
           ref={sectionRef}
-          className={`bg-gray-900 text-white p-12 md:p-20 rounded-[4rem] text-center shadow-2xl relative overflow-hidden transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}
+          className={`bg-white text-gray-900 p-16 md:p-24 rounded-[4rem] text-center shadow-prestige relative overflow-hidden transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}
         >
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px'}}></div>
+          <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)', backgroundSize: '32px 32px'}}></div>
           
-          <h2 className="text-3xl md:text-4xl font-serif font-bold mb-8">À celles et ceux qui nous rejoignent</h2>
-          <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Entrer dans ce réseau, ce n’est pas chercher une tribune. C’est accepter une responsabilité. Celle de penser avant de parler. Celle d’écouter avant de juger. Celle d’agir, même modestement, mais sincèrement.
+          <h2 className="text-4xl md:text-5xl font-serif font-bold mb-10 leading-tight">Prêt pour le changement ?</h2>
+          <p className="text-xl text-gray-600 mb-16 max-w-2xl mx-auto leading-relaxed">
+            Entrer dans ce réseau, c’est accepter une responsabilité envers soi-même et envers la Cité. Celle de cultiver sa propre sagesse au service de tous.
           </p>
           
-          <div className="space-y-4 mb-16">
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-400">Notre signature</p>
-            <p className="text-5xl md:text-6xl font-serif font-bold tracking-tighter">Penser. Relier. Agir.</p>
-          </div>
-
           <button 
             onClick={handleAcceptMission}
-            className="inline-flex bg-white text-gray-900 px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl group"
+            className="inline-flex bg-blue-600 text-white px-16 py-7 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-black transition-all shadow-2xl group items-center gap-4"
           >
-            Accepter la mission <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            Signer le Manifeste <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
           </button>
         </section>
       </article>

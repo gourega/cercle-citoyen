@@ -55,7 +55,6 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // Persistence simulée
   useEffect(() => {
     const saved = localStorage.getItem('cercle_user');
     if (saved) setUser(JSON.parse(saved));
@@ -86,10 +85,11 @@ const App: React.FC = () => {
   return (
     <ToastContext.Provider value={{ addToast }}>
       <Router>
-        <div className="min-h-screen bg-[#0a0c10] text-white selection:bg-blue-600">
+        <div className="min-h-screen bg-[#0a0c10] text-slate-200 selection:bg-blue-600">
           
           {!user ? (
             <Routes>
+              {/* Entrée principale pour les nouveaux : Landing propose Connexion ou Manifeste */}
               <Route path="/" element={<LandingPage onLogin={login} />} />
               <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/auth" element={<AuthPage onLogin={login} />} />
@@ -101,6 +101,7 @@ const App: React.FC = () => {
               
               <main className="max-w-6xl mx-auto pb-32 pt-6 md:pt-28 md:pb-20">
                 <Routes>
+                  {/* Après login, l'utilisateur passe par Welcome une fois s'il est nouveau (simulé ici par route) */}
                   <Route path="/" element={<FeedPage user={user} />} />
                   <Route path="/feed" element={<FeedPage user={user} />} />
                   <Route path="/welcome" element={<WelcomePage />} />
@@ -135,7 +136,7 @@ const App: React.FC = () => {
                     t.type === 'error' ? 'bg-rose-600/90 border-rose-400' : 
                     'bg-blue-600/90 border-blue-400'
                   }`}>
-                    <p className="text-[10px] font-black uppercase tracking-widest">{t.message}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white">{t.message}</p>
                   </div>
                 ))}
               </div>
@@ -149,8 +150,6 @@ const App: React.FC = () => {
 
 // --- Navigation Layout ---
 const Navigation = ({ user }: { user: User }) => {
-  const { pathname } = useLocation();
-  
   const mainTabs = [
     { path: '/feed', icon: Home, label: 'Fil' },
     { path: '/map', icon: Map, label: 'Carte' },
@@ -169,40 +168,38 @@ const Navigation = ({ user }: { user: User }) => {
 
   return (
     <>
-      {/* Barre Desktop */}
       <nav className="hidden md:flex fixed top-0 inset-x-0 bg-black/80 backdrop-blur-2xl border-b border-white/5 px-10 py-4 z-50 items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black shadow-lg shadow-blue-600/20">C</div>
-          <span className="font-serif font-bold text-2xl tracking-tighter">CERCLE<span className="text-blue-500">.CI</span></span>
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black shadow-lg shadow-blue-600/20 text-white">C</div>
+          <span className="font-serif font-bold text-2xl tracking-tighter text-white">CERCLE<span className="text-blue-500">.CI</span></span>
         </div>
 
         <div className="flex items-center gap-8">
           {mainTabs.filter(t => !t.special).map(t => (
-            <NavLink key={t.path} to={t.path} className={({isActive}) => `text-[11px] font-black uppercase tracking-widest transition-colors ${isActive ? 'text-blue-500' : 'text-gray-500 hover:text-white'}`}>
+            <NavLink key={t.path} to={t.path} className={({isActive}) => `text-[11px] font-black uppercase tracking-widest transition-colors ${isActive ? 'text-blue-500' : 'text-slate-500 hover:text-white'}`}>
               {t.label}
             </NavLink>
           ))}
           <div className="w-px h-6 bg-white/10 mx-2"></div>
           {tools.map(t => (
-            <NavLink key={t.path} to={t.path} className={({isActive}) => `p-2 rounded-lg transition-all ${isActive ? 'bg-blue-600/10 text-blue-500' : 'text-gray-500 hover:text-white'}`}>
+            <NavLink key={t.path} to={t.path} className={({isActive}) => `p-2 rounded-lg transition-all ${isActive ? 'bg-blue-600/10 text-blue-500' : 'text-slate-500 hover:text-white'}`}>
               <t.icon size={20} />
             </NavLink>
           ))}
         </div>
 
         <div className="flex items-center gap-6">
-          <NavLink to="/messages" className="text-gray-400 hover:text-white transition-colors relative">
+          <NavLink to="/messages" className="text-slate-400 hover:text-white transition-colors relative">
             <MessageSquare size={20} />
             <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
           </NavLink>
-          <div className="w-10 h-10 rounded-xl bg-gray-800 border border-white/10 overflow-hidden shadow-inner">
+          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 overflow-hidden shadow-inner">
             <img src={user.avatar} className="w-full h-full object-cover" alt="" />
           </div>
         </div>
       </nav>
 
-      {/* Barre Mobile */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-black/90 backdrop-blur-3xl border-t border-white/5 px-2 pb-8 pt-2 z-50 flex justify-around items-center">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-black/90 backdrop-blur-3xl border-t border-white/5 px-2 pb-8 pt-2 z-50 flex justify-around items-center text-white">
         {mainTabs.map((tab) => (
           <NavLink 
             key={tab.path} 
@@ -210,7 +207,7 @@ const Navigation = ({ user }: { user: User }) => {
             className={({ isActive }) => `flex flex-col items-center gap-1 transition-all ${
               tab.special 
                 ? 'bg-blue-600 p-4 rounded-2xl -mt-12 shadow-2xl shadow-blue-600/40 text-white scale-110' 
-                : isActive ? 'text-blue-500' : 'text-gray-500'
+                : isActive ? 'text-blue-500' : 'text-slate-500'
             }`}
           >
             <tab.icon size={tab.special ? 28 : 24} />
@@ -218,12 +215,6 @@ const Navigation = ({ user }: { user: User }) => {
           </NavLink>
         ))}
       </nav>
-
-      {/* Raccourci flottant mobile pour les outils */}
-      <div className="md:hidden fixed bottom-24 right-6 flex flex-col gap-4 z-40">
-        <NavLink to="/sentinel" className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/20 active:scale-90 transition-transform"><ShieldCheck size={20} /></NavLink>
-        <NavLink to="/ideas" className="w-12 h-12 bg-amber-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-amber-900/20 active:scale-90 transition-transform"><Lightbulb size={20} /></NavLink>
-      </div>
     </>
   );
 };
