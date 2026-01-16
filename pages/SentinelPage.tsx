@@ -15,7 +15,8 @@ import {
   Info,
   X,
   Zap,
-  CheckCircle
+  CheckCircle,
+  MoveHorizontal
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { User, WasteReport, CircleType } from '../types';
@@ -92,7 +93,6 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const processImage = async (img: string) => {
     setView('processing');
     try {
-      // Analyse et Vision Propre lancées en parallèle
       const [res, clean] = await Promise.all([
         analyzePollutionImage(img),
         generateCleanVision(img).catch(err => {
@@ -163,6 +163,22 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     return (
       <div className="fixed inset-0 z-[200] bg-black flex flex-col">
         <video ref={videoRef} autoPlay playsInline muted className="flex-1 object-cover" />
+        
+        {/* Caméra Overlay Guidelines */}
+        <div className="absolute inset-0 border-[20px] border-black/20 pointer-events-none flex items-center justify-center">
+          <div className="w-64 h-64 border-2 border-white/30 rounded-[3rem] flex flex-col items-center justify-center">
+             <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse mb-2"></div>
+             <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">Zone de focus</p>
+          </div>
+        </div>
+
+        <div className="absolute top-10 inset-x-0 text-center px-6">
+           <div className="bg-black/60 backdrop-blur-md inline-flex items-center gap-3 px-6 py-3 rounded-full border border-white/10 text-white">
+              <MoveHorizontal className="text-emerald-400" size={18} />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Distance idéale : 3 à 5 mètres</p>
+           </div>
+        </div>
+
         <div className="absolute bottom-12 inset-x-0 flex justify-center gap-10 items-center">
            <button onClick={() => { stopCamera(); setView('hub'); }} className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white">
              <X size={24} />
@@ -284,12 +300,15 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
             Éveillez la conscience collective par l'image.
           </p>
         </div>
-        <button 
-          onClick={startCamera}
-          className="w-full md:w-auto px-16 py-8 bg-emerald-600 text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-3xl shadow-emerald-100 flex items-center justify-center gap-4 active:scale-95"
-        >
-          <Camera size={28} /> Scanner le Territoire
-        </button>
+        <div className="flex flex-col gap-4 w-full md:w-auto">
+          <button 
+            onClick={startCamera}
+            className="w-full md:w-auto px-16 py-8 bg-emerald-600 text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-3xl shadow-emerald-100 flex items-center justify-center gap-4 active:scale-95"
+          >
+            <Camera size={28} /> Scanner le Territoire
+          </button>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center italic">Distance recommandée : 3m à 5m</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
@@ -351,10 +370,10 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                <h3 className="font-serif font-bold text-2xl flex items-center gap-4 text-gray-900"><Info className="text-blue-600" /> Guide de l'Action</h3>
                <div className="space-y-6">
                   {[
-                    { label: "Capturez la zone avec netteté.", icon: "📸" },
-                    { label: "L'IA identifie les risques sanitaires.", icon: "🤖" },
-                    { label: "Visualisez la transformation idéale.", icon: "✨" },
-                    { label: "Publiez pour lancer l'alerte locale.", icon: "🚨" }
+                    { label: "Visez le sujet entre 3m et 5m de distance.", icon: "📏" },
+                    { label: "Capturez avec le sujet au centre.", icon: "📸" },
+                    { label: "Incluez un peu de contexte (rue, trottoir).", icon: "🏙️" },
+                    { label: "Assurez-vous d'avoir une bonne lumière.", icon: "☀️" }
                   ].map((guide, i) => (
                     <div key={i} className="flex gap-5 items-start">
                        <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">{guide.icon}</div>
