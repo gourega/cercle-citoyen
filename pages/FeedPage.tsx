@@ -8,7 +8,8 @@ import {
   Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
   Volume2, Trash2, CheckCircle, LayoutGrid, Map as MapIcon, 
   Video, Gavel, BookText, Compass, Waves, Landmark,
-  Home, Camera, Search, User as UserIcon
+  Home, Camera, Search, User as UserIcon, Handshake,
+  Target, BarChart3, Heart, Rocket
 } from 'lucide-react';
 import { User, CircleType, Role, Post } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -60,7 +61,7 @@ const PostCard: React.FC<{
 
   useEffect(() => {
     const fetchAuthor = async () => {
-      if (post.author_id === '00000000-0000-0000-0000-000000000001') {
+      if (post.author_id === '00000000-0000-0000-0000-000000000001' || post.author_id === 'admin-suprême') {
         setAuthor({ name: "Kouassi G. Ouréga", pseudonym: "Gardien", avatar: 'https://picsum.photos/seed/admin/200/200', role: Role.SUPER_ADMIN });
         return;
       }
@@ -241,6 +242,12 @@ const PostCard: React.FC<{
   );
 };
 
+const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; active?: boolean; color?: string }> = ({ to, icon, label, active, color = "text-blue-600" }) => (
+  <Link to={to} className={`flex items-center gap-4 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest ${active ? `bg-blue-50 ${color} shadow-sm ring-1 ring-blue-100` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
+    {icon} {label}
+  </Link>
+);
+
 const FeedPage: React.FC<{ user: User }> = ({ user }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,49 +281,53 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         </Link>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 flex flex-col lg:flex-row gap-12">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 flex flex-col lg:flex-row gap-12">
         
         {/* Barre Latérale Gauche - Desktop */}
-        <aside className="hidden lg:block lg:w-72 space-y-8 sticky top-12 self-start">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm overflow-y-auto max-h-[85vh] no-scrollbar">
+        <aside className="hidden lg:block lg:w-80 space-y-8 sticky top-12 self-start">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm overflow-y-auto max-h-[90vh] no-scrollbar">
              <Logo size={40} showText variant="blue" className="mb-10" />
              
-             <nav className="space-y-4">
-                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Navigation</div>
-                <Link to="/feed" className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest shadow-sm">
-                  <Home size={18} /> Agora Citoyenne
-                </Link>
-                <Link to="/sentinel" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <Camera size={18} className="text-emerald-500" /> Sentinelle Verte
-                </Link>
-                <Link to="/map" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <MapIcon size={18} className="text-blue-500" /> Empreinte CI
-                </Link>
+             <nav className="space-y-6">
+                <section className="space-y-2">
+                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Navigation</div>
+                  <NavLink to="/feed" active icon={<Home size={18} />} label="Agora Citoyenne" />
+                  <NavLink to="/sentinel" icon={<Camera size={18} className="text-emerald-500" />} label="Sentinelle Verte" color="text-emerald-600" />
+                  <NavLink to="/map" icon={<MapIcon size={18} className="text-blue-500" />} label="Empreinte CI" color="text-blue-600" />
+                </section>
+
+                <section className="space-y-2">
+                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Action & Impact</div>
+                  <NavLink to="/quests" icon={<Target size={18} className="text-rose-500" />} label="Sentiers d'Impact" color="text-rose-600" />
+                  <NavLink to="/solidarity" icon={<Handshake size={18} className="text-amber-500" />} label="Marché Solidaire" color="text-amber-600" />
+                  <NavLink to="/ideas" icon={<Lightbulb size={18} className="text-yellow-500" />} label="Banque des Idées" color="text-yellow-600" />
+                  <NavLink to="/governance" icon={<Gavel size={18} className="text-slate-500" />} label="Palais des Édits" color="text-slate-600" />
+                </section>
                 
-                <div className="pt-6 text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2 border-t border-gray-50">Intelligence & Studio</div>
-                <Link to="/griot" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <Video size={18} className="text-amber-500" /> Studio Griot
-                </Link>
-                <Link to="/compass" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <Compass size={18} className="text-indigo-500" /> Boussole Légale
-                </Link>
-                <Link to="/assembly" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <Waves size={18} className="text-cyan-500" /> Assemblée Live
-                </Link>
+                <section className="space-y-2">
+                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Intelligence & Studio</div>
+                  <NavLink to="/griot" icon={<Video size={18} className="text-amber-500" />} label="Studio Griot" color="text-amber-600" />
+                  <NavLink to="/studio" icon={<Rocket size={18} className="text-purple-500" />} label="Studio d'Impact" color="text-purple-600" />
+                  <NavLink to="/compass" icon={<Compass size={18} className="text-indigo-500" />} label="Boussole Légale" color="text-indigo-600" />
+                  <NavLink to="/assembly" icon={<Waves size={18} className="text-cyan-500" />} label="Assemblée Live" color="text-cyan-600" />
+                </section>
+
+                <section className="space-y-2">
+                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Transparence</div>
+                  <NavLink to="/transparency" icon={<BarChart3 size={18} className="text-emerald-500" />} label="Registre des Flux" color="text-emerald-600" />
+                </section>
 
                 {isAdmin && (
-                  <div className="pt-6 mt-4 border-t border-gray-50">
+                  <div className="pt-4 mt-4 border-t border-gray-50">
                     <div className="text-[9px] font-black text-amber-600 uppercase tracking-widest px-4 mb-2">Souveraineté</div>
-                    <Link to="/admin" className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 text-amber-700 font-black text-[10px] uppercase tracking-widest shadow-sm hover:bg-amber-100 transition-all">
-                      <Landmark size={18} /> Conseil du Gardien
-                    </Link>
+                    <NavLink to="/admin" icon={<Landmark size={18} className="text-amber-700" />} label="Conseil du Gardien" color="text-amber-700" />
                   </div>
                 )}
              </nav>
           </div>
 
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-            <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 px-2">Citoyen</h3>
+            <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 px-2">Citoyen Connecté</h3>
             <Link to="/profile" className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all group">
               <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform" />
               <div className="flex-1 min-w-0">
@@ -364,7 +375,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         </main>
 
         {/* Barre Latérale Droite - Desktop */}
-        <aside className="hidden xl:block w-72 space-y-8 sticky top-12 self-start">
+        <aside className="hidden xl:block w-80 space-y-8 sticky top-12 self-start">
            <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700">
                 <Crown size={120} />
@@ -373,29 +384,43 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
               <p className="text-sm text-gray-700 leading-relaxed font-serif italic relative z-10">
                 "La cité ne se bâtit pas avec des mots, mais avec des actes reliés par une vision commune."
               </p>
+              <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">— Kouassi G. Ouréga</p>
+           </div>
+
+           <div className="bg-blue-600 text-white p-10 rounded-[3.5rem] shadow-xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Heart size={80} /></div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest mb-4">Urgence Sociale</h3>
+              <p className="text-lg font-serif font-bold mb-6 italic leading-relaxed">Faites vivre le Marché de Solidarité en offrant vos ressources inutilisées.</p>
+              <Link to="/solidarity" className="inline-flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-50 transition-all">
+                Participer <ChevronDown className="-rotate-90 w-4 h-4" />
+              </Link>
            </div>
         </aside>
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+      {/* Mobile Bottom Navigation Bar - Optimized */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-[0_-10_40px_rgba(0,0,0,0.05)]">
         <Link to="/feed" className="flex flex-col items-center gap-1 text-blue-600">
-          <Home size={24} />
-          <span className="text-[8px] font-black uppercase tracking-widest">Agora</span>
+          <Home size={22} />
+          <span className="text-[7px] font-black uppercase tracking-widest">Agora</span>
+        </Link>
+        <Link to="/quests" className="flex flex-col items-center gap-1 text-gray-400">
+          <Target size={22} />
+          <span className="text-[7px] font-black uppercase tracking-widest">Impact</span>
         </Link>
         <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-400">
           <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white -mt-10 shadow-2xl shadow-emerald-200 border-4 border-white active:scale-90 transition-all">
             <Camera size={24} />
           </div>
-          <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Scan</span>
+          <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 font-bold mt-1">Scan</span>
         </Link>
-        <Link to="/map" className="flex flex-col items-center gap-1 text-gray-400">
-          <MapIcon size={24} />
-          <span className="text-[8px] font-black uppercase tracking-widest">Carte</span>
+        <Link to="/solidarity" className="flex flex-col items-center gap-1 text-gray-400">
+          <Handshake size={22} />
+          <span className="text-[7px] font-black uppercase tracking-widest">Marché</span>
         </Link>
         <Link to="/griot" className="flex flex-col items-center gap-1 text-gray-400">
-          <Video size={24} />
-          <span className="text-[8px] font-black uppercase tracking-widest">Studio</span>
+          <Video size={22} />
+          <span className="text-[7px] font-black uppercase tracking-widest">Studio</span>
         </Link>
       </nav>
     </div>
