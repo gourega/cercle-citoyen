@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Crown, Loader2, RefreshCw, Terminal, Copy, Wifi, 
   Users, Zap, Target, Landmark, Search, Check, 
   X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
-  Database, Code, Lock, ShieldQuestion, Fingerprint
+  Database, Code, Lock, ShieldQuestion, Fingerprint,
+  ChevronLeft
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -72,6 +74,12 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
+      <div className="mb-8">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-white transition-colors text-sm font-bold group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Quitter le Conseil
+        </Link>
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-12 mb-20">
         <div className="flex items-center gap-10">
            <div className="w-24 h-24 rounded-[2.5rem] bg-gray-950 flex items-center justify-center shadow-2xl relative group">
