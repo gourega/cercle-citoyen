@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Camera, 
   ShieldCheck, 
@@ -16,7 +17,9 @@ import {
   Pencil,
   Save,
   FileText,
-  Info
+  Info,
+  RotateCcw,
+  LogOut
 } from 'lucide-react';
 import { User, WasteReport, CircleType } from '../types.ts';
 import { analyzePollutionImage, generateCleanVision } from '../lib/gemini.ts';
@@ -24,6 +27,7 @@ import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
 
 const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [view, setView] = useState<'hub' | 'camera' | 'processing' | 'result' | 'success'>('hub');
   
@@ -78,6 +82,9 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   };
 
   const startCamera = async () => {
+    setCapturedImage(null);
+    setAnalysis(null);
+    setCleanVision(null);
     setView('camera');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -241,12 +248,13 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
         <div className="absolute inset-0 border-[20px] border-black/20 pointer-events-none flex items-center justify-center">
           <div className="w-64 h-64 border-2 border-white/30 rounded-[3rem]"></div>
         </div>
+        <div className="absolute top-8 left-8">
+           <button onClick={() => { stopCamera(); setView('hub'); }} className="p-4 bg-white/20 backdrop-blur-md rounded-full text-white"><X size={24} /></button>
+        </div>
         <div className="absolute bottom-12 inset-x-0 flex justify-center gap-10 items-center">
-           <button onClick={() => { stopCamera(); setView('hub'); }} className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"><X size={24} /></button>
            <button onClick={capturePhoto} className="w-24 h-24 bg-white rounded-full flex items-center justify-center border-[8px] border-white/20 active:scale-90 transition-all">
              <div className="w-16 h-16 bg-emerald-500 rounded-full shadow-2xl"></div>
            </button>
-           <div className="w-16 h-16 opacity-0"></div>
         </div>
         <canvas ref={canvasRef} className="hidden" />
       </div>
@@ -270,9 +278,19 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   if (view === 'result') {
     return (
       <div className="max-w-5xl mx-auto px-4 py-12 animate-in fade-in duration-500">
-        <button onClick={() => setView('hub')} className="flex items-center gap-2 text-gray-500 mb-8 font-black text-[10px] uppercase tracking-widest hover:text-white transition-colors">
-          <ChevronLeft size={16}/> Annuler
-        </button>
+        <div className="flex justify-between items-center mb-8">
+          <button onClick={() => setView('hub')} className="flex items-center gap-2 text-gray-400 font-black text-[10px] uppercase tracking-widest hover:text-gray-900 transition-colors">
+            <ChevronLeft size={16}/> Annuler
+          </button>
+          <div className="flex gap-4">
+             <button onClick={startCamera} className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest hover:bg-emerald-50 px-4 py-2 rounded-xl transition-all">
+                <RotateCcw size={16}/> Recommencer
+             </button>
+             <button onClick={() => navigate('/feed')} className="flex items-center gap-2 text-gray-500 font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 px-4 py-2 rounded-xl transition-all">
+                <LogOut size={16}/> Quitter
+             </button>
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="space-y-8">
@@ -347,8 +365,13 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 animate-in fade-in duration-700">
-      
+    <div className="max-w-6xl mx-auto px-4 py-12 animate-in fade-in duration-700 pb-32">
+      <div className="mb-12">
+        <button onClick={() => navigate('/feed')} className="flex items-center gap-2 text-gray-400 font-bold text-xs hover:text-gray-900 transition-colors group">
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform"/> Retour Agora
+        </button>
+      </div>
+
       {editingReport && (
         <div className="fixed inset-0 z-[300] bg-gray-900/80 backdrop-blur-md flex items-center justify-center p-4">
            <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden">

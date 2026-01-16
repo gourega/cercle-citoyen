@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
   ShieldCheck, MessageCircle, RefreshCw, 
   Pencil, Crown, Share2, ChevronDown, ChevronUp,
   Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
   Volume2, Trash2, CheckCircle, LayoutGrid, Map as MapIcon, 
-  Video, Gavel, BookText, Compass, Waves, Landmark
+  Video, Gavel, BookText, Compass, Waves, Landmark,
+  Home, Camera, Search, User as UserIcon
 } from 'lucide-react';
 import { User, CircleType, Role, Post } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -245,6 +246,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   const fetchPosts = async () => {
     setIsRefreshing(true);
@@ -263,10 +265,18 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
   const isAdmin = user.role === Role.SUPER_ADMIN;
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-gray-50/50 pb-24 lg:pb-0">
+      {/* Mobile Header */}
+      <header className="lg:hidden sticky top-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+        <Logo size={32} showText variant="blue" />
+        <Link to="/profile" className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-blue-50">
+          <img src={user.avatar} className="w-full h-full object-cover" alt="Profile" />
+        </Link>
+      </header>
+
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 flex flex-col lg:flex-row gap-12">
         
-        {/* Barre Latérale Gauche */}
+        {/* Barre Latérale Gauche - Desktop */}
         <aside className="hidden lg:block lg:w-72 space-y-8 sticky top-12 self-start">
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm overflow-y-auto max-h-[85vh] no-scrollbar">
              <Logo size={40} showText variant="blue" className="mb-10" />
@@ -274,10 +284,10 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
              <nav className="space-y-4">
                 <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Navigation</div>
                 <Link to="/feed" className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest shadow-sm">
-                  <LayoutGrid size={18} /> Agora Citoyenne
+                  <Home size={18} /> Agora Citoyenne
                 </Link>
                 <Link to="/sentinel" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <ShieldCheck size={18} className="text-emerald-500" /> Sentinelle Verte
+                  <Camera size={18} className="text-emerald-500" /> Sentinelle Verte
                 </Link>
                 <Link to="/map" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
                   <MapIcon size={18} className="text-blue-500" /> Empreinte CI
@@ -333,7 +343,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
             </button>
           </header>
 
-          <div className="space-y-2">
+          <div className="space-y-2 px-2 md:px-0">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => <PostSkeleton key={i} />)
             ) : posts.length > 0 ? (
@@ -353,7 +363,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
           </div>
         </main>
 
-        {/* Barre Latérale Droite */}
+        {/* Barre Latérale Droite - Desktop */}
         <aside className="hidden xl:block w-72 space-y-8 sticky top-12 self-start">
            <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700">
@@ -366,6 +376,28 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
            </div>
         </aside>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <Link to="/feed" className="flex flex-col items-center gap-1 text-blue-600">
+          <Home size={24} />
+          <span className="text-[8px] font-black uppercase tracking-widest">Agora</span>
+        </Link>
+        <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-400">
+          <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white -mt-10 shadow-2xl shadow-emerald-200 border-4 border-white active:scale-90 transition-all">
+            <Camera size={24} />
+          </div>
+          <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Scan</span>
+        </Link>
+        <Link to="/map" className="flex flex-col items-center gap-1 text-gray-400">
+          <MapIcon size={24} />
+          <span className="text-[8px] font-black uppercase tracking-widest">Carte</span>
+        </Link>
+        <Link to="/griot" className="flex flex-col items-center gap-1 text-gray-400">
+          <Video size={24} />
+          <span className="text-[8px] font-black uppercase tracking-widest">Studio</span>
+        </Link>
+      </nav>
     </div>
   );
 };
