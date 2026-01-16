@@ -1,95 +1,384 @@
-import React, { useState, useEffect } from 'react';
-import { Send, ThumbsUp, Lightbulb, MessageCircle, Crown, ShieldCheck, Volume2, Camera, Loader2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { 
+  ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
+  ShieldCheck, MessageCircle, RefreshCw, 
+  Pencil, Crown, Share2, ChevronDown, ChevronUp,
+  Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
+  Volume2, Trash2, CheckCircle, LayoutGrid, Map as MapIcon, 
+  Video, Gavel, BookText
+} from 'lucide-react';
 import { User, CircleType, Role, Post } from '../types';
+import { supabase, isRealSupabase, db } from '../lib/supabase';
+import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
 import { useToast } from '../App';
+import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
+import Logo from '../Logo';
 
-const FeedPage: React.FC<{ user: User }> = ({ user }) => {
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
-  const [newPost, setNewPost] = useState('');
-  const [loading, setLoading] = useState(false);
+const getRelativeTime = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diffInSeconds < 60) return "À l'instant";
+  if (diffInSeconds < 3600) return `Il y a ${Math.floor(diffInSeconds / 60)}m`;
+  if (diffInSeconds < 8400) return `Il y a ${Math.floor(diffInSeconds / 3600)}h`;
+  return date.toLocaleDateString();
+};
+
+const PostSkeleton = () => (
+  <div className="bg-white rounded-[3rem] p-8 border border-gray-100 shadow-sm mb-10 animate-pulse">
+    <div className="flex items-center gap-4 mb-8">
+      <div className="w-14 h-14 bg-gray-100 rounded-2xl"></div>
+      <div className="space-y-2">
+        <div className="w-32 h-4 bg-gray-100 rounded"></div>
+        <div className="w-24 h-2 bg-gray-50 rounded"></div>
+      </div>
+    </div>
+    <div className="space-y-3 mb-8">
+      <div className="w-full h-4 bg-gray-100 rounded"></div>
+    </div>
+  </div>
+);
+
+const PostCard: React.FC<{ 
+  post: Post, 
+  currentUser: User | null, 
+  onUpdate: () => void 
+}> = ({ post, currentUser, onUpdate }) => {
   const { addToast } = useToast();
+  const [author, setAuthor] = useState<any>(null);
+  const [showComments, setShowComments] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  const [showClean, setShowClean] = useState(false); // Toggle Vision Propre
+  const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
+  const [deleting, setDeleting] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  const handlePost = () => {
-    if (!newPost.trim()) return;
-    const p: Post = {
-      id: Math.random().toString(),
-      author_id: user.id,
-      content: newPost,
-      circle_type: CircleType.PEACE,
-      created_at: new Date().toISOString(),
-      reactions: { useful: 0, relevant: 0, inspiring: 0 }
+  useEffect(() => {
+    const fetchAuthor = async () => {
+      if (post.author_id.startsWith('u') || post.author_id.includes('local')) {
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        return;
+      }
+      
+      if (!isRealSupabase || !supabase) {
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        return;
+      }
+      try {
+        const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+        setAuthor(data ? { ...data, avatar_url: data.avatar_url } : { name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+      } catch (e) {
+        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+      }
     };
-    setPosts([p, ...posts]);
-    setNewPost('');
-    addToast("Onde citoyenne diffusée !", "success");
+    fetchAuthor();
+  }, [post.author_id]);
+
+  const handleReaction = async (type: 'useful' | 'relevant' | 'inspiring') => {
+    if (!currentUser) return;
+    const newReactions = { ...reactions, [type]: (reactions[type] || 0) + 1 };
+    setReactions(newReactions);
+    try {
+      if (isRealSupabase && supabase) {
+        await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
+      }
+    } catch (e) { }
   };
 
-  return (
-    <div className="max-w-xl mx-auto space-y-8 md:space-y-12">
-      
-      <header className="mb-8 md:mb-12">
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">Fil d'Éveil</h1>
-        <p className="text-slate-500 text-base italic">Dialogue citoyen souverain.</p>
-      </header>
+  const handleListen = async () => {
+    if (isReading) return;
+    setIsReading(true);
+    try {
+      const base64Audio = await getGriotReading(post.content);
+      if (base64Audio) {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        }
+        const bytes = decode(base64Audio);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current);
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContextRef.current.destination);
+        source.onended = () => setIsReading(false);
+        source.start(0);
+      } else {
+        setIsReading(false);
+      }
+    } catch (e) {
+      setIsReading(false);
+      addToast("Le Griot n'a pu porter sa voix.", "error");
+    }
+  };
 
-      {/* Compositeur */}
-      <div className="bg-slate-900/50 border border-white/5 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl backdrop-blur-xl">
-        <textarea 
-          value={newPost} onChange={e => setNewPost(e.target.value)}
-          className="w-full h-24 md:h-28 bg-transparent text-lg text-white outline-none resize-none placeholder:text-slate-700 leading-relaxed"
-          placeholder="Déposez une pierre..."
-        />
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-white/5">
-           <div className="flex items-center gap-4 text-slate-500">
-             <button className="hover:text-blue-500 transition-colors"><Camera size={18} /></button>
-             <button className="hover:text-blue-500 transition-colors"><Sparkles size={18} /></button>
-           </div>
-           <button 
-             onClick={handlePost} disabled={!newPost.trim()}
-             className="w-full sm:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-30 transition-all flex items-center justify-center gap-3"
-           >
-             <Send size={14} /> DIFFUSER
-           </button>
+  const handleDelete = async () => {
+    if (!window.confirm("Voulez-vous vraiment retirer cette onde du Cercle ?")) return;
+    setDeleting(true);
+    try {
+      if (isRealSupabase && supabase) {
+        await supabase.from('posts').delete().eq('id', post.id);
+        addToast("L'onde a été dissipée.", "success");
+      } else {
+        addToast("Retiré localement (Mode Démo).", "info");
+      }
+      onUpdate();
+    } catch (e) {
+      addToast("La suppression a échoué.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
+    addToast("Lien de la réflexion copié !", "success");
+  };
+
+  if (!author) return <PostSkeleton />;
+  
+  const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
+  const isAuthor = currentUser?.id === post.author_id;
+  const isAdmin = currentUser?.role === Role.SUPER_ADMIN;
+  
+  const TRUNCATE_LIMIT = 320; 
+  const needsTruncation = post.content.length > TRUNCATE_LIMIT;
+  const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, TRUNCATE_LIMIT) + '...' : post.content;
+
+  return (
+    <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden animate-in fade-in duration-500 ${isMajestic ? 'ring-2 ring-amber-100 shadow-amber-50/50' : ''}`}>
+      <div className="p-8 md:p-12">
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-5">
+            <Link to={`/profile/${post.author_id}`} className="relative group">
+              <img src={author.avatar_url || author.avatar} className="w-16 h-16 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-105" alt="" />
+              {isMajestic && <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-2 rounded-xl border-2 border-white shadow-lg"><Crown size={14} /></div>}
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-gray-900 text-lg">{author.name}</p>
+                {(author.role === Role.SUPER_ADMIN || author.isVerifiedEntity) && <ShieldCheck size={18} className={author.role === Role.SUPER_ADMIN ? "text-amber-600" : "text-blue-500"} />}
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                {getRelativeTime(post.created_at)} • {post.circle_type}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {isMajestic && (
+              <button 
+                onClick={handleListen} 
+                disabled={isReading}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest ${isReading ? 'bg-amber-100 text-amber-600 animate-pulse' : 'bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white'}`}
+              >
+                {isReading ? <Loader2 className="animate-spin" size={14} /> : <Volume2 size={14} />}
+                {isReading ? "Le Griot parle..." : "Écouter la Sagesse"}
+              </button>
+            )}
+            
+            {(isAuthor || isAdmin) && (
+              <button 
+                onClick={handleDelete} 
+                disabled={deleting}
+                className="flex items-center gap-2 text-rose-600 bg-rose-50 px-4 py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+              >
+                {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                <span className="text-[9px] font-black uppercase tracking-widest">{isAdmin && !isAuthor ? "Médiation" : "Retirer"}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className={`text-gray-800 leading-[1.8] whitespace-pre-wrap ${isMajestic ? 'text-2xl md:text-3xl font-serif font-semibold italic border-l-4 border-amber-200 pl-8 mb-8 first-letter:text-6xl first-letter:font-bold first-letter:mr-3 first-letter:float-left first-letter:text-amber-600 first-letter:leading-none' : 'text-lg font-normal mb-6'}`}>
+          {displayContent}
+        </div>
+
+        {/* IMAGE DU POST AVEC TOGGLE VISION PROPRE */}
+        {post.image_url && (
+          <div className="relative rounded-[2.5rem] overflow-hidden border border-gray-100 mb-8 aspect-video bg-gray-50 group/image">
+            <img 
+              src={showClean && post.clean_vision_url ? post.clean_vision_url : post.image_url} 
+              className="w-full h-full object-cover transition-all duration-700" 
+              alt="Post visual" 
+            />
+            
+            {post.clean_vision_url && (
+              <div className="absolute bottom-6 inset-x-0 flex justify-center opacity-0 group-hover/image:opacity-100 transition-opacity">
+                <button 
+                  onClick={() => setShowClean(!showClean)}
+                  className={`px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-2xl transition-all border ${showClean ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/90 text-gray-900 border-white backdrop-blur-md'}`}
+                >
+                  {showClean ? <CheckCircle size={14}/> : <Sparkles size={14} className="text-emerald-500" />}
+                  {showClean ? 'Vision Propre Active' : 'Révéler la Vision IA'}
+                </button>
+              </div>
+            )}
+            
+            {!showClean && post.clean_vision_url && (
+              <div className="absolute top-6 left-6">
+                <div className="bg-rose-500 text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg">
+                  Signalement Réel
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {needsTruncation && (
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)} 
+            className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.3em] flex items-center gap-2 hover:bg-blue-50 px-5 py-3 rounded-full transition-all mb-10"
+          >
+            {isExpanded ? <><ChevronUp size={14} /> Replier</> : <><ChevronDown size={14} /> Déplier la pensée</>}
+          </button>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between pt-10 border-t border-gray-50 gap-6">
+          <div className="flex flex-wrap gap-4">
+            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+              <ThumbsUp size={18} /> {reactions.useful}
+            </button>
+            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 bg-emerald-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+              <Lightbulb size={18} /> {reactions.relevant}
+            </button>
+            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 bg-amber-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+              <Sparkles size={18} /> {reactions.inspiring}
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button onClick={handleShare} className="flex items-center gap-3 text-gray-500 hover:text-blue-600 bg-gray-50 px-6 py-3 rounded-xl transition-all">
+              <Share2 size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">Partager</span>
+            </button>
+            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-3 text-gray-500 hover:text-gray-900 bg-gray-50 px-6 py-3 rounded-xl transition-all shadow-sm">
+              <MessageCircle size={18} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
+            </button>
+          </div>
         </div>
       </div>
+    </article>
+  );
+};
 
-      {/* Posts */}
-      <div className="space-y-6 md:space-y-8">
-        {posts.map(post => (
-          <article key={post.id} className={`bg-slate-900/40 rounded-[2rem] md:rounded-[2.5rem] border border-white/5 p-6 md:p-10 shadow-xl transition-all group ${post.is_majestic ? 'ring-1 ring-amber-500/20' : ''}`}>
-             <div className="flex items-center justify-between mb-6">
-               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 overflow-hidden">
-                    <img src={`https://picsum.photos/seed/${post.author_id}/150/150`} alt="" className="w-full h-full object-cover" />
-                 </div>
-                 <div>
-                    <p className="font-bold text-sm text-white">Citoyen Actif</p>
-                    <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest">{post.circle_type}</p>
-                 </div>
-               </div>
-               <button className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all"><Volume2 size={16} /></button>
-             </div>
+// Fix: Added missing FeedPage component and default export
+const FeedPage: React.FC<{ user: User }> = ({ user }) => {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { addToast } = useToast();
 
-             <div className={`text-slate-200 leading-relaxed mb-8 ${post.is_majestic ? 'text-xl font-serif italic text-white' : 'text-base'}`}>
-               {post.content}
-             </div>
+  const fetchPosts = async () => {
+    setIsRefreshing(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+          setPosts(data);
+        } else {
+          setPosts(MOCK_POSTS);
+        }
+      } else {
+        setPosts(MOCK_POSTS);
+      }
+    } catch (e) {
+      setPosts(MOCK_POSTS);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
-             <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                <div className="flex gap-2">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-500/20 transition-all">
-                    <ThumbsUp size={12} /> {post.reactions.useful}
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg text-[10px] font-bold hover:bg-emerald-500/20 transition-all">
-                    <Lightbulb size={12} /> {post.reactions.relevant}
-                  </button>
-                </div>
-                <button className="text-slate-500 hover:text-white flex items-center gap-2 transition-all">
-                   <MessageCircle size={16} /> <span className="text-[10px] font-bold">24</span>
-                </button>
-             </div>
-          </article>
-        ))}
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 flex flex-col lg:flex-row gap-12">
+        
+        {/* Left Sidebar */}
+        <aside className="hidden lg:block lg:w-72 space-y-8 sticky top-12 self-start">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+             <Logo size={40} showText variant="blue" className="mb-8" />
+             <nav className="space-y-2">
+                <Link to="/feed" className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest shadow-sm">
+                  <LayoutGrid size={18} /> Fil Citoyen
+                </Link>
+                <Link to="/circles" className="flex items-center gap-4 p-4 rounded-2xl text-gray-400 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <Sparkles size={18} /> Les Cercles
+                </Link>
+                <Link to="/map" className="flex items-center gap-4 p-4 rounded-2xl text-gray-400 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <MapIcon size={18} /> Empreinte
+                </Link>
+                <Link to="/sentinel" className="flex items-center gap-4 p-4 rounded-2xl text-gray-400 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <ShieldCheck size={18} /> Sentinelle
+                </Link>
+             </nav>
+          </div>
+
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+            <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 px-2">Citoyen</h3>
+            <Link to="/profile" className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all group">
+              <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform" />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 truncate">{user.name}</p>
+                <p className="text-[8px] font-black uppercase text-blue-600 tracking-widest">{user.impactScore?.toLocaleString() || 0} XP</p>
+              </div>
+            </Link>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 max-w-2xl mx-auto lg:mx-0">
+          <header className="mb-12 flex justify-between items-end px-4">
+            <div>
+              <h1 className="text-4xl font-serif font-bold text-gray-900 mb-2">Agora</h1>
+              <p className="text-gray-500 font-medium italic">L'intelligence collective en mouvement.</p>
+            </div>
+            <button 
+              onClick={fetchPosts} 
+              disabled={isRefreshing}
+              className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-gray-400 hover:text-blue-600 transition-all hover:shadow-md disabled:opacity-50"
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </header>
+
+          <div className="space-y-2">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => <PostSkeleton key={i} />)
+            ) : posts.length > 0 ? (
+              posts.map(post => (
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  currentUser={user} 
+                  onUpdate={fetchPosts} 
+                />
+              ))
+            ) : (
+              <div className="bg-white rounded-[3rem] p-20 border border-gray-100 text-center shadow-sm">
+                <Sparkles size={48} className="text-gray-100 mx-auto mb-6" />
+                <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Le silence règne sur l'Agora...</p>
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Right Sidebar */}
+        <aside className="hidden xl:block w-72 space-y-8 sticky top-12 self-start">
+           <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden relative group">
+              <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700">
+                <Crown size={120} />
+              </div>
+              <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-6 relative z-10">Parole de Sagesse</h3>
+              <p className="text-sm text-gray-700 leading-relaxed font-serif italic relative z-10">
+                "La cité ne se bâtit pas avec des mots, but avec des actes reliés par une vision commune."
+              </p>
+           </div>
+        </aside>
+
       </div>
     </div>
   );

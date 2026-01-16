@@ -113,6 +113,7 @@ export interface Post {
   content: string;
   created_at: string;
   image_url?: string;
+  clean_vision_url?: string; // Image transformée par l'IA
   reactions: { useful: number; relevant: number; inspiring: number };
   is_majestic?: boolean;
   isInstitutional?: boolean;
@@ -210,4 +211,6 @@ export interface WasteReport {
   description: string;
   action_plan: string[];
   insight: string;
+  latitude?: number;
+  longitude?: number;
 }

@@ -16,7 +16,9 @@ import {
   X,
   Zap,
   CheckCircle,
-  MoveHorizontal
+  MoveHorizontal,
+  Navigation,
+  ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { User, WasteReport, CircleType } from '../types';
@@ -33,6 +35,8 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [reports, setReports] = useState<WasteReport[]>([]);
   const [showClean, setShowClean] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<'detecting' | 'active' | 'denied'>('detecting');
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,8 +44,24 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
 
   useEffect(() => {
     fetchMyReports();
+    checkLocation();
     return () => stopCamera();
   }, []);
+
+  const checkLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsStatus('denied');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsStatus('active');
+        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => setGpsStatus('denied'),
+      { enableHighAccuracy: true }
+    );
+  };
 
   const fetchMyReports = async () => {
     if (isRealSupabase && supabase) {
@@ -58,6 +78,11 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   };
 
   const startCamera = async () => {
+    if (gpsStatus !== 'active') {
+      addToast("La géolocalisation est requise pour certifier le signalement.", "error");
+      checkLocation();
+      return;
+    }
     setView('camera');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -130,26 +155,30 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
         description: analysis.description || "Signalement Sentinelle",
         action_plan: analysis.actionPlan || [],
         insight: analysis.insight || "Impact identifié.",
-        status: 'reported'
+        status: 'reported',
+        latitude: location?.lat,
+        longitude: location?.lng
       };
 
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('waste_reports').insert([reportData]);
         if (error) throw error;
 
+        // On publie un post qui mentionne la vision propre et l'inclut pour le toggle dans le fil
         await supabase.from('posts').insert([{
           author_id: user.id,
           circle_type: CircleType.URBAN,
-          content: `🚨 [SENTINELLE VERTE] ${analysis.nature} identifié à ${analysis.city}. ${analysis.insight}`,
+          content: `🚨 [SENTINELLE VERTE] ${analysis.nature} identifié à ${analysis.city}. J'ai généré une Vision Propre pour montrer ce que ce lieu pourrait devenir ! ✨ ${analysis.insight}`,
           image_url: capturedImage,
+          clean_vision_url: cleanVision, // PASSAGE DE L'IMAGE IA AU POST SOCIAL
           reactions: { useful: 0, relevant: 0, inspiring: 0 }
         }]);
 
-        addToast("Sceau Sentinelle apposé ! +50 XP", "success");
+        addToast("Sceau Sentinelle apposé ! Les deux visions sont publiées. +50 XP", "success");
         fetchMyReports();
         setView('hub');
       } else {
-        addToast("Mode démo : Signalement simulé.", "info");
+        addToast("Mode démo : Signalement simulé avec vision double.", "info");
         setView('hub');
       }
     } catch (err) {
@@ -172,10 +201,14 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           </div>
         </div>
 
-        <div className="absolute top-10 inset-x-0 text-center px-6">
+        <div className="absolute top-10 inset-x-0 text-center px-6 flex flex-col items-center gap-3">
            <div className="bg-black/60 backdrop-blur-md inline-flex items-center gap-3 px-6 py-3 rounded-full border border-white/10 text-white">
               <MoveHorizontal className="text-emerald-400" size={18} />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Distance idéale : 3 à 5 mètres</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Distance : 3 à 5 mètres</p>
+           </div>
+           <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-2 ${gpsStatus === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+              <Navigation size={12} fill="currentColor" />
+              {gpsStatus === 'active' ? 'GPS Verrouillé' : 'GPS Requis'}
            </div>
         </div>
 
@@ -205,7 +238,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           <Sparkles className="text-emerald-400" /> Analyse Structurelle
         </h2>
         <p className="text-gray-400 max-w-xs mx-auto animate-pulse uppercase text-[10px] font-black tracking-widest">
-          Interrogation de l'Esprit du Gardien...
+          Certificats, GPS et Visions en cours de fusion...
         </p>
         <style>{`
           @keyframes scan {
@@ -236,15 +269,18 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                   className={`px-8 py-4 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-3 transition-all shadow-2xl ${showClean ? 'bg-emerald-500 text-white' : 'bg-white/90 text-gray-900 backdrop-blur-md'}`}
                 >
                   {showClean ? <CheckCircle size={16}/> : <Sparkles size={16}/>}
-                  {showClean ? 'Vision Propre Active' : 'Révéler la Vision Propre'}
+                  {showClean ? 'Vision Propre Active' : 'Voir le Futur Propre'}
                 </button>
               </div>
 
-              {!showClean && (
-                <div className="absolute top-8 left-8 bg-rose-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg">
-                  État Réel Constaté
-                </div>
-              )}
+              <div className="absolute top-8 left-8 flex flex-col gap-2">
+                 <div className={`bg-rose-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg transition-opacity duration-500 ${showClean ? 'opacity-0' : 'opacity-100'}`}>
+                   État Réel Constaté
+                 </div>
+                 <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                   <MapPin size={12} /> Localisation Certifiée
+                 </div>
+              </div>
             </div>
           </div>
 
@@ -260,7 +296,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
             </div>
 
             <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100 italic text-gray-600 text-sm leading-relaxed relative">
-               <div className="absolute -top-3 left-8 bg-white border border-gray-100 px-3 py-1 rounded-full text-[8px] font-black uppercase text-blue-600 tracking-widest">Avis IA</div>
+               <div className="absolute -top-3 left-8 bg-white border border-gray-100 px-3 py-1 rounded-full text-[8px] font-black uppercase text-blue-600 tracking-widest">Sagesse Citoyenne</div>
                "{analysis?.insight}"
             </div>
 
@@ -282,7 +318,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
               className="w-full mt-auto bg-gray-950 text-white py-7 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-4 disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={24} className="text-emerald-400" />}
-              Apposer le Sceau Sentinelle
+              Diffuser les deux Visions
             </button>
           </div>
         </div>
@@ -295,11 +331,24 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
       <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-24">
         <div className="flex-1">
           <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 mb-6 tracking-tight">Sentinelle <span className="text-emerald-500 italic">Verte</span></h1>
-          <p className="text-gray-500 max-w-xl text-xl font-medium leading-relaxed italic">
+          <p className="text-gray-500 max-w-xl text-xl font-medium leading-relaxed italic mb-8">
             "Chaque regard posé sur la cité est une promesse d'action." <br/>
-            Éveillez la conscience collective par l'image.
+            Éveillez la conscience collective en montrant la réalité et le possible.
           </p>
+          
+          <div className="flex items-center gap-4 bg-gray-50 p-6 rounded-[2rem] border border-gray-100 max-w-md">
+             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${gpsStatus === 'active' ? 'bg-emerald-500 text-white' : 'bg-rose-100 text-rose-600 animate-pulse'}`}>
+                <Navigation size={24} />
+             </div>
+             <div>
+                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Statut Géolocalisation</p>
+                <p className={`font-bold text-sm ${gpsStatus === 'active' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                   {gpsStatus === 'active' ? 'Signal GPS capté et prêt' : 'Veuillez activer votre GPS'}
+                </p>
+             </div>
+          </div>
         </div>
+        
         <div className="flex flex-col gap-4 w-full md:w-auto">
           <button 
             onClick={startCamera}
@@ -307,7 +356,12 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           >
             <Camera size={28} /> Scanner le Territoire
           </button>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center italic">Distance recommandée : 3m à 5m</p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Distance : 3m à 5m</p>
+            <div className="h-1 w-24 bg-gray-100 rounded-full overflow-hidden">
+               <div className="h-full bg-emerald-500 w-1/2"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -316,9 +370,9 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
             <section>
               <div className="flex items-center justify-between mb-10 px-4">
                 <h3 className="text-3xl font-serif font-bold text-gray-900 flex items-center gap-4">
-                  <History className="text-blue-600" /> Empreintes Actives
+                  <History className="text-blue-600" /> Vos Signalements
                 </h3>
-                <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{reports.length} Signalements</span>
+                <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{reports.length} empreintes</span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -327,18 +381,20 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                     <div className="h-60 relative overflow-hidden bg-gray-100">
                        <img src={r.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt="Report" />
                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                       <div className="absolute bottom-6 left-8">
+                       <div className="absolute bottom-6 left-8 flex items-center gap-2">
                           <span className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-black uppercase text-white border border-white/20 tracking-widest">{r.nature}</span>
+                          {r.clean_vision && <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg"><Sparkles size={14}/></div>}
                        </div>
                     </div>
                     <div className="p-10">
-                       <h4 className="font-serif font-bold text-2xl text-gray-900 mb-4">{r.city} • {r.sector}</h4>
+                       <h4 className="font-serif font-bold text-2xl text-gray-900 mb-2">{r.city}</h4>
+                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">{r.sector}</p>
                        <p className="text-gray-500 text-sm italic mb-8 line-clamp-2">"{r.insight}"</p>
                        <div className="flex justify-between items-center pt-8 border-t border-gray-50">
                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(r.timestamp || Date.now()).toLocaleDateString()}</span>
                           <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full">
-                            <CheckCircle2 size={12} />
-                            <span className="text-[9px] font-black uppercase">Certifié IA</span>
+                            <MapPin size={10} />
+                            <span className="text-[9px] font-black uppercase">Localisé</span>
                           </div>
                        </div>
                     </div>
@@ -346,7 +402,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                 )) : (
                   <div className="col-span-full py-32 text-center bg-gray-50 rounded-[5rem] border-2 border-dashed border-gray-200">
                      <AlertTriangle className="w-20 h-20 text-gray-200 mx-auto mb-8 opacity-20" />
-                     <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Le territoire ne présente aucune alerte.</p>
+                     <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Le territoire ne présente aucune empreinte.</p>
                   </div>
                 )}
               </div>
@@ -360,24 +416,21 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                  <h3 className="text-emerald-400 font-black text-[10px] uppercase tracking-[0.4em] mb-6">STATUT SENTINELLE</h3>
                  <div className="text-7xl font-serif font-bold mb-4">{reports.length * 50}</div>
                  <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Points d'Action Écologique</p>
-                 <div className="mt-12 pt-10 border-t border-white/10 italic text-sm text-gray-400 leading-relaxed">
-                    "Une Sentinelle ne se contente pas de voir le chaos, elle prépare le terrain de l'ordre citoyen."
-                 </div>
                </div>
             </div>
 
             <div className="bg-white p-10 rounded-[3.5rem] border border-gray-100 shadow-sm space-y-8">
-               <h3 className="font-serif font-bold text-2xl flex items-center gap-4 text-gray-900"><Info className="text-blue-600" /> Guide de l'Action</h3>
+               <h3 className="font-serif font-bold text-2xl flex items-center gap-4 text-gray-900"><Info className="text-blue-600" /> Guide de Précision</h3>
                <div className="space-y-6">
                   {[
-                    { label: "Visez le sujet entre 3m et 5m de distance.", icon: "📏" },
-                    { label: "Capturez avec le sujet au centre.", icon: "📸" },
-                    { label: "Incluez un peu de contexte (rue, trottoir).", icon: "🏙️" },
-                    { label: "Assurez-vous d'avoir une bonne lumière.", icon: "☀️" }
+                    { label: "GPS Activé : Obligatoire pour certifier le lieu.", icon: <Navigation size={18}/>, color: "text-rose-500" },
+                    { label: "Distance : Restez entre 3m et 5m du sujet.", icon: <MoveHorizontal size={18}/>, color: "text-blue-500" },
+                    { label: "Contexte : Incluez un repère visuel (rue, trottoir).", icon: <Eye size={18}/>, color: "text-emerald-500" },
+                    { label: "Vision Propre : Appuyez sur le bouton Sparkle après capture.", icon: <Sparkles size={18}/>, color: "text-amber-500" }
                   ].map((guide, i) => (
                     <div key={i} className="flex gap-5 items-start">
-                       <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">{guide.icon}</div>
-                       <p className="text-sm text-gray-500 font-bold leading-relaxed">{guide.label}</p>
+                       <div className={`w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 ${guide.color}`}>{guide.icon}</div>
+                       <p className="text-xs text-gray-500 font-bold leading-relaxed">{guide.label}</p>
                     </div>
                   ))}
                </div>
