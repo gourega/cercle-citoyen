@@ -34,9 +34,11 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     fetchMyReports();
+    return () => stopCamera();
   }, []);
 
   const fetchMyReports = async () => {
@@ -46,93 +48,131 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     }
   };
 
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
   const startCamera = async () => {
     setView('camera');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
     } catch (e) {
-      addToast("Accès caméra refusé.", "error");
+      addToast("Accès caméra refusé ou indisponible.", "error");
       setView('hub');
     }
   };
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+    if (videoRef.current && canvasRef.current && streamRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d')?.drawImage(video, 0, 0);
-      const data = canvas.toDataURL('image/jpeg');
-      setCapturedImage(data);
-      processImage(data);
       
-      // Stop stream
-      const stream = video.srcObject as MediaStream;
-      stream.getTracks().forEach(t => t.stop());
+      // Assurer que les dimensions sont synchronisées avec la vidéo réelle
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL('image/jpeg', 0.85);
+        setCapturedImage(data);
+        stopCamera();
+        processImage(data);
+      }
+    } else {
+      addToast("Capture impossible : matériel non prêt.", "error");
     }
   };
 
   const processImage = async (img: string) => {
     setView('processing');
     try {
-      const res = await analyzePollutionImage(img);
-      const clean = await generateCleanVision(img);
+      const [res, clean] = await Promise.all([
+        analyzePollutionImage(img),
+        generateCleanVision(img)
+      ]);
+      
+      if (!res) {
+        throw new Error("L'analyse a échoué.");
+      }
+
       setAnalysis(res);
       setCleanVision(clean);
       setView('result');
     } catch (e) {
-      addToast("L'IA n'a pas pu traiter l'image.", "error");
+      console.error(e);
+      addToast("L'IA n'a pas pu traiter l'image. Réessayez.", "error");
       setView('hub');
     }
   };
 
   const handlePublish = async () => {
+    if (!analysis || !capturedImage) return;
     setLoading(true);
+    
     const reportData = {
       author_id: user.id,
       image: capturedImage,
       clean_vision: cleanVision,
-      city: analysis.city,
-      sector: analysis.sector,
-      nature: analysis.nature,
-      description: analysis.description,
-      action_plan: analysis.actionPlan,
-      insight: analysis.insight,
-      status: analysis.status
+      city: analysis.city || "Inconnue",
+      sector: analysis.sector || "Non spécifié",
+      nature: analysis.nature || "Déchets mixtes",
+      description: analysis.description || "Signalement Sentinelle",
+      action_plan: analysis.actionPlan || [],
+      insight: analysis.insight || "Impact citoyen identifié.",
+      status: 'reported'
     };
 
-    if (isRealSupabase && supabase) {
-      const { error } = await supabase.from('waste_reports').insert([reportData]);
-      
-      // On publie aussi automatiquement dans le fil citoyen
-      await supabase.from('posts').insert([{
-        author_id: user.id,
-        circle_type: CircleType.URBAN,
-        content: `🌍 [SENTINELLE] Un dépôt de type ${analysis.nature} identifié à ${analysis.city}. ${analysis.insight}`,
-        image_url: capturedImage,
-        reactions: { useful: 0, relevant: 0, inspiring: 0 }
-      }]);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('waste_reports').insert([reportData]);
+        
+        // Publication automatique dans le fil
+        await supabase.from('posts').insert([{
+          author_id: user.id,
+          circle_type: CircleType.URBAN,
+          content: `🌍 [SENTINELLE] Un dépôt de type ${analysis.nature} identifié à ${analysis.city}. ${analysis.insight}`,
+          image_url: capturedImage,
+          reactions: { useful: 0, relevant: 0, inspiring: 0 }
+        }]);
 
-      if (!error) {
+        if (error) throw error;
+        
         addToast("Sceau Sentinelle apposé ! +50 XP", "success");
         fetchMyReports();
         setView('hub');
+      } else {
+        addToast("Mode démo : Signalement simulé.", "info");
+        setView('hub');
       }
-    } else {
-      addToast("Mode démo : Signalement simulé.", "info");
-      setView('hub');
+    } catch (err) {
+      addToast("Erreur lors de la publication.", "error");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (view === 'camera') {
     return (
       <div className="fixed inset-0 z-[200] bg-black flex flex-col">
-        <video ref={videoRef} autoPlay playsInline className="flex-1 object-cover" />
+        <video 
+          ref={videoRef} 
+          autoPlay 
+          playsInline 
+          muted
+          className="flex-1 object-cover" 
+        />
         <div className="absolute bottom-10 inset-x-0 flex justify-center gap-8 items-center px-10">
-           <button onClick={() => setView('hub')} className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20">
+           <button onClick={() => { stopCamera(); setView('hub'); }} className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20">
              <X size={24} />
            </button>
            <button onClick={capturePhoto} className="w-24 h-24 bg-white rounded-full flex items-center justify-center border-[8px] border-white/20 active:scale-95 transition-all">
@@ -155,7 +195,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           </div>
         </div>
         <h2 className="text-3xl font-serif font-bold mb-4">Éveil de l'Intelligence</h2>
-        <p className="text-gray-400 max-w-xs mx-auto animate-pulse">Analyse structurelle, détection de nature et tissage de la Clean Vision...</p>
+        <p className="text-gray-400 max-w-xs mx-auto animate-pulse">Analyse structurelle et tissage de la vision propre en cours...</p>
       </div>
     );
   }
@@ -163,21 +203,23 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   if (view === 'result') {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-500">
-        <button onClick={() => setView('hub')} className="flex items-center gap-2 text-gray-400 mb-8 font-black text-[10px] uppercase tracking-widest"><ChevronLeft size={16}/> Annuler</button>
+        <button onClick={() => setView('hub')} className="flex items-center gap-2 text-gray-400 mb-8 font-black text-[10px] uppercase tracking-widest hover:text-gray-900 transition-colors"><ChevronLeft size={16}/> Annuler</button>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           <div className="space-y-8">
-            <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white aspect-square group">
-              <img src={showClean ? cleanVision || capturedImage! : capturedImage!} className="w-full h-full object-cover transition-all duration-1000" alt="" />
+            <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white aspect-square group bg-gray-100">
+              <img src={showClean ? cleanVision || capturedImage! : capturedImage!} className="w-full h-full object-cover transition-all duration-1000" alt="Capture" />
               <div className="absolute top-6 left-6 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
                  <span className="text-[10px] font-black uppercase text-white tracking-widest">{showClean ? 'Vision Propre IA' : 'Réalité du terrain'}</span>
               </div>
-              <button 
-                onClick={() => setShowClean(!showClean)}
-                className="absolute bottom-6 right-6 p-4 bg-emerald-500 text-white rounded-2xl shadow-xl hover:scale-105 transition-all"
-              >
-                <Eye size={24} />
-              </button>
+              {cleanVision && (
+                <button 
+                  onClick={() => setShowClean(!showClean)}
+                  className="absolute bottom-6 right-6 p-4 bg-emerald-500 text-white rounded-2xl shadow-xl hover:scale-105 transition-all"
+                >
+                  <Eye size={24} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -187,31 +229,33 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                  <Sparkles size={24} />
               </div>
               <div>
-                <h3 className="text-2xl font-serif font-bold">{analysis.nature}</h3>
-                <p className="text-xs text-gray-400 font-medium">{analysis.city}, {analysis.sector}</p>
+                <h3 className="text-2xl font-serif font-bold">{analysis?.nature || "Pollution identifiée"}</h3>
+                <p className="text-xs text-gray-400 font-medium">{analysis?.city || "Localité"}, {analysis?.sector || "Secteur"}</p>
               </div>
             </div>
 
             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100 italic text-emerald-800 text-sm leading-relaxed">
-               "{analysis.insight}"
+               "{analysis?.insight || "Analyse en cours..."}"
             </div>
 
-            <div className="space-y-4">
-               <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2">Plan de Résolution</h4>
-               <div className="space-y-3">
-                 {analysis.actionPlan?.map((step: string, i: number) => (
-                   <div key={i} className="flex gap-4 items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                      <span className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-black border border-gray-200">{i+1}</span>
-                      <p className="text-xs font-bold text-gray-700">{step}</p>
-                   </div>
-                 ))}
-               </div>
-            </div>
+            {analysis?.actionPlan && analysis.actionPlan.length > 0 && (
+              <div className="space-y-4">
+                 <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2">Plan de Résolution</h4>
+                 <div className="space-y-3">
+                   {analysis.actionPlan.map((step: string, i: number) => (
+                     <div key={i} className="flex gap-4 items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        <span className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-black border border-gray-200 shrink-0">{i+1}</span>
+                        <p className="text-xs font-bold text-gray-700">{step}</p>
+                     </div>
+                   ))}
+                 </div>
+              </div>
+            )}
 
             <button 
               onClick={handlePublish}
               disabled={loading}
-              className="w-full bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3"
+              className="w-full bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={20} className="text-emerald-400" />}
               Apposer le Sceau Sentinelle
@@ -249,8 +293,8 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {reports.length > 0 ? reports.map(r => (
                   <div key={r.id} className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-sm hover:shadow-xl transition-all group">
-                    <div className="h-48 relative overflow-hidden">
-                       <img src={r.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
+                    <div className="h-48 relative overflow-hidden bg-gray-100">
+                       <img src={r.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="Report" />
                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                        <div className="absolute bottom-4 left-6">
                           <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-black uppercase text-white border border-white/20 tracking-widest">{r.nature}</span>
@@ -266,8 +310,8 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                     </div>
                   </div>
                 )) : (
-                  <div className="col-span-full py-24 text-center bg-gray-50 rounded-[4rem] border-2 border-dashed border-gray-100">
-                     <AlertTriangle className="w-16 h-16 text-gray-200 mx-auto mb-6" />
+                  <div className="col-span-full py-24 text-center bg-gray-50 rounded-[4rem] border-2 border-dashed border-gray-200">
+                     <AlertTriangle className="w-16 h-16 text-gray-200 mx-auto mb-6 opacity-20" />
                      <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Aucune empreinte verte active.</p>
                   </div>
                 )}
@@ -292,10 +336,10 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                <h3 className="font-serif font-bold text-xl flex items-center gap-3"><Info className="text-blue-600" /> Guide d'Impact</h3>
                <div className="space-y-4">
                   {[
-                    { label: "Capturez le dépôt de loin pour donner du contexte.", icon: "📸" },
-                    { label: "L'IA identifie automatiquement la nature.", icon: "🤖" },
-                    { label: "Découvrez la Clean Vision pour voir le potentiel.", icon: "✨" },
-                    { label: "Validez pour alerter le Pouls Urbain.", icon: "🚨" }
+                    { label: "Capturez le dépôt avec suffisamment de recul.", icon: "📸" },
+                    { label: "L'IA identifie la nature des déchets.", icon: "🤖" },
+                    { label: "Découvrez la Clean Vision pour agir.", icon: "✨" },
+                    { label: "Validez pour notifier le réseau.", icon: "🚨" }
                   ].map((guide, i) => (
                     <div key={i} className="flex gap-4 items-start group">
                        <span className="text-xl shrink-0">{guide.icon}</span>
