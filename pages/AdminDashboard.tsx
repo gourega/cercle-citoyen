@@ -6,10 +6,9 @@ import {
   X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
   Database, Code, Lock, ShieldQuestion, Fingerprint
 } from 'lucide-react';
-// Fix: remove extensions from imports
-import { supabase, isRealSupabase, db } from '../lib/supabase';
-import { useToast } from '../App';
-import { Role, UserCategory } from '../types';
+import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
+import { useToast } from '../ToastContext.tsx';
+import { Role, UserCategory } from '../types.ts';
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
@@ -269,7 +268,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                </div>
              )) : (
-              <div className="col-span-full py-24 bg-white border-2 border-dashed border-gray-100 rounded-[4rem] text-center">
+              <div className="col-span-full py-24 bg-white border-2 border-dashed border-gray-200 rounded-[4rem] text-center">
                  <CheckCircle2 className="w-16 h-16 text-emerald-100 mx-auto mb-6" />
                  <p className="text-gray-400 font-bold italic">Aucune requête en attente.</p>
               </div>
