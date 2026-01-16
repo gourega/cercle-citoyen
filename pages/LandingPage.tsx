@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, BookOpen, ArrowRight, Sparkles, Loader2, Mail, RefreshCcw } from 'lucide-react';
+import { Shield, Lock, Mail, Fingerprint, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { User, Role, UserCategory } from '../types';
 import { useToast } from '../App';
-import Logo from '../Logo';
+
+// UUID Permanent pour Kouassi G. Ouréga (Gardien)
+// Ce format est requis par Supabase pour éviter l'erreur 22P02
+const GUARDIAN_UUID = '00000000-0000-0000-0000-000000000001';
 
 const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,25 +19,24 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    const cleanEmail = email.trim().replace(/\.+$/, '').toLowerCase();
-    const targetEmail = 'cerclecitoyenci@gmail.com';
     
-    if (cleanEmail === targetEmail && password === 'sagesse225') {
+    // Identifiants Maîtres du Gardien
+    if (email === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
       setTimeout(() => {
         onLogin({
-          id: 'admin',
+          id: GUARDIAN_UUID, // Utilisation de l'UUID au lieu de 'admin'
           name: 'Kouassi G. Ouréga',
           pseudonym: 'Gardien',
-          bio: 'Fondateur du Cercle V4',
+          bio: 'Fondateur du Cercle V4. Garant de la cohésion et de la souveraineté numérique.',
           role: Role.SUPER_ADMIN,
           category: UserCategory.CITIZEN,
-          interests: [],
+          interests: ['Souveraineté', 'Gouvernance', 'Impact'],
           avatar: 'https://picsum.photos/seed/admin/200/200',
           impactScore: 19740
         });
+        addToast("Bienvenue, Gardien. La cité est stable.", "success");
         navigate('/feed');
-      }, 800);
+      }, 1000);
     } else {
       setTimeout(() => {
         addToast("ACCÈS REFUSÉ - VÉRIFIEZ VOS CODES", "error");
@@ -44,100 +46,75 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center py-12 px-6 selection:bg-blue-600">
-      <div className="w-full max-w-xl space-y-12">
-        
-        <header className="text-center space-y-8 animate-in fade-in duration-1000">
-          <Logo size={80} variant="light" showText={true} className="mb-4" />
-          <p className="text-slate-400 text-xl font-serif italic leading-relaxed">
-            "Souveraineté, Action, Destinée."
-          </p>
-        </header>
-
-        {!showLogin ? (
-          <div className="grid gap-6 animate-in slide-in-from-bottom-12 duration-700">
-            <button 
-              onClick={() => navigate('/manifesto')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] transition-all flex items-center justify-between shadow-2xl shadow-blue-900/40 group active:scale-95"
-            >
-              <div className="flex items-center gap-6">
-                <BookOpen size={24} className="text-blue-200" />
-                <span className="text-left">Rejoindre le Cercle</span>
-              </div>
-              <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
-            </button>
-
-            <button 
-              onClick={() => setShowLogin(true)}
-              className="w-full bg-slate-900 hover:bg-black text-slate-300 p-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] border border-white/5 transition-all flex items-center justify-between group active:scale-95"
-            >
-              <div className="flex items-center gap-6">
-                <Lock size={24} />
-                <span className="text-left">Déjà Membre</span>
-              </div>
-              <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
-            </button>
+    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-md space-y-12">
+        <div className="text-center">
+          <div className="inline-flex p-5 rounded-full bg-blue-500/10 border border-blue-500/20 mb-6">
+            <Shield className="text-blue-500 w-16 h-16 animate-pulse" />
           </div>
-        ) : (
-          <div className="bg-slate-900 border border-white/5 rounded-[3rem] p-10 shadow-3xl animate-in zoom-in duration-500">
-            <div className="flex justify-between items-center mb-10">
-               <h2 className="text-2xl font-serif font-bold text-white tracking-tight">Identification</h2>
-               <button onClick={() => setShowLogin(false)} className="text-slate-500 hover:text-white text-[10px] font-black uppercase tracking-widest">Retour</button>
+          <h1 className="text-6xl font-black text-white tracking-tighter mb-2">
+            CERCLE<span className="text-blue-500">.CI</span>
+          </h1>
+          <div className="bg-blue-500/20 text-blue-400 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.3em] inline-block">
+            Souveraineté V4.0.0
+          </div>
+        </div>
+
+        <div className="bg-[#11141b] border border-white/5 rounded-[3rem] p-10 shadow-2xl">
+          <form onSubmit={handleLogin} className="space-y-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Identifiant Gardien</label>
+              <div className="relative">
+                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700" size={20} />
+                <input 
+                  type="email" 
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="nom@citoyen.ci" 
+                  className="w-full bg-[#0a0c10] border border-white/5 py-6 pl-16 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all"
+                />
+              </div>
             </div>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-4">Email Citoyen</label>
-                <div className="relative">
-                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
-                  <input 
-                    type="email" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="nom@cercle.ci" 
-                    className="w-full bg-slate-950 border border-white/5 py-5 pl-14 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all text-base"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck="false"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-4">Mot de passe</label>
-                <div className="relative">
-                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700" size={18} />
-                  <input 
-                    type="password" 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••" 
-                    className="w-full bg-slate-950 border border-white/5 py-5 pl-14 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all text-base"
-                    required
-                  />
-                </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Code de Sagesse</label>
+              <div className="relative">
+                <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700" size={20} />
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className="w-full bg-[#0a0c10] border border-white/5 py-6 pl-16 pr-6 rounded-2xl outline-none focus:border-blue-500 text-white font-bold transition-all"
+                />
               </div>
+            </div>
 
-              <button 
-                type="submit" disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20 active:scale-95"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={16} />}
-                {loading ? "VÉRIFICATION..." : "ENTRER DANS LE CERCLE"}
-              </button>
-            </form>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 shadow-xl shadow-blue-600/20"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />}
+              {loading ? "AUTHENTIFICATION..." : "ENTRER DANS LE CERCLE"}
+            </button>
+          </form>
+          
+          <div className="mt-10 pt-8 border-t border-white/5 text-center">
+            <button 
+              onClick={() => navigate('/auth')}
+              className="text-[10px] font-black uppercase text-slate-500 hover:text-blue-400 tracking-widest transition-colors"
+            >
+              Pas encore de compte ? Devenir Citoyen
+            </button>
           </div>
-        )}
+        </div>
 
-        <footer className="pt-20 pb-10 text-center">
-          <button 
-            type="button"
-            onClick={() => (window as any).forceClean()}
-            className="inline-flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-700 hover:text-rose-500 transition-colors"
-          >
-            <RefreshCcw size={10} /> Réinitialiser l'application
-          </button>
-        </footer>
+        <div className="text-center">
+           <p className="text-[10px] font-black uppercase text-slate-800 tracking-[0.5em]">
+             Infrastructure Souveraine Ivoirienne
+           </p>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
@@ -6,10 +7,10 @@ import {
   Pencil, Crown, Share2, ChevronDown, ChevronUp,
   Bold, Italic, Smile, MoreHorizontal, Type as TypeIcon,
   Volume2, Trash2, CheckCircle, LayoutGrid, Map as MapIcon, 
-  Video, Gavel, BookText
+  Video, Gavel, BookText, Compass, Waves, Landmark
 } from 'lucide-react';
 import { User, CircleType, Role, Post } from '../types';
-import { supabase, isRealSupabase, db } from '../lib/supabase';
+import { supabase, isRealSupabase } from '../lib/supabase';
 import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
 import { useToast } from '../App';
@@ -51,27 +52,26 @@ const PostCard: React.FC<{
   const [showComments, setShowComments] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReading, setIsReading] = useState(false);
-  const [showClean, setShowClean] = useState(false); // Toggle Vision Propre
+  const [showClean, setShowClean] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const [deleting, setDeleting] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
-      if (post.author_id.startsWith('u') || post.author_id.includes('local')) {
-        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+      if (post.author_id === '00000000-0000-0000-0000-000000000001') {
+        setAuthor({ name: "Kouassi G. Ouréga", pseudonym: "Gardien", avatar: 'https://picsum.photos/seed/admin/200/200', role: Role.SUPER_ADMIN });
         return;
       }
-      
       if (!isRealSupabase || !supabase) {
-        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
         return;
       }
       try {
         const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-        setAuthor(data ? { ...data, avatar_url: data.avatar_url } : { name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor(data ? { ...data, avatar: data.avatar_url || data.avatar } : { name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
       } catch (e) {
-        setAuthor({ name: "Citoyen", avatar_url: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
       }
     };
     fetchAuthor();
@@ -120,8 +120,6 @@ const PostCard: React.FC<{
       if (isRealSupabase && supabase) {
         await supabase.from('posts').delete().eq('id', post.id);
         addToast("L'onde a été dissipée.", "success");
-      } else {
-        addToast("Retiré localement (Mode Démo).", "info");
       }
       onUpdate();
     } catch (e) {
@@ -129,11 +127,6 @@ const PostCard: React.FC<{
     } finally {
       setDeleting(false);
     }
-  };
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/#/feed?post=${post.id}`);
-    addToast("Lien de la réflexion copié !", "success");
   };
 
   if (!author) return <PostSkeleton />;
@@ -194,7 +187,6 @@ const PostCard: React.FC<{
           {displayContent}
         </div>
 
-        {/* IMAGE DU POST AVEC TOGGLE VISION PROPRE */}
         {post.image_url && (
           <div className="relative rounded-[2.5rem] overflow-hidden border border-gray-100 mb-8 aspect-video bg-gray-50 group/image">
             <img 
@@ -202,7 +194,6 @@ const PostCard: React.FC<{
               className="w-full h-full object-cover transition-all duration-700" 
               alt="Post visual" 
             />
-            
             {post.clean_vision_url && (
               <div className="absolute bottom-6 inset-x-0 flex justify-center opacity-0 group-hover/image:opacity-100 transition-opacity">
                 <button 
@@ -212,14 +203,6 @@ const PostCard: React.FC<{
                   {showClean ? <CheckCircle size={14}/> : <Sparkles size={14} className="text-emerald-500" />}
                   {showClean ? 'Vision Propre Active' : 'Révéler la Vision IA'}
                 </button>
-              </div>
-            )}
-            
-            {!showClean && post.clean_vision_url && (
-              <div className="absolute top-6 left-6">
-                <div className="bg-rose-500 text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg">
-                  Signalement Réel
-                </div>
               </div>
             )}
           </div>
@@ -246,11 +229,7 @@ const PostCard: React.FC<{
               <Sparkles size={18} /> {reactions.inspiring}
             </button>
           </div>
-          
           <div className="flex items-center gap-3">
-            <button onClick={handleShare} className="flex items-center gap-3 text-gray-500 hover:text-blue-600 bg-gray-50 px-6 py-3 rounded-xl transition-all">
-              <Share2 size={18} /> <span className="text-[10px] font-black uppercase tracking-widest">Partager</span>
-            </button>
             <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-3 text-gray-500 hover:text-gray-900 bg-gray-50 px-6 py-3 rounded-xl transition-all shadow-sm">
               <MessageCircle size={18} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
             </button>
@@ -261,7 +240,6 @@ const PostCard: React.FC<{
   );
 };
 
-// Fix: Added missing FeedPage component and default export
 const FeedPage: React.FC<{ user: User }> = ({ user }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -273,47 +251,57 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
     try {
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-        if (data && data.length > 0) {
-          setPosts(data);
-        } else {
-          setPosts(MOCK_POSTS);
-        }
-      } else {
-        setPosts(MOCK_POSTS);
-      }
-    } catch (e) {
-      setPosts(MOCK_POSTS);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
+        if (data && data.length > 0) setPosts(data);
+        else setPosts(MOCK_POSTS);
+      } else setPosts(MOCK_POSTS);
+    } catch (e) { setPosts(MOCK_POSTS); } 
+    finally { setLoading(false); setIsRefreshing(false); }
   };
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+  useEffect(() => { fetchPosts(); }, []);
+
+  const isAdmin = user.role === Role.SUPER_ADMIN;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 flex flex-col lg:flex-row gap-12">
         
-        {/* Left Sidebar */}
+        {/* Barre Latérale Gauche */}
         <aside className="hidden lg:block lg:w-72 space-y-8 sticky top-12 self-start">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-             <Logo size={40} showText variant="blue" className="mb-8" />
-             <nav className="space-y-2">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm overflow-y-auto max-h-[85vh] no-scrollbar">
+             <Logo size={40} showText variant="blue" className="mb-10" />
+             
+             <nav className="space-y-4">
+                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Navigation</div>
                 <Link to="/feed" className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest shadow-sm">
-                  <LayoutGrid size={18} /> Fil Citoyen
+                  <LayoutGrid size={18} /> Agora Citoyenne
                 </Link>
-                <Link to="/circles" className="flex items-center gap-4 p-4 rounded-2xl text-gray-400 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <Sparkles size={18} /> Les Cercles
+                <Link to="/sentinel" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <ShieldCheck size={18} className="text-emerald-500" /> Sentinelle Verte
                 </Link>
-                <Link to="/map" className="flex items-center gap-4 p-4 rounded-2xl text-gray-400 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <MapIcon size={18} /> Empreinte
+                <Link to="/map" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <MapIcon size={18} className="text-blue-500" /> Empreinte CI
                 </Link>
-                <Link to="/sentinel" className="flex items-center gap-4 p-4 rounded-2xl text-gray-400 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
-                  <ShieldCheck size={18} /> Sentinelle
+                
+                <div className="pt-6 text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2 border-t border-gray-50">Intelligence & Studio</div>
+                <Link to="/griot" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <Video size={18} className="text-amber-500" /> Studio Griot
                 </Link>
+                <Link to="/compass" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <Compass size={18} className="text-indigo-500" /> Boussole Légale
+                </Link>
+                <Link to="/assembly" className="flex items-center gap-4 p-4 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-black text-[10px] uppercase tracking-widest transition-all">
+                  <Waves size={18} className="text-cyan-500" /> Assemblée Live
+                </Link>
+
+                {isAdmin && (
+                  <div className="pt-6 mt-4 border-t border-gray-50">
+                    <div className="text-[9px] font-black text-amber-600 uppercase tracking-widest px-4 mb-2">Souveraineté</div>
+                    <Link to="/admin" className="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 text-amber-700 font-black text-[10px] uppercase tracking-widest shadow-sm hover:bg-amber-100 transition-all">
+                      <Landmark size={18} /> Conseil du Gardien
+                    </Link>
+                  </div>
+                )}
              </nav>
           </div>
 
@@ -323,18 +311,18 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
               <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-gray-900 truncate">{user.name}</p>
-                <p className="text-[8px] font-black uppercase text-blue-600 tracking-widest">{user.impactScore?.toLocaleString() || 0} XP</p>
+                <p className="text-[8px] font-black uppercase text-blue-600 tracking-widest">{(user.impactScore || user.impact_score || 0).toLocaleString()} XP</p>
               </div>
             </Link>
           </div>
         </aside>
 
-        {/* Main Content */}
+        {/* Contenu Principal */}
         <main className="flex-1 max-w-2xl mx-auto lg:mx-0">
           <header className="mb-12 flex justify-between items-end px-4">
             <div>
-              <h1 className="text-4xl font-serif font-bold text-gray-900 mb-2">Agora</h1>
-              <p className="text-gray-500 font-medium italic">L'intelligence collective en mouvement.</p>
+              <h1 className="text-4xl font-serif font-bold text-gray-900 mb-2 tracking-tight">Agora</h1>
+              <p className="text-gray-500 font-medium italic">Le pouls de la Nation Ivoirienne.</p>
             </div>
             <button 
               onClick={fetchPosts} 
@@ -366,7 +354,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
           </div>
         </main>
 
-        {/* Right Sidebar */}
+        {/* Barre Latérale Droite */}
         <aside className="hidden xl:block w-72 space-y-8 sticky top-12 self-start">
            <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700">
@@ -374,8 +362,17 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
               </div>
               <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-6 relative z-10">Parole de Sagesse</h3>
               <p className="text-sm text-gray-700 leading-relaxed font-serif italic relative z-10">
-                "La cité ne se bâtit pas avec des mots, but avec des actes reliés par une vision commune."
+                "La cité ne se bâtit pas avec des mots, mais avec des actes reliés par une vision commune."
               </p>
+           </div>
+           
+           <div className="bg-blue-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
+              <Sparkles className="absolute -top-4 -right-4 w-24 h-24 opacity-20" />
+              <h4 className="text-xl font-serif font-bold mb-4 leading-tight">Proposez votre <br/>propre Sentier</h4>
+              <p className="text-xs text-blue-100 mb-8 opacity-80">Chaque citoyen peut initier une action pour transformer sa localité.</p>
+              <Link to="/quests" className="block text-center bg-white text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-50 transition-all">
+                Tracer un Sentier
+              </Link>
            </div>
         </aside>
 
