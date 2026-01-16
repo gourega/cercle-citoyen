@@ -3,10 +3,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, Fingerprint, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { User, Role, UserCategory } from '../types';
-import { useToast } from '../App';
+import { useToast } from '../ToastContext';
 
-// UUID Permanent pour Kouassi G. Ouréga (Gardien)
-// Ce format est requis par Supabase pour éviter l'erreur 22P02
 const GUARDIAN_UUID = '00000000-0000-0000-0000-000000000001';
 
 const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
@@ -20,11 +18,10 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
     e.preventDefault();
     setLoading(true);
     
-    // Identifiants Maîtres du Gardien
     if (email === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
       setTimeout(() => {
         onLogin({
-          id: GUARDIAN_UUID, // Utilisation de l'UUID au lieu de 'admin'
+          id: GUARDIAN_UUID,
           name: 'Kouassi G. Ouréga',
           pseudonym: 'Gardien',
           bio: 'Fondateur du Cercle V4. Garant de la cohésion et de la souveraineté numérique.',
@@ -108,12 +105,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
               Pas encore de compte ? Devenir Citoyen
             </button>
           </div>
-        </div>
-
-        <div className="text-center">
-           <p className="text-[10px] font-black uppercase text-slate-800 tracking-[0.5em]">
-             Infrastructure Souveraine Ivoirienne
-           </p>
         </div>
       </div>
     </div>

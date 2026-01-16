@@ -13,7 +13,7 @@ import { User, CircleType, Role, Post } from '../types';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { CIRCLES_CONFIG } from '../constants';
 import { MOCK_POSTS } from '../lib/mocks';
-import { useToast } from '../App';
+import { useToast } from '../ToastContext';
 import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
 import Logo from '../Logo';
 
@@ -347,7 +347,6 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
               ))
             ) : (
               <div className="bg-white rounded-[3rem] p-20 border border-gray-100 text-center shadow-sm">
-                <Sparkles size={48} className="text-gray-100 mx-auto mb-6" />
                 <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Le silence règne sur l'Agora...</p>
               </div>
             )}
@@ -365,17 +364,7 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
                 "La cité ne se bâtit pas avec des mots, mais avec des actes reliés par une vision commune."
               </p>
            </div>
-           
-           <div className="bg-blue-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
-              <Sparkles className="absolute -top-4 -right-4 w-24 h-24 opacity-20" />
-              <h4 className="text-xl font-serif font-bold mb-4 leading-tight">Proposez votre <br/>propre Sentier</h4>
-              <p className="text-xs text-blue-100 mb-8 opacity-80">Chaque citoyen peut initier une action pour transformer sa localité.</p>
-              <Link to="/quests" className="block text-center bg-white text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-blue-50 transition-all">
-                Tracer un Sentier
-              </Link>
-           </div>
         </aside>
-
       </div>
     </div>
   );

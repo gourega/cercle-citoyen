@@ -1,16 +1,23 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Récupération sécurisée des variables d'environnement
-const supabaseUrl = (process.env.VITE_SUPABASE_URL || "").trim();
-const supabaseAnonKey = (process.env.VITE_SUPABASE_ANON_KEY || "").trim();
+// Récupération sécurisée avec fallback pour éviter le crash
+const getEnv = (key: string) => {
+  try {
+    return (process.env[key] || "").trim();
+  } catch (e) {
+    return "";
+  }
+};
 
-// Nettoyage des guillemets éventuels
+const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+
 const clean = (val: string) => val.replace(/^["']|["']$/g, '');
 
 const finalUrl = clean(supabaseUrl);
 const finalKey = clean(supabaseAnonKey);
 
-// Vérification si Supabase est réellement utilisable
 export const isRealSupabase = !!finalUrl && finalUrl.startsWith('https://') && !!finalKey;
 
 export const supabase = isRealSupabase 
