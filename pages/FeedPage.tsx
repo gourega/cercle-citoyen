@@ -9,13 +9,13 @@ import {
   Volume2, Trash2, CheckCircle, LayoutGrid, Map as MapIcon, 
   Video, Gavel, BookText, Compass, Waves, Landmark
 } from 'lucide-react';
-import { User, CircleType, Role, Post } from '../types';
-import { supabase, isRealSupabase } from '../lib/supabase';
-import { CIRCLES_CONFIG } from '../constants';
-import { MOCK_POSTS } from '../lib/mocks';
-import { useToast } from '../ToastContext';
-import { getGriotReading, decode, decodeAudioData } from '../lib/gemini';
-import Logo from '../Logo';
+import { User, CircleType, Role, Post } from '../types.ts';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
+import { CIRCLES_CONFIG } from '../constants.tsx';
+import { MOCK_POSTS } from '../lib/mocks.ts';
+import { useToast } from '../ToastContext.tsx';
+import { getGriotReading, decode, decodeAudioData } from '../lib/gemini.ts';
+import Logo from '../Logo.tsx';
 
 const getRelativeTime = (dateString: string) => {
   const date = new Date(dateString);

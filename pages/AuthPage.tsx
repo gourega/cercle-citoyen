@@ -19,7 +19,7 @@ import { MANIFESTO_TEXT } from '../constants';
 import { supabase, isRealSupabase } from '../lib/supabase';
 import { UserCategory, Role, User } from '../types';
 import Logo from '../Logo';
-import { useToast } from '../App';
+import { useToast } from '../ToastContext.tsx';
 
 const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   const navigate = useNavigate();
@@ -56,8 +56,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
         throw new Error("L'infrastructure de souveraineté n'est pas configurée.");
       }
 
-      // 1. Création du compte dans Supabase Auth
-      const { data: authData, error: authError } = await (supabase.auth as any).signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -74,7 +73,6 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
       const userId = authData.user.id;
       const avatarUrl = `https://picsum.photos/seed/${formData.pseudonym || userId}/300/300`;
 
-      // 2. Création du profil public
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{
