@@ -64,7 +64,7 @@ const App: React.FC = () => {
             <Route path="/manifesto" element={<ManifestoPage />} />
             <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
             
-            <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/" />} />
+            <Route path="/feed" element={user ? <FeedPage user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
             <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
             <Route path="/profile/:id" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
             

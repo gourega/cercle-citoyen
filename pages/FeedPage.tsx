@@ -9,7 +9,8 @@ import {
   Volume2, Trash2, CheckCircle, LayoutGrid, Map as MapIcon, 
   Video, Gavel, BookText, Compass, Waves, Landmark,
   Home, Camera, Search, User as UserIcon, Handshake,
-  Target, BarChart3, Heart, Rocket
+  Target, BarChart3, Heart, Rocket, Menu, X, Globe,
+  Briefcase, ShieldAlert, Fingerprint, LogOut
 } from 'lucide-react';
 import { User, CircleType, Role, Post } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -42,6 +43,16 @@ const PostSkeleton = () => (
       <div className="w-full h-4 bg-gray-100 rounded"></div>
     </div>
   </div>
+);
+
+const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; active?: boolean; color?: string; onClick?: () => void }> = ({ to, icon, label, active, color = "text-blue-600", onClick }) => (
+  <Link 
+    to={to} 
+    onClick={onClick}
+    className={`flex items-center gap-4 p-4 rounded-2xl transition-all font-black text-[11px] uppercase tracking-widest ${active ? `bg-blue-50 ${color} shadow-sm ring-1 ring-blue-100` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+  >
+    <span className={active ? color : "text-gray-400"}>{icon}</span> {label}
+  </Link>
 );
 
 const PostCard: React.FC<{ 
@@ -79,17 +90,6 @@ const PostCard: React.FC<{
     fetchAuthor();
   }, [post.author_id]);
 
-  const handleReaction = async (type: 'useful' | 'relevant' | 'inspiring') => {
-    if (!currentUser) return;
-    const newReactions = { ...reactions, [type]: (reactions[type] || 0) + 1 };
-    setReactions(newReactions);
-    try {
-      if (isRealSupabase && supabase) {
-        await supabase.from('posts').update({ reactions: newReactions }).eq('id', post.id);
-      }
-    } catch (e) { }
-  };
-
   const handleListen = async () => {
     if (isReading) return;
     setIsReading(true);
@@ -106,29 +106,8 @@ const PostCard: React.FC<{
         source.connect(audioContextRef.current.destination);
         source.onended = () => setIsReading(false);
         source.start(0);
-      } else {
-        setIsReading(false);
       }
-    } catch (e) {
-      setIsReading(false);
-      addToast("Le Griot n'a pu porter sa voix.", "error");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("Voulez-vous vraiment retirer cette onde du Cercle ?")) return;
-    setDeleting(true);
-    try {
-      if (isRealSupabase && supabase) {
-        await supabase.from('posts').delete().eq('id', post.id);
-        addToast("L'onde a été dissipée.", "success");
-      }
-      onUpdate();
-    } catch (e) {
-      addToast("La suppression a échoué.", "error");
-    } finally {
-      setDeleting(false);
-    }
+    } catch (e) { setIsReading(false); }
   };
 
   if (!author) return <PostSkeleton />;
@@ -137,10 +116,6 @@ const PostCard: React.FC<{
   const isAuthor = currentUser?.id === post.author_id;
   const isAdmin = currentUser?.role === Role.SUPER_ADMIN;
   
-  const TRUNCATE_LIMIT = 320; 
-  const needsTruncation = post.content.length > TRUNCATE_LIMIT;
-  const displayContent = (needsTruncation && !isExpanded) ? post.content.slice(0, TRUNCATE_LIMIT) + '...' : post.content;
-
   return (
     <article className={`bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all mb-10 overflow-hidden animate-in fade-in duration-500 ${isMajestic ? 'ring-2 ring-amber-100 shadow-amber-50/50' : ''}`}>
       <div className="p-8 md:p-12">
@@ -153,7 +128,7 @@ const PostCard: React.FC<{
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-bold text-gray-900 text-lg">{author.name}</p>
-                {(author.role === Role.SUPER_ADMIN || author.isVerifiedEntity) && <ShieldCheck size={18} className={author.role === Role.SUPER_ADMIN ? "text-amber-600" : "text-blue-500"} />}
+                {author.role === Role.SUPER_ADMIN && <ShieldCheck size={18} className="text-amber-600" />}
               </div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                 {getRelativeTime(post.created_at)} • {post.circle_type}
@@ -164,76 +139,42 @@ const PostCard: React.FC<{
             {isMajestic && (
               <button 
                 onClick={handleListen} 
-                disabled={isReading}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest ${isReading ? 'bg-amber-100 text-amber-600 animate-pulse' : 'bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white'}`}
               >
-                {isReading ? <Loader2 className="animate-spin" size={14} /> : <Volume2 size={14} />}
-                {isReading ? "Le Griot parle..." : "Écouter la Sagesse"}
-              </button>
-            )}
-            
-            {(isAuthor || isAdmin) && (
-              <button 
-                onClick={handleDelete} 
-                disabled={deleting}
-                className="flex items-center gap-2 text-rose-600 bg-rose-50 px-4 py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-              >
-                {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
-                <span className="text-[9px] font-black uppercase tracking-widest">{isAdmin && !isAuthor ? "Médiation" : "Retirer"}</span>
+                <Volume2 size={14} /> {isReading ? "Le Griot parle..." : "Écouter"}
               </button>
             )}
           </div>
         </div>
 
-        <div className={`text-gray-800 leading-[1.8] whitespace-pre-wrap ${isMajestic ? 'text-2xl md:text-3xl font-serif font-semibold italic border-l-4 border-amber-200 pl-8 mb-8 first-letter:text-6xl first-letter:font-bold first-letter:mr-3 first-letter:float-left first-letter:text-amber-600 first-letter:leading-none' : 'text-lg font-normal mb-6'}`}>
-          {displayContent}
+        <div className={`text-gray-800 leading-[1.8] whitespace-pre-wrap ${isMajestic ? 'text-2xl md:text-3xl font-serif font-semibold italic border-l-4 border-amber-200 pl-8 mb-8 first-letter:text-6xl first-letter:font-bold first-letter:mr-3 first-letter:float-left first-letter:text-amber-600' : 'text-lg font-normal mb-6'}`}>
+          {post.content}
         </div>
 
         {post.image_url && (
           <div className="relative rounded-[2.5rem] overflow-hidden border border-gray-100 mb-8 aspect-video bg-gray-50 group/image">
-            <img 
-              src={showClean && post.clean_vision_url ? post.clean_vision_url : post.image_url} 
-              className="w-full h-full object-cover transition-all duration-700" 
-              alt="Post visual" 
-            />
+            <img src={showClean && post.clean_vision_url ? post.clean_vision_url : post.image_url} className="w-full h-full object-cover transition-all duration-700" alt="" />
             {post.clean_vision_url && (
-              <div className="absolute bottom-6 inset-x-0 flex justify-center opacity-0 group-hover/image:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => setShowClean(!showClean)}
-                  className={`px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-2xl transition-all border ${showClean ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/90 text-gray-900 border-white backdrop-blur-md'}`}
-                >
-                  {showClean ? <CheckCircle size={14}/> : <Sparkles size={14} className="text-emerald-500" />}
-                  {showClean ? 'Vision Propre Active' : 'Révéler la Vision IA'}
-                </button>
-              </div>
+              <button 
+                onClick={() => setShowClean(!showClean)}
+                className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-white/90 backdrop-blur-md rounded-full font-black text-[9px] uppercase tracking-widest flex items-center gap-2 shadow-2xl border border-white"
+              >
+                <Sparkles size={14} className="text-emerald-500" /> {showClean ? 'Vision Originale' : 'Révéler la Vision IA'}
+              </button>
             )}
           </div>
         )}
 
-        {needsTruncation && (
-          <button 
-            onClick={() => setIsExpanded(!isExpanded)} 
-            className="text-blue-600 font-bold text-[10px] uppercase tracking-[0.3em] flex items-center gap-2 hover:bg-blue-50 px-5 py-3 rounded-full transition-all mb-10"
-          >
-            {isExpanded ? <><ChevronUp size={14} /> Replier</> : <><ChevronDown size={14} /> Déplier la pensée</>}
-          </button>
-        )}
-
         <div className="flex flex-wrap items-center justify-between pt-10 border-t border-gray-50 gap-6">
           <div className="flex flex-wrap gap-4">
-            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+            <button className="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
               <ThumbsUp size={18} /> {reactions.useful}
             </button>
-            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-emerald-600 bg-emerald-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+            <button className="flex items-center gap-2 text-emerald-600 bg-emerald-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
               <Lightbulb size={18} /> {reactions.relevant}
             </button>
-            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-amber-600 bg-amber-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
+            <button className="flex items-center gap-2 text-amber-600 bg-amber-50/50 px-5 py-2.5 rounded-xl font-black text-xs">
               <Sparkles size={18} /> {reactions.inspiring}
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-3 text-gray-500 hover:text-gray-900 bg-gray-50 px-6 py-3 rounded-xl transition-all shadow-sm">
-              <MessageCircle size={18} /> <span className="text-xs font-black">{post.comments?.length || 0}</span>
             </button>
           </div>
         </div>
@@ -242,18 +183,12 @@ const PostCard: React.FC<{
   );
 };
 
-const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; active?: boolean; color?: string }> = ({ to, icon, label, active, color = "text-blue-600" }) => (
-  <Link to={to} className={`flex items-center gap-4 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest ${active ? `bg-blue-50 ${color} shadow-sm ring-1 ring-blue-100` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
-    {icon} {label}
-  </Link>
-);
-
-const FeedPage: React.FC<{ user: User }> = ({ user }) => {
+const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ user, onLogout }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { addToast } = useToast();
-  const navigate = useNavigate();
 
   const fetchPosts = async () => {
     setIsRefreshing(true);
@@ -271,110 +206,146 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
 
   const isAdmin = user.role === Role.SUPER_ADMIN;
 
+  const NavSections = ({ onLinkClick }: { onLinkClick?: () => void }) => (
+    <div className="space-y-8">
+      <section className="space-y-2">
+        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-4 mb-3">Navigation Principale</div>
+        <NavLink to="/feed" active icon={<Home size={20} />} label="Agora Citoyenne" onClick={onLinkClick} />
+        <NavLink to="/sentinel" icon={<Camera size={20} className="text-emerald-500" />} label="Sentinelle Verte" color="text-emerald-600" onClick={onLinkClick} />
+        <NavLink to="/map" icon={<MapIcon size={20} className="text-blue-500" />} label="Empreinte CI" color="text-blue-600" onClick={onLinkClick} />
+      </section>
+
+      <section className="space-y-2">
+        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-4 mb-3">Action & Impact</div>
+        <NavLink to="/quests" icon={<Target size={20} className="text-rose-500" />} label="Sentiers d'Impact" color="text-rose-600" onClick={onLinkClick} />
+        <NavLink to="/solidarity" icon={<Handshake size={20} className="text-amber-500" />} label="Marché Solidaire" color="text-amber-600" onClick={onLinkClick} />
+        <NavLink to="/ideas" icon={<Lightbulb size={20} className="text-yellow-500" />} label="Banque des Idées" color="text-yellow-600" onClick={onLinkClick} />
+        <NavLink to="/governance" icon={<Gavel size={20} className="text-slate-500" />} label="Palais des Édits" color="text-slate-600" onClick={onLinkClick} />
+      </section>
+      
+      <section className="space-y-2">
+        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-4 mb-3">Intelligence & Studio</div>
+        <NavLink to="/griot" icon={<Video size={20} className="text-amber-500" />} label="Studio Griot" color="text-amber-600" onClick={onLinkClick} />
+        <NavLink to="/studio" icon={<Rocket size={20} className="text-purple-500" />} label="Studio d'Impact" color="text-purple-600" onClick={onLinkClick} />
+        <NavLink to="/compass" icon={<Compass size={20} className="text-indigo-500" />} label="Boussole Légale" color="text-indigo-600" onClick={onLinkClick} />
+        <NavLink to="/assembly" icon={<Waves size={20} className="text-cyan-500" />} label="Assemblée Live" color="text-cyan-600" onClick={onLinkClick} />
+      </section>
+
+      <section className="space-y-2">
+        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-4 mb-3">Transparence</div>
+        <NavLink to="/transparency" icon={<BarChart3 size={20} className="text-emerald-500" />} label="Registre des Flux" color="text-emerald-600" onClick={onLinkClick} />
+      </section>
+
+      {isAdmin && (
+        <div className="pt-6 mt-4 border-t border-gray-100">
+          <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest px-4 mb-3">Gouvernance Suprême</div>
+          <NavLink to="/admin" icon={<Landmark size={20} className="text-amber-700" />} label="Conseil du Gardien" color="text-amber-700" onClick={onLinkClick} />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50/50 pb-24 lg:pb-0">
+      {/* Mobile Menu Overlay (Drawer) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[200] lg:hidden animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
+           <div className="absolute inset-y-0 left-0 w-4/5 max-w-sm bg-white shadow-2xl animate-in slide-in-from-left duration-500 flex flex-col">
+              <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-blue-50/30">
+                 <Logo size={32} showText variant="blue" />
+                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-white rounded-2xl shadow-sm text-gray-400"><X size={20}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
+                 <NavSections onLinkClick={() => setIsMobileMenuOpen(false)} />
+              </div>
+              <div className="p-6 border-t border-gray-100 bg-gray-50 space-y-4">
+                 <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-4 group">
+                    <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white shadow-md" />
+                    <div>
+                       <p className="font-bold text-gray-900">{user.name}</p>
+                       <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Mon Profil Citoyen</p>
+                    </div>
+                 </Link>
+                 <button 
+                  onClick={onLogout}
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border border-rose-100 active:scale-95 transition-all"
+                 >
+                   <LogOut size={16} /> Déconnexion du Cercle
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
       {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-        <Logo size={32} showText variant="blue" />
-        <Link to="/profile" className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-blue-50">
+      <header className="lg:hidden sticky top-0 z-[100] bg-white/90 backdrop-blur-xl border-b border-gray-100 px-6 py-4 flex justify-between items-center shadow-sm">
+        <Logo size={30} showText variant="blue" />
+        <Link to="/profile" className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-blue-50 shadow-inner">
           <img src={user.avatar} className="w-full h-full object-cover" alt="Profile" />
         </Link>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 flex flex-col lg:flex-row gap-12">
         
-        {/* Barre Latérale Gauche - Desktop */}
+        {/* Sidebar Desktop - Toujours visible sur grand écran */}
         <aside className="hidden lg:block lg:w-80 space-y-8 sticky top-12 self-start">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm overflow-y-auto max-h-[90vh] no-scrollbar">
+          <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm overflow-y-auto max-h-[85vh] no-scrollbar">
              <Logo size={40} showText variant="blue" className="mb-10" />
-             
-             <nav className="space-y-6">
-                <section className="space-y-2">
-                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Navigation</div>
-                  <NavLink to="/feed" active icon={<Home size={18} />} label="Agora Citoyenne" />
-                  <NavLink to="/sentinel" icon={<Camera size={18} className="text-emerald-500" />} label="Sentinelle Verte" color="text-emerald-600" />
-                  <NavLink to="/map" icon={<MapIcon size={18} className="text-blue-500" />} label="Empreinte CI" color="text-blue-600" />
-                </section>
-
-                <section className="space-y-2">
-                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Action & Impact</div>
-                  <NavLink to="/quests" icon={<Target size={18} className="text-rose-500" />} label="Sentiers d'Impact" color="text-rose-600" />
-                  <NavLink to="/solidarity" icon={<Handshake size={18} className="text-amber-500" />} label="Marché Solidaire" color="text-amber-600" />
-                  <NavLink to="/ideas" icon={<Lightbulb size={18} className="text-yellow-500" />} label="Banque des Idées" color="text-yellow-600" />
-                  <NavLink to="/governance" icon={<Gavel size={18} className="text-slate-500" />} label="Palais des Édits" color="text-slate-600" />
-                </section>
-                
-                <section className="space-y-2">
-                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Intelligence & Studio</div>
-                  <NavLink to="/griot" icon={<Video size={18} className="text-amber-500" />} label="Studio Griot" color="text-amber-600" />
-                  <NavLink to="/studio" icon={<Rocket size={18} className="text-purple-500" />} label="Studio d'Impact" color="text-purple-600" />
-                  <NavLink to="/compass" icon={<Compass size={18} className="text-indigo-500" />} label="Boussole Légale" color="text-indigo-600" />
-                  <NavLink to="/assembly" icon={<Waves size={18} className="text-cyan-500" />} label="Assemblée Live" color="text-cyan-600" />
-                </section>
-
-                <section className="space-y-2">
-                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4 mb-2">Transparence</div>
-                  <NavLink to="/transparency" icon={<BarChart3 size={18} className="text-emerald-500" />} label="Registre des Flux" color="text-emerald-600" />
-                </section>
-
-                {isAdmin && (
-                  <div className="pt-4 mt-4 border-t border-gray-50">
-                    <div className="text-[9px] font-black text-amber-600 uppercase tracking-widest px-4 mb-2">Souveraineté</div>
-                    <NavLink to="/admin" icon={<Landmark size={18} className="text-amber-700" />} label="Conseil du Gardien" color="text-amber-700" />
-                  </div>
-                )}
-             </nav>
+             <NavSections />
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-            <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 px-2">Citoyen Connecté</h3>
-            <Link to="/profile" className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all group">
-              <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform" />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 truncate">{user.name}</p>
-                <p className="text-[8px] font-black uppercase text-blue-600 tracking-widest">{(user.impactScore || user.impact_score || 0).toLocaleString()} XP</p>
-              </div>
-            </Link>
+          <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col gap-6">
+            <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-0 px-2">Citoyen Connecté</h3>
+            <div className="flex items-center justify-between gap-4">
+              <Link to="/profile" className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all group flex-1 min-w-0">
+                <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform" />
+                <div className="min-w-0">
+                  <p className="font-bold text-gray-900 truncate">{user.name}</p>
+                  <p className="text-[9px] font-black uppercase text-blue-600 tracking-widest">{(user.impactScore || user.impact_score || 0).toLocaleString()} XP</p>
+                </div>
+              </Link>
+              <button 
+                onClick={onLogout}
+                title="Déconnexion"
+                className="p-4 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all border border-rose-100"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
         </aside>
 
-        {/* Contenu Principal */}
+        {/* Fil Agora */}
         <main className="flex-1 max-w-2xl mx-auto lg:mx-0">
           <header className="mb-12 flex justify-between items-end px-4">
             <div>
-              <h1 className="text-4xl font-serif font-bold text-gray-900 mb-2 tracking-tight">Agora</h1>
+              <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-2 tracking-tight">Agora</h1>
               <p className="text-gray-500 font-medium italic">Le pouls de la Nation Ivoirienne.</p>
             </div>
             <button 
               onClick={fetchPosts} 
               disabled={isRefreshing}
-              className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-gray-400 hover:text-blue-600 transition-all hover:shadow-md disabled:opacity-50"
+              className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-gray-400 hover:text-blue-600 transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </header>
 
-          <div className="space-y-2 px-2 md:px-0">
+          <div className="space-y-4 px-2 md:px-0">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => <PostSkeleton key={i} />)
             ) : posts.length > 0 ? (
-              posts.map(post => (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
-                  currentUser={user} 
-                  onUpdate={fetchPosts} 
-                />
-              ))
+              posts.map(post => <PostCard key={post.id} post={post} currentUser={user} onUpdate={fetchPosts} />)
             ) : (
               <div className="bg-white rounded-[3rem] p-20 border border-gray-100 text-center shadow-sm">
-                <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Le silence règne sur l'Agora...</p>
+                <p className="text-gray-400 font-black uppercase tracking-widest text-xs italic">Le silence règne sur l'Agora...</p>
               </div>
             )}
           </div>
         </main>
 
-        {/* Barre Latérale Droite - Desktop */}
+        {/* Sidebar Droite Desktop */}
         <aside className="hidden xl:block w-80 space-y-8 sticky top-12 self-start">
            <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-sm overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700">
@@ -398,30 +369,33 @@ const FeedPage: React.FC<{ user: User }> = ({ user }) => {
         </aside>
       </div>
 
-      {/* Mobile Bottom Navigation Bar - Optimized */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-2xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-[0_-10_40px_rgba(0,0,0,0.05)]">
-        <Link to="/feed" className="flex flex-col items-center gap-1 text-blue-600">
-          <Home size={22} />
-          <span className="text-[7px] font-black uppercase tracking-widest">Agora</span>
+      {/* Barre de Navigation Mobile Totale */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-2xl border-t border-gray-100 px-4 py-4 flex justify-between items-center z-[110] shadow-[0_-15px_50px_rgba(0,0,0,0.08)]">
+        <Link to="/feed" className="flex flex-col items-center gap-1.5 text-blue-600 transition-all active:scale-90">
+          <div className="p-1"><Home size={22} /></div>
+          <span className="text-[8px] font-black uppercase tracking-[0.2em]">Agora</span>
         </Link>
-        <Link to="/quests" className="flex flex-col items-center gap-1 text-gray-400">
-          <Target size={22} />
-          <span className="text-[7px] font-black uppercase tracking-widest">Impact</span>
+        <Link to="/solidarity" className="flex flex-col items-center gap-1.5 text-gray-400 hover:text-amber-600 transition-all active:scale-90">
+          <div className="p-1"><Handshake size={22} /></div>
+          <span className="text-[8px] font-black uppercase tracking-[0.2em]">Marché</span>
         </Link>
-        <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-400">
-          <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white -mt-10 shadow-2xl shadow-emerald-200 border-4 border-white active:scale-90 transition-all">
-            <Camera size={24} />
+        <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-400 group active:scale-95 transition-all">
+          <div className="w-16 h-16 bg-emerald-600 rounded-[1.5rem] flex items-center justify-center text-white -mt-12 shadow-2xl shadow-emerald-200 border-[6px] border-white ring-1 ring-emerald-50 group-hover:bg-emerald-700">
+            <Camera size={26} />
           </div>
-          <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 font-bold mt-1">Scan</span>
+          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600 font-bold mt-1">Scan</span>
         </Link>
-        <Link to="/solidarity" className="flex flex-col items-center gap-1 text-gray-400">
-          <Handshake size={22} />
-          <span className="text-[7px] font-black uppercase tracking-widest">Marché</span>
+        <Link to="/griot" className="flex flex-col items-center gap-1.5 text-gray-400 hover:text-purple-600 transition-all active:scale-90">
+          <div className="p-1"><Video size={22} /></div>
+          <span className="text-[8px] font-black uppercase tracking-[0.2em]">Studio</span>
         </Link>
-        <Link to="/griot" className="flex flex-col items-center gap-1 text-gray-400">
-          <Video size={22} />
-          <span className="text-[7px] font-black uppercase tracking-widest">Studio</span>
-        </Link>
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)} 
+          className="flex flex-col items-center gap-1.5 text-gray-400 transition-all active:scale-90"
+        >
+          <div className="p-1"><Menu size={22} /></div>
+          <span className="text-[8px] font-black uppercase tracking-[0.2em]">Menu</span>
+        </button>
       </nav>
     </div>
   );
