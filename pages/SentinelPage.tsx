@@ -92,19 +92,25 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const processImage = async (img: string) => {
     setView('processing');
     try {
-      // Exécution parallèle des deux IA pour plus de rapidité
+      // Analyse et Vision Propre lancées en parallèle
       const [res, clean] = await Promise.all([
         analyzePollutionImage(img),
-        generateCleanVision(img).catch(() => null) // On ne fait pas planter le tout si l'image propre échoue
+        generateCleanVision(img).catch(err => {
+          console.error("CleanVision Error:", err);
+          return null;
+        })
       ]);
       
-      if (!res) throw new Error("Analyse impossible");
+      if (!res || Object.keys(res).length === 0) {
+        throw new Error("L'intelligence n'a pas pu identifier la structure de la pollution.");
+      }
 
       setAnalysis(res);
       setCleanVision(clean);
       setView('result');
-    } catch (e) {
-      addToast("Échec de l'analyse. Vérifiez votre connexion.", "error");
+    } catch (e: any) {
+      console.error("ProcessImage Error:", e);
+      addToast(e.message || "Échec de l'analyse. Réessayez avec un meilleur éclairage.", "error");
       setView('hub');
     }
   };
@@ -131,7 +137,6 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
         const { error } = await supabase.from('waste_reports').insert([reportData]);
         if (error) throw error;
 
-        // Publication automatique pour alerter le Cercle Urbain
         await supabase.from('posts').insert([{
           author_id: user.id,
           circle_type: CircleType.URBAN,
@@ -177,7 +182,6 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
       <div className="min-h-screen bg-[#0a0c10] flex flex-col items-center justify-center p-8 text-center text-white overflow-hidden">
         <div className="relative w-full max-w-sm aspect-square rounded-[3rem] overflow-hidden border-4 border-white/10 mb-12 shadow-2xl">
           <img src={capturedImage!} className="w-full h-full object-cover opacity-50" alt="Process" />
-          {/* EFFET DE SCAN LASER */}
           <div className="absolute inset-x-0 top-0 h-1 bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-500/10 to-transparent animate-[scan_2s_ease-in-out_infinite]"></div>
         </div>
@@ -187,7 +191,6 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
         <p className="text-gray-400 max-w-xs mx-auto animate-pulse uppercase text-[10px] font-black tracking-widest">
           Interrogation de l'Esprit du Gardien...
         </p>
-
         <style>{`
           @keyframes scan {
             0% { top: 0%; }
