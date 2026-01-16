@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Video, Loader2, Download, Play, HelpCircle, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, Sparkles, Send, Smartphone as PhoneIcon, ChevronLeft } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
-import { useToast } from '../App';
+import { useToast } from '../ToastContext.tsx';
 
 const ContributionModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { addToast } = useToast();

@@ -18,10 +18,10 @@ import {
   FileText,
   Info
 } from 'lucide-react';
-import { User, WasteReport, CircleType } from '../types';
-import { analyzePollutionImage, generateCleanVision } from '../lib/gemini';
-import { supabase, isRealSupabase } from '../lib/supabase';
-import { useToast } from '../App';
+import { User, WasteReport, CircleType } from '../types.ts';
+import { analyzePollutionImage, generateCleanVision } from '../lib/gemini.ts';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
+import { useToast } from '../ToastContext.tsx';
 
 const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const { addToast } = useToast();
