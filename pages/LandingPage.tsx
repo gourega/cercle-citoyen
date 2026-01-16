@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, Fingerprint, Loader2, Sparkles, AlertCircle } from 'lucide-react';
-import { User, Role, UserCategory } from '../types';
-import { useToast } from '../ToastContext';
+import { User, Role, UserCategory } from '../types.ts';
+import { useToast } from '../ToastContext.tsx';
 
 const GUARDIAN_UUID = '00000000-0000-0000-0000-000000000001';
 

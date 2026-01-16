@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { User, Role } from '../types';
+import { User, Role } from '../types.ts';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
   Flame, Heart, Sparkles, Medal, Shield, Pencil, UserPlus, UserCheck, Users, 
   MessageSquare, Lock, Eye, EyeOff, ShieldAlert
 } from 'lucide-react';
-import { supabase, isRealSupabase } from '../lib/supabase';
-import { useToast } from '../App';
-import { ADMIN_ID, MOCK_USERS } from '../lib/mocks';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
+import { useToast } from '../ToastContext.tsx';
+import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
 
 const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick }) => {
   const [error, setError] = useState(false);
@@ -67,7 +67,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const [isEditing, setIsEditing] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   
-  // États pour le changement de mot de passe
   const [showPwdFields, setShowPwdFields] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);

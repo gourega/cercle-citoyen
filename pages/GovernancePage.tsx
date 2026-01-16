@@ -11,9 +11,9 @@ import {
   ChevronLeft,
   AlertCircle
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { Edict, User } from '../types';
-import { useToast } from '../App';
+import { supabase } from '../lib/supabase.ts';
+import { Edict, User } from '../types.ts';
+import { useToast } from '../ToastContext.tsx';
 
 const EdictCard: React.FC<{ edict: Edict, user: User, onVote: () => void }> = ({ edict, user, onVote }) => {
   const { addToast } = useToast();
@@ -39,14 +39,12 @@ const EdictCard: React.FC<{ edict: Edict, user: User, onVote: () => void }> = ({
       if (voteError) {
         addToast("Souveraineté : Vote déjà enregistré ou erreur serveur.", "error");
       } else {
-        // APPEL RPC ROBUSTE : Incrémentation atomique côté serveur
         await supabase.rpc('increment_edict_votes', { row_id: edict.id });
         setHasVoted(true);
         onVote();
         addToast("Sceau apposé avec succès !", "success");
       }
     } else {
-      // Fallback simulation
       setHasVoted(true);
       onVote();
       addToast("Mode démo : Vote simulé.", "success");

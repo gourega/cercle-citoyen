@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, Download, Loader2, Image as ImageIcon, ArrowRight, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, ExternalLink, QrCode, Copy, ChevronLeft } from 'lucide-react';
-import { generateImpactVisual } from '../lib/gemini';
-import { supabase } from '../lib/supabase';
-import { User } from '../types';
-import { useToast } from '../App';
+import { generateImpactVisual } from '../lib/gemini.ts';
+import { supabase } from '../lib/supabase.ts';
+import { User } from '../types.ts';
+import { useToast } from '../ToastContext.tsx';
 
 const ContributionModal: React.FC<{ onClose: () => void, user: User }> = ({ onClose, user }) => {
   const { addToast } = useToast();
