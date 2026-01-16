@@ -2,7 +2,6 @@
 // @google/genai utility functions for CERCLE CITOYEN
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-// Fonction pour obtenir une instance fraîche à chaque appel
 const getAI = () => {
   const key = process.env.API_KEY;
   if (!key) return null;
@@ -51,7 +50,7 @@ export async function analyzePollutionImage(base64Image: string) {
         {
           parts: [
             { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
-            { text: "Analyse cette pollution en Côte d'Ivoire. Retourne un diagnostic citoyen structuré." }
+            { text: "Tu es un expert en environnement urbain en Côte d'Ivoire. Analyse cette photo de pollution ou nuisance. Si tu ne peux pas identifier précisément la ville ou le quartier, écris 'Non identifié' pour ces champs. Décris précisément la nature du problème (ex: carcasse de voiture, ordures ménagères, gravats)." }
           ]
         }
       ],
@@ -60,24 +59,36 @@ export async function analyzePollutionImage(base64Image: string) {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            city: { type: Type.STRING, description: "Ville ou commune de Côte d'Ivoire" },
-            sector: { type: Type.STRING, description: "Quartier ou secteur spécifique" },
-            nature: { type: Type.STRING, description: "Type de pollution (Ménagers, Gravats, etc.)" },
-            status: { type: Type.STRING, description: "Urgence : reported, critical" },
-            description: { type: Type.STRING, description: "Description technique" },
+            city: { type: Type.STRING, description: "Ville de Côte d'Ivoire ou 'Non identifiée'" },
+            sector: { type: Type.STRING, description: "Quartier ou 'Non identifié'" },
+            nature: { type: Type.STRING, description: "Nature de la pollution (ex: Véhicule hors d'usage, Déchets plastiques)" },
+            status: { type: Type.STRING, description: "Urgence : reported ou critical" },
+            description: { type: Type.STRING, description: "Description factuelle" },
             actionPlan: { 
               type: Type.ARRAY, 
               items: { type: Type.STRING },
-              description: "3 étapes concrètes pour résoudre le problème" 
+              description: "3 étapes pour assainir la zone" 
             },
-            insight: { type: Type.STRING, description: "Message de sagesse ou impact citoyen du signalement" }
+            insight: { type: Type.STRING, description: "Un proverbe ou un conseil de sagesse lié à l'ordre et la propreté." }
           },
           required: ["city", "sector", "nature", "description", "actionPlan", "insight"]
         }
       }
     });
 
-    return JSON.parse(response.text || "{}");
+    if (!response.text) {
+      console.warn("L'IA a bloqué le contenu (Safety Filter).");
+      return {
+        city: "Analyse bloquée",
+        sector: "Sécurité",
+        nature: "Contenu non analysable",
+        description: "L'image n'a pas pu être traitée par le protocole de sécurité de l'IA.",
+        actionPlan: ["Vérifier l'image", "Réessayer avec une vue plus large"],
+        insight: "La clarté est la mère de la sagesse."
+      };
+    }
+
+    return JSON.parse(response.text);
   } catch (e) { 
     console.error("Erreur Analyse Pollution:", e);
     return null; 
@@ -96,7 +107,7 @@ export async function generateCleanVision(base64Image: string) {
       contents: {
         parts: [
           { inlineData: { data: dataOnly, mimeType: 'image/jpeg' } },
-          { text: "Transforme ce site pollué en espace urbain propre, verdoyant et exemplaire pour la Côte d'Ivoire. Garde la structure du lieu mais retire tous les déchets." }
+          { text: "Transforme ce site pollué en espace urbain propre et verdoyant exemplaire pour Abidjan. Retire le véhicule vétuste et les déchets, remplace par du gazon ou des fleurs." }
         ]
       }
     });
