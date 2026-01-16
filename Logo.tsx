@@ -5,80 +5,62 @@ interface LogoProps {
   className?: string;
   size?: number;
   showText?: boolean;
-  variant?: 'light' | 'dark' | 'amber' | 'blue' | 'rose';
+  variant?: 'light' | 'dark' | 'amber' | 'blue' | 'rose' | 'national';
 }
+
+// URL par défaut vers le nouveau logo (à remplacer par l'URL Supabase finale)
+const DEFAULT_LOGO_URL = "https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/logo_cercle_ci.png";
 
 const Logo: React.FC<LogoProps> = ({ className = "", size = 32, showText = true, variant = 'blue' }) => {
   const colors = {
-    dark: { text: 'text-gray-900', secondary: 'text-blue-600', gradientStart: '#111827', gradientEnd: '#374151' },
-    light: { text: 'text-white', secondary: 'text-white/80', gradientStart: '#ffffff', gradientEnd: '#e5e7eb' },
-    amber: { text: 'text-amber-900', secondary: 'text-amber-600', gradientStart: '#d97706', gradientEnd: '#f59e0b' },
-    blue: { text: 'text-gray-900', secondary: 'text-[#2563eb]', gradientStart: '#2563eb', gradientEnd: '#1e40af' },
-    rose: { text: 'text-gray-900', secondary: 'text-rose-600', gradientStart: '#e11d48', gradientEnd: '#be123c' }
+    dark: { text: 'text-gray-900', secondary: 'text-blue-600' },
+    light: { text: 'text-white', secondary: 'text-white/80' },
+    amber: { text: 'text-amber-900', secondary: 'text-amber-600' },
+    blue: { text: 'text-gray-900', secondary: 'text-[#2563eb]' },
+    rose: { text: 'text-gray-900', secondary: 'text-rose-600' },
+    national: { text: 'text-[#f58220]', secondary: 'text-[#009e49]' } // Orange et Vert de la CI
   };
 
-  const activeColor = colors[variant];
+  const activeColor = colors[variant] || colors.blue;
 
   return (
     <div className={`flex items-center gap-4 ${className}`}>
-      <div className="relative shrink-0" style={{ width: size * 1.4, height: size }}>
-        <svg 
-          viewBox="0 0 140 100" 
-          fill="none" 
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-        >
-          <defs>
-            <linearGradient id="circleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={activeColor.gradientStart} />
-              <stop offset="100%" stopColor={activeColor.gradientEnd} />
-            </linearGradient>
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-          
-          {/* Cercle Gauche */}
-          <circle 
-            cx="50" 
-            cy="50" 
-            r="40" 
-            stroke="url(#circleGradient)" 
-            strokeWidth="12" 
-            className="opacity-90"
-          />
-          
-          {/* Cercle Droit - Entrelacé */}
-          <circle 
-            cx="90" 
-            cy="50" 
-            r="40" 
-            stroke="url(#circleGradient)" 
-            strokeWidth="12" 
-            className="opacity-70"
-          />
-          
-          {/* Points d'intersection symboliques */}
-          <circle cx="70" cy="50" r="6" fill={activeColor.gradientStart} className="animate-pulse" />
-        </svg>
+      <div className="relative shrink-0 flex items-center justify-center" style={{ width: size * 1.2, height: size * 1.2 }}>
+        {/* Le logo image (Carte de CI) remplace les cercles SVG */}
+        <img 
+          src={DEFAULT_LOGO_URL} 
+          alt="Cercle Citoyen Logo" 
+          className="w-full h-full object-contain drop-shadow-sm"
+          style={{ maxHeight: size * 1.2 }}
+          onError={(e) => {
+            // Fallback si l'image n'est pas encore sur Supabase
+            (e.target as any).style.display = 'none';
+          }}
+        />
+        {/* Fallback SVG si l'image ne charge pas (Anciens cercles entrelacés en gris léger) */}
+        <div className="absolute inset-0 -z-10 opacity-10">
+           <svg viewBox="0 0 140 100" fill="none" className="w-full h-full">
+              <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="8" />
+              <circle cx="90" cy="50" r="40" stroke="currentColor" strokeWidth="8" />
+           </svg>
+        </div>
       </div>
       
       {showText && (
         <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className={`text-xl md:text-2xl font-bold tracking-tight uppercase font-serif ${activeColor.text}`}>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xl md:text-2xl font-bold tracking-tight uppercase font-sans ${activeColor.text}`}>
               CERCLE
             </span>
-            <span className={`text-xl md:text-2xl font-bold tracking-tight uppercase font-serif ${activeColor.secondary}`}>
+            <span className={`text-xl md:text-2xl font-bold tracking-tight uppercase font-sans ${activeColor.secondary}`}>
               CITOYEN
             </span>
           </div>
-          <div className="flex items-center justify-between text-[7px] md:text-[9px] font-black tracking-[0.45em] uppercase opacity-30 mt-0.5">
+          <div className="flex items-center justify-between text-[7px] md:text-[8px] font-black tracking-[0.4em] uppercase opacity-40 mt-0.5">
             <span>PENSER</span>
-            <span className="mx-0.5">•</span>
+            <span>•</span>
             <span>RELIER</span>
-            <span className="mx-0.5">•</span>
+            <span>•</span>
             <span>AGIR</span>
           </div>
         </div>
