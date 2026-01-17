@@ -85,6 +85,9 @@ const ActionMap: React.FC = () => {
            <div className="flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full border border-gray-100 shadow-sm text-[9px] font-black uppercase">
               <div className="w-2 h-2 bg-amber-500 rounded-full"></div> Palabres
            </div>
+           <div className="flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full border border-gray-100 shadow-sm text-[9px] font-black uppercase">
+              <div className="w-2 h-2 bg-rose-500 rounded-full"></div> Solidarité
+           </div>
         </div>
       </div>
 
