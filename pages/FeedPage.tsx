@@ -7,7 +7,7 @@ import {
   Pencil, Crown, Share2, Volume2, Trash2, 
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
-  Video, User as UserIcon, LogOut, Bold, Italic, List
+  Video, User as UserIcon, LogOut
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -78,14 +78,15 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
     setContent('');
     setLoading(false);
     onClose();
+    addToast("Votre onde a été diffusée", "success");
   };
 
   return (
     <div className="fixed inset-0 z-[500] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+      <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
           <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X size={20}/></button>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="flex items-center gap-3">
@@ -106,7 +107,7 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
             className="w-full min-h-[200px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
           />
         </div>
-        <div className="p-6 border-t border-gray-50 bg-gray-50/30 flex justify-end">
+        <div className="p-6 border-t border-gray-50 flex justify-end">
           <button 
             onClick={handlePost}
             disabled={loading || !content.trim()}
@@ -120,17 +121,11 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   );
 };
 
-const PostCard: React.FC<{ 
-  post: Post, 
-  currentUser: User | null, 
-  onUpdate: () => void 
-}> = ({ post, currentUser, onUpdate }) => {
+const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () => void }> = ({ post, currentUser, onUpdate }) => {
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [isReading, setIsReading] = useState(false);
-  const [showClean, setShowClean] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [reactions, setReactions] = useState(post.reactions || { useful: 0, relevant: 0, inspiring: 0 });
   const audioContextRef = useRef<AudioContext | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -154,16 +149,6 @@ const PostCard: React.FC<{
     fetchAuthor();
   }, [post.author_id]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleListen = async () => {
     if (isReading) return;
     setIsReading(true);
@@ -185,14 +170,9 @@ const PostCard: React.FC<{
   const handleDelete = async () => {
     setShowMenu(false);
     if (!window.confirm("Supprimer cette réflexion ?")) return;
-    if (isRealSupabase && supabase) {
-      await supabase.from('posts').delete().eq('id', post.id);
-      onUpdate();
-      addToast("Réflexion effacée", "success");
-    } else {
-      onUpdate();
-      addToast("Action simulée", "success");
-    }
+    if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
+    onUpdate();
+    addToast("Réflexion effacée", "success");
   };
 
   if (!author) return <PostSkeleton />;
@@ -225,11 +205,11 @@ const PostCard: React.FC<{
               <MoreVertical size={18} />
             </button>
             {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in duration-150 ring-1 ring-black/5">
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in duration-150">
                 <button onClick={() => { setShowMenu(false); addToast("Lien copié", "info"); }} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 flex items-center gap-3"><Share2 size={14} /> Partager</button>
                 {isAuthor && (
                   <>
-                    <button onClick={() => { setShowMenu(false); addToast("Bientôt disponible", "info"); }} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-gray-50 flex items-center gap-3"><Pencil size={14} /> Modifier</button>
+                    <button className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-gray-50 flex items-center gap-3"><Pencil size={14} /> Modifier</button>
                     <button onClick={handleDelete} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50 flex items-center gap-3 border-t border-gray-50 mt-1"><Trash2 size={14} /> Supprimer</button>
                   </>
                 )}
@@ -242,19 +222,13 @@ const PostCard: React.FC<{
           {post.content}
         </div>
 
-        {post.image_url && (
-          <div className="relative rounded-[1rem] overflow-hidden border border-gray-50 mb-5 aspect-video bg-gray-50">
-            <img src={showClean && post.clean_vision_url ? post.clean_vision_url : post.image_url} className="w-full h-full object-cover" alt="" />
-          </div>
-        )}
-
         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
           <div className="flex gap-1">
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all">
-              <ThumbsUp size={14} /> <span className="text-[10px] font-bold">{reactions.useful}</span>
+              <ThumbsUp size={14} /> <span className="text-[10px] font-bold">{post.reactions.useful}</span>
             </button>
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all">
-              <Lightbulb size={14} /> <span className="text-[10px] font-bold">{reactions.relevant}</span>
+              <Lightbulb size={14} /> <span className="text-[10px] font-bold">{post.reactions.relevant}</span>
             </button>
           </div>
           <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase tracking-widest transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400 hover:text-amber-600'}`}>

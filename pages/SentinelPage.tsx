@@ -223,7 +223,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           <img src={capturedImage!} className="w-full h-full object-cover opacity-60" alt="Process" />
           <div className="absolute inset-x-0 top-0 h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
         </div>
-        <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-3 justify-center"><Sparkles className="text-emerald-500" /> Analyse IA en cours...</h2>
+        <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-3 justify-center text-gray-900"><Sparkles className="text-emerald-500" /> Analyse IA en cours...</h2>
         <p className="text-gray-400 max-w-xs mx-auto animate-pulse text-[9px] font-black uppercase tracking-widest">Calcul de la Vision Propre et du Plan d'Action</p>
         <style>{`@keyframes scan { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }`}</style>
       </div>
@@ -245,7 +245,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
               {showClean ? 'Vision Propre Active' : 'Voir le Futur Propre'}
             </button>
           </div>
-          <div className="bg-white p-10 rounded-[3rem] shadow-sm space-y-8 flex flex-col border border-gray-50">
+          <div className="bg-white p-10 rounded-[3rem] shadow-sm space-y-8 flex flex-col border border-gray-100">
             <input value={analysis?.nature} onChange={(e) => setAnalysis({...analysis, nature: e.target.value})} className="text-2xl font-serif font-bold text-gray-900 bg-transparent outline-none w-full" />
             <div className="space-y-4">
                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2"><FileText size={12}/> Plan d'Intervention</h4>
@@ -258,7 +258,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                  ))}
                </div>
             </div>
-            <button onClick={handlePublish} disabled={loading} className="w-full mt-auto bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-4">
+            <button onClick={handlePublish} disabled={loading} className="w-full mt-auto bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-black transition-all">
               {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={20} className="text-emerald-400" />} Publier
             </button>
           </div>
@@ -269,34 +269,34 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 bg-[#fcfcfc] min-h-screen text-gray-900">
-      <div className="mb-12"><button onClick={() => navigate('/feed')} className="flex items-center gap-2 text-gray-400 font-bold text-xs"><ChevronLeft size={16}/> Retour Agora</button></div>
+      <div className="mb-12"><button onClick={() => navigate('/feed')} className="flex items-center gap-2 text-gray-400 font-bold text-xs hover:text-gray-900 transition-colors"><ChevronLeft size={16}/> Retour Agora</button></div>
       {editingReport && (
         <div className="fixed inset-0 z-[300] bg-gray-900/40 backdrop-blur-md flex items-center justify-center p-4">
            <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8">
               <h3 className="text-xl font-serif font-bold mb-6">Rectifier la localisation</h3>
-              <input value={editingReport.city} onChange={e => setEditingReport({...editingReport, city: e.target.value})} className="w-full bg-gray-50 p-4 rounded-xl mb-4 font-bold" placeholder="Ville" />
-              <input value={editingReport.sector} onChange={e => setEditingReport({...editingReport, sector: e.target.value})} className="w-full bg-gray-50 p-4 rounded-xl mb-6 font-bold" placeholder="Quartier" />
-              <button onClick={handleUpdateReport} disabled={editLoading} className="w-full bg-gray-900 text-white py-4 rounded-xl font-black text-xs uppercase">Enregistrer</button>
+              <input value={editingReport.city} onChange={e => setEditingReport({...editingReport, city: e.target.value})} className="w-full bg-gray-50 p-4 rounded-xl mb-4 font-bold outline-none border border-transparent focus:border-blue-100" placeholder="Ville" />
+              <input value={editingReport.sector} onChange={e => setEditingReport({...editingReport, sector: e.target.value})} className="w-full bg-gray-50 p-4 rounded-xl mb-6 font-bold outline-none border border-transparent focus:border-blue-100" placeholder="Quartier" />
+              <button onClick={handleUpdateReport} disabled={editLoading} className="w-full bg-gray-900 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black">Enregistrer</button>
            </div>
         </div>
       )}
       <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-20">
         <div><h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Sentinelle <span className="text-emerald-500">Verte</span></h1><p className="text-gray-400 text-lg font-medium italic">Veillez sur votre territoire.</p></div>
-        <button onClick={startCamera} className="w-full md:w-auto px-12 py-6 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-4"><Camera size={24} /> Scanner</button>
+        <button onClick={startCamera} className="w-full md:w-auto px-12 py-6 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-4 hover:bg-emerald-700 transition-all"><Camera size={24} /> Scanner</button>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
          <div className="lg:col-span-2 space-y-12">
             <h3 className="text-2xl font-serif font-bold flex items-center gap-4">Vos Signalements</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {reports.length > 0 ? reports.map(r => (
-                  <div key={r.id} className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+                  <div key={r.id} className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-md transition-all">
                     <div className="h-48 relative overflow-hidden bg-gray-100">
                        <img src={r.image} className="w-full h-full object-cover" alt="" />
                        <button onClick={() => setEditingReport(r)} className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-md text-emerald-600 rounded-xl flex items-center justify-center shadow-lg"><Pencil size={18} /></button>
                     </div>
                     <div className="p-6">
                        <h4 className="font-serif font-bold text-xl mb-1">{r.city}</h4>
-                       <p className="text-[9px] font-black uppercase text-blue-500">{r.sector}</p>
+                       <p className="text-[9px] font-black uppercase text-blue-500 tracking-widest">{r.sector}</p>
                     </div>
                   </div>
               )) : (
@@ -305,7 +305,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
             </div>
          </div>
          <aside className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm h-fit">
-            <h3 className="font-serif font-bold text-xl mb-4">Guide</h3>
+            <h3 className="font-serif font-bold text-xl mb-4">Guide de Protection</h3>
             <p className="text-[13px] text-gray-500 leading-relaxed font-medium">Capturez les anomalies urbaines pour générer un plan d'action certifié par l'intelligence souveraine du Cercle.</p>
          </aside>
       </div>
