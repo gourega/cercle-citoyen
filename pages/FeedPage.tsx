@@ -7,7 +7,8 @@ import {
   Pencil, Crown, Share2, Volume2, Trash2, 
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
-  Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, BookText
+  Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, BookText,
+  Bold, Italic, List, Smile, Type
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -24,6 +25,18 @@ const getRelativeTime = (dateString: string) => {
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
   return date.toLocaleDateString();
+};
+
+// Fonction simple pour parser le gras et l'italique de base
+const formatContent = (text: string) => {
+  if (!text) return text;
+  return text.split('\n').map((line, i) => {
+    // Gras
+    let formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-gray-900">$1</strong>');
+    // Italique
+    formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+    return <span key={i} dangerouslySetInnerHTML={{ __html: formattedLine + '<br/>' }} />;
+  });
 };
 
 const PostSkeleton = () => (
@@ -56,9 +69,29 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   const [content, setContent] = useState('');
   const [circleType, setCircleType] = useState<CircleType>(CircleType.IDEAS);
   const [loading, setLoading] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { addToast } = useToast();
 
   if (!isOpen) return null;
+
+  const insertText = (before: string, after: string = '') => {
+    if (!textareaRef.current) return;
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = textareaRef.current.value;
+    const selected = text.substring(start, end);
+    const newText = text.substring(0, start) + before + selected + after + text.substring(end);
+    setContent(newText);
+    
+    // Replacer le curseur
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(start + before.length, end + before.length);
+      }
+    }, 10);
+  };
 
   const handlePost = async () => {
     if (!content.trim()) return;
@@ -81,6 +114,8 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
     addToast("Votre onde a été diffusée", "success");
   };
 
+  const commonEmojis = ["🇨🇮", "🤝", "💡", "✊", "✨", "🐘", "🌍", "🧡", "🤍", "💚", "🎯", "🌿"];
+
   return (
     <div className="fixed inset-0 z-[500] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
@@ -88,32 +123,57 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
           <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20}/></button>
         </div>
+        
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
-            <select 
-              value={circleType}
-              onChange={e => setCircleType(e.target.value as CircleType)}
-              className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-lg outline-none"
-            >
-              {Object.values(CircleType).map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
+              <select 
+                value={circleType}
+                onChange={e => setCircleType(e.target.value as CircleType)}
+                className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-lg outline-none cursor-pointer"
+              >
+                {Object.values(CircleType).map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="text-[10px] font-bold text-gray-300">{content.length}/500</div>
           </div>
+
+          {/* BARRE D'OUTILS */}
+          <div className="flex items-center gap-1 border-b border-gray-100 pb-4">
+             <button onClick={() => insertText('**', '**')} className="p-2.5 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-gray-900 transition-colors" title="Gras"><Bold size={16} /></button>
+             <button onClick={() => insertText('*', '*')} className="p-2.5 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-gray-900 transition-colors" title="Italique"><Italic size={16} /></button>
+             <button onClick={() => insertText('- ')} className="p-2.5 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-gray-900 transition-colors" title="Liste"><List size={16} /></button>
+             <div className="w-px h-4 bg-gray-100 mx-2"></div>
+             <div className="relative">
+               <button onClick={() => setShowEmojis(!showEmojis)} className={`p-2.5 hover:bg-gray-50 rounded-lg transition-colors ${showEmojis ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`} title="Émojis"><Smile size={16} /></button>
+               {showEmojis && (
+                 <div className="absolute top-full left-0 mt-2 p-2 bg-white border border-gray-100 shadow-xl rounded-xl z-[510] grid grid-cols-4 gap-1 animate-in fade-in zoom-in duration-150">
+                    {commonEmojis.map(e => (
+                      <button key={e} onClick={() => { insertText(e); setShowEmojis(false); }} className="p-2 hover:bg-gray-50 rounded-lg text-lg leading-none">{e}</button>
+                    ))}
+                 </div>
+               )}
+             </div>
+          </div>
+
           <textarea 
+            ref={textareaRef}
             autoFocus
             value={content}
             onChange={e => setContent(e.target.value)}
             placeholder="Quelle réflexion souhaitez-vous partager ?"
-            className="w-full min-h-[200px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
+            className="w-full min-h-[180px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
           />
         </div>
+
         <div className="p-6 border-t border-gray-50 flex justify-end">
           <button 
             onClick={handlePost}
             disabled={loading || !content.trim()}
             className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg disabled:opacity-50"
           >
-            {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier
+            {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier l'Onde
           </button>
         </div>
       </div>
@@ -127,7 +187,6 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const [isReading, setIsReading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -219,7 +278,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
         </div>
 
         <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-5'}`}>
-          {post.content}
+          {formatContent(post.content)}
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
@@ -246,7 +305,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const { addToast } = useToast();
+  const { addToast } = user ? useToast() : { addToast: () => {} };
 
   const fetchPosts = async () => {
     setIsRefreshing(true);
