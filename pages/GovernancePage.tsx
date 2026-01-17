@@ -9,40 +9,88 @@ import {
   CheckCircle2,
   X,
   ChevronLeft,
-  AlertCircle
+  AlertCircle,
+  PenTool,
+  Users,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  Landmark,
+  Shield,
+  FileText
 } from 'lucide-react';
-import { supabase } from '../lib/supabase.ts';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { Edict, User } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
 
-const EdictCard: React.FC<{ edict: Edict, user: User, onVote: () => void }> = ({ edict, user, onVote }) => {
+// On étend localement le type Edict pour inclure la catégorie du RIC
+interface RIC extends Edict {
+  category: 'internal' | 'national';
+}
+
+const MOCK_RICS: RIC[] = [
+  {
+    id: 'ric-1',
+    title: "RIC INTERNE : Limitation des mandats des Gardiens",
+    proposer_id: 'u1',
+    description: "Proposition visant à limiter la durée de la fonction de Gardien à 2 ans non renouvelables pour assurer une rotation démocratique et éviter toute concentration de pouvoir numérique.",
+    status: 'voting',
+    category: 'internal',
+    votes_count: 850,
+    threshold: 1200,
+    ends_at: new Date(Date.now() + 864000000).toISOString()
+  },
+  {
+    id: 'ric-2',
+    title: "RIC NATIONAL : Gratuité de la carte d'identité pour les primo-demandeurs",
+    proposer_id: 'u2',
+    description: "Initiative visant à interpeller le gouvernement pour la gratuité totale de la première CNI pour tous les jeunes ivoiriens atteignant 18 ans, afin de garantir leur citoyenneté pleine et entière.",
+    status: 'voting',
+    category: 'national',
+    votes_count: 4500,
+    threshold: 10000,
+    ends_at: new Date(Date.now() + 1264000000).toISOString()
+  }
+];
+
+const StepCard: React.FC<{ icon: React.ReactNode, title: string, text: string, color: string }> = ({ icon, title, text, color }) => (
+  <div className={`p-6 rounded-[2rem] border ${color} bg-white/50 flex flex-col items-center text-center shadow-sm`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm bg-white text-gray-900`}>
+      {icon}
+    </div>
+    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2">{title}</h4>
+    <p className="text-xs text-gray-500 font-medium leading-relaxed">{text}</p>
+  </div>
+);
+
+const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, user, onVote }) => {
   const { addToast } = useToast();
   const [hasVoted, setHasVoted] = useState(false);
   const [voting, setVoting] = useState(false);
-  const progress = (edict.votes_count / edict.threshold) * 100;
+  const progress = (ric.votes_count / ric.threshold) * 100;
 
   useEffect(() => {
     const checkVoteStatus = async () => {
-      if (!supabase) return;
-      const { data } = await supabase.from('votes').select('*').eq('edict_id', edict.id).eq('user_id', user.id).maybeSingle();
+      if (!isRealSupabase || !supabase) return;
+      const { data } = await supabase.from('votes').select('*').eq('edict_id', ric.id).eq('user_id', user.id).maybeSingle();
       if (data) setHasVoted(true);
     };
     checkVoteStatus();
-  }, [edict.id, user.id]);
+  }, [ric.id, user.id]);
 
   const handleVote = async () => {
     if (hasVoted || voting) return;
     setVoting(true);
     
-    if (supabase) {
-      const { error: voteError } = await supabase.from('votes').insert([{ user_id: user.id, edict_id: edict.id }]);
+    if (isRealSupabase && supabase) {
+      const { error: voteError } = await supabase.from('votes').insert([{ user_id: user.id, edict_id: ric.id }]);
       if (voteError) {
-        addToast("Souveraineté : Vote déjà enregistré ou erreur serveur.", "error");
+        addToast("RIC : Vote déjà enregistré ou erreur serveur.", "error");
       } else {
-        await supabase.rpc('increment_edict_votes', { row_id: edict.id });
+        await supabase.rpc('increment_edict_votes', { row_id: ric.id });
         setHasVoted(true);
         onVote();
-        addToast("Sceau apposé avec succès !", "success");
+        addToast("Sceau citoyen apposé !", "success");
       }
     } else {
       setHasVoted(true);
@@ -53,80 +101,176 @@ const EdictCard: React.FC<{ edict: Edict, user: User, onVote: () => void }> = ({
   };
 
   return (
-    <div className={`bg-white border-2 rounded-[3rem] p-10 transition-all ${edict.status === 'enacted' ? 'border-emerald-100 bg-emerald-50/10' : 'border-gray-100 hover:border-blue-200 shadow-sm'}`}>
-      <div className="flex justify-between items-start mb-8">
-        <h3 className="text-2xl font-serif font-bold text-gray-900 leading-tight">{edict.title}</h3>
-        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${edict.status === 'voting' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-          {edict.status === 'voting' ? 'En Scrutin' : 'Adopté'}
+    <div className={`bg-white border-2 rounded-[3rem] p-8 md:p-10 transition-all ${ric.status === 'enacted' ? 'border-emerald-100 bg-emerald-50/10' : 'border-gray-100 hover:border-blue-100 shadow-sm'}`}>
+      <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+             {ric.category === 'internal' ? (
+               <span className="bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1">
+                 <Shield size={10} /> RIC Interne (Gouvernance)
+               </span>
+             ) : (
+               <span className="bg-orange-50 text-orange-600 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-orange-100 flex items-center gap-1">
+                 <Landmark size={10} /> RIC National (Plaidoyer)
+               </span>
+             )}
+          </div>
+          <h3 className="text-2xl font-serif font-bold text-gray-900 leading-tight flex-1">{ric.title}</h3>
+        </div>
+        <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shrink-0 ${ric.status === 'voting' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
+          {ric.status === 'voting' ? 'Récolte de Signatures' : 'Adopté'}
         </span>
       </div>
-      <p className="text-gray-700 leading-relaxed mb-10 font-medium">{edict.description}</p>
+      
+      <p className="text-gray-600 leading-relaxed mb-10 font-medium text-sm md:text-base">
+        {ric.description}
+      </p>
+
       <div className="space-y-4">
         <div className="flex justify-between text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
-          <span>{edict.votes_count} signatures</span>
-          <span>Objectif : {edict.threshold}</span>
+          <span className="flex items-center gap-2"><Users size={14} className="text-blue-500" /> {ric.votes_count.toLocaleString()} signatures</span>
+          <span>Seuil : {ric.threshold.toLocaleString()}</span>
         </div>
-        <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner">
-          <div className={`h-full transition-all duration-1000 ${edict.status === 'enacted' ? 'bg-emerald-500' : 'bg-blue-600'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+        <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
+          <div className={`h-full transition-all duration-1000 ${ric.status === 'enacted' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-blue-600'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
         </div>
       </div>
-      {edict.status === 'voting' && (
+
+      {ric.status === 'voting' && (
         <button 
           onClick={handleVote}
           disabled={hasVoted || voting}
-          className={`w-full mt-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${hasVoted ? 'bg-emerald-500 text-white' : 'bg-gray-900 text-white hover:bg-black shadow-xl'}`}
+          className={`w-full mt-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${hasVoted ? 'bg-emerald-500 text-white shadow-lg' : 'bg-gray-900 text-white hover:bg-black shadow-xl active:scale-95'}`}
         >
-          {voting ? <Loader2 className="animate-spin" /> : hasVoted ? <CheckCircle2 className="w-5 h-5" /> : <VoteIcon className="w-5 h-5" />}
-          {hasVoted ? 'Sceau Apposé' : 'Apposer mon Sceau'}
+          {voting ? <Loader2 className="animate-spin" /> : hasVoted ? <CheckCircle2 className="w-5 h-5" /> : <PenTool className="w-5 h-5 text-amber-500" />}
+          {hasVoted ? 'Signature Apposée' : 'Signer le RIC'}
         </button>
+      )}
+
+      {ric.status === 'enacted' && (
+        <div className="mt-8 flex items-center gap-3 text-emerald-600 font-bold text-[10px] uppercase tracking-widest bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+          <ShieldCheck size={18} /> Ce référendum a abouti. La volonté citoyenne prévaut.
+        </div>
       )}
     </div>
   );
 };
 
 const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
-  const [edicts, setEdicts] = useState<Edict[]>([]);
+  const { addToast } = useToast();
+  const [rics, setRics] = useState<RIC[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchEdicts = async () => {
-    if (!supabase) {
-      setEdicts([]);
+  const fetchRics = async () => {
+    setLoading(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { data } = await supabase.from('edicts').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+          setRics(data as any);
+        } else {
+          setRics(MOCK_RICS);
+        }
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setRics(MOCK_RICS);
+      }
+    } catch (e) {
+      setRics(MOCK_RICS);
+    } finally {
       setLoading(false);
-      return;
     }
-    const { data } = await supabase.from('edicts').select('*').order('created_at', { ascending: false });
-    if (data) setEdicts(data);
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchEdicts();
+    fetchRics();
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16">
-      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
-        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil
-      </Link>
+    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <div className="mb-8">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour Agora
+        </Link>
+      </div>
       
-      <div className="text-center mb-24">
-        <div className="w-24 h-24 bg-gray-900 text-amber-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-2xl">
-          <Gavel className="w-10 h-10" />
+      <div className="text-center mb-16">
+        <div className="w-20 h-20 bg-gray-950 text-orange-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl relative">
+          <div className="absolute inset-0 bg-orange-500/10 rounded-[2.5rem] animate-pulse"></div>
+          <Gavel className="w-8 h-8 relative z-10" />
         </div>
-        <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 mb-6">Édits de la Cité</h1>
-        <p className="text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed">Les citoyens proposent, le Cercle décide.</p>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Référendum d'Initiative Citoyenne</h1>
+        <p className="text-gray-500 max-w-2xl mx-auto text-lg font-medium leading-relaxed italic">
+          "Le pouvoir de la cité, par la volonté de ses citoyens." <br/>
+          Une première en Côte d'Ivoire : proposez, signez, et faites changer les règles.
+        </p>
+      </div>
+
+      {/* SECTION EXPLICATIVE : LE CYCLE DU RIC */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        <StepCard 
+          icon={<FileText className="text-indigo-500" />}
+          title="1. Initiative"
+          text="Tout citoyen peut lancer une pétition RIC pour la vie du Cercle ou pour la Nation."
+          color="border-indigo-100 bg-indigo-50/20"
+        />
+        <StepCard 
+          icon={<PenTool className="text-orange-500" />}
+          title="2. Soutien (Signatures)"
+          text="Chaque citoyen signe pour valider la proposition. Si le seuil est atteint, le scrutin s'ouvre."
+          color="border-orange-100 bg-orange-50/20"
+        />
+        <StepCard 
+          icon={<ShieldCheck className="text-emerald-500" />}
+          title="3. Décision"
+          text="Une proposition adoptée devient une règle pour le Cercle ou un plaidoyer officiel national."
+          color="border-emerald-100 bg-emerald-50/20"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+        <div className="p-8 rounded-[3rem] bg-indigo-50/50 border border-indigo-100 flex items-center gap-6">
+          <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-indigo-600">
+            <Shield size={32} />
+          </div>
+          <div>
+            <h3 className="font-serif font-bold text-xl text-gray-900">RIC Interne</h3>
+            <p className="text-xs text-indigo-700/60 font-medium">Réforme de la gouvernance, des règles et de l'éthique au sein du Cercle Citoyen.</p>
+          </div>
+        </div>
+        <div className="p-8 rounded-[3rem] bg-orange-50/50 border border-orange-100 flex items-center gap-6">
+          <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-orange-600">
+            <Landmark size={32} />
+          </div>
+          <div>
+            <h3 className="font-serif font-bold text-xl text-gray-900">RIC National</h3>
+            <p className="text-xs text-orange-700/60 font-medium">Propositions de lois et plaidoyers pour influencer les politiques publiques de la Côte d'Ivoire.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-12 flex items-center justify-between border-b border-gray-100 pb-6 px-4">
+        <h2 className="text-xl font-serif font-bold text-gray-900">Signatures en cours</h2>
+        <div className="text-[10px] font-black uppercase text-gray-300 tracking-[0.2em] flex items-center gap-2">
+          <Zap size={14} className="text-orange-500" /> Mode Démocratie Directe
+        </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>
       ) : (
         <div className="grid grid-cols-1 gap-12">
-          {edicts.length > 0 ? edicts.map(e => (
-            <EdictCard key={e.id} edict={e} user={user} onVote={fetchEdicts} />
-          )) : (
-            <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
-               <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-               <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Aucun édit en cours de scrutin.</p>
+          {rics.length > 0 ? (
+            rics.map(ric => (
+              <RICCard key={ric.id} ric={ric} user={user} onVote={fetchRics} />
+            ))
+          ) : (
+            <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-gray-50 shadow-inner">
+               <AlertCircle className="w-16 h-16 text-gray-100 mx-auto mb-6" />
+               <p className="text-gray-400 font-bold uppercase tracking-widest text-sm mb-4">Aucune initiative en récolte actuellement.</p>
+               <Link to="/ideas" className="text-blue-600 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:underline">
+                  Transformer une idée en RIC <ArrowRight size={14} />
+               </Link>
             </div>
           )}
         </div>

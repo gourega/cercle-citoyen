@@ -18,7 +18,7 @@ const AdminDashboard: React.FC = () => {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [pendingQuests, setPendingQuests] = useState<any[]>([]);
   const [recoveryRequests, setRecoveryRequests] = useState<any[]>([]);
-  const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeEdicts: 0 });
+  const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeRICs: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
@@ -38,7 +38,7 @@ const AdminDashboard: React.FC = () => {
             totalUsers: profs.length, 
             totalPosts: 0, 
             totalPoints: profs.reduce((acc, p) => acc + (p.impact_score || 0), 0), 
-            activeEdicts: 0 
+            activeRICs: 0 
           });
         }
         const { data: qData } = await supabase.from('quests').select('*').eq('status', 'pending');
@@ -175,7 +175,7 @@ const AdminDashboard: React.FC = () => {
            {[
              { label: "Population réelle", value: stats.totalUsers, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
              { label: "Impact Souverain", value: stats.totalPoints.toLocaleString() + " XP", icon: Zap, color: "text-emerald-600", bg: "bg-emerald-50" },
-             { label: "Gouvernance", value: stats.activeEdicts, icon: Shield, color: "text-purple-600", bg: "bg-purple-50" },
+             { label: "Souveraineté (RIC)", value: stats.activeRICs, icon: Shield, color: "text-purple-600", bg: "bg-purple-50" },
              { label: "Institutions", value: profiles.filter(p => p.category && p.category !== UserCategory.CITIZEN).length, icon: Landmark, color: "text-amber-600", bg: "bg-amber-50" }
            ].map((s, i) => (
              <div key={i} className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all">
