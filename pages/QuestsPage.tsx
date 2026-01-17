@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { 
   Trophy, Target, Users, Zap, MapPin, Calendar, ArrowRight, Sparkles, Loader2, 
   ChevronRight, ShieldCheck, Flag, Flame, Star, CheckCircle2, Camera, X, 
-  ShieldAlert, AlertCircle, Plus, Send, Check, BadgeCheck, Building2, ChevronLeft
+  ShieldAlert, AlertCircle, Plus, Send, Check, BadgeCheck, Building2, ChevronLeft,
+  Info, HelpCircle
 } from 'lucide-react';
 import { Quest, CircleType, UserCategory } from '../types.ts';
 import { CIRCLES_CONFIG } from '../constants.tsx';
@@ -130,7 +131,7 @@ const QuestsPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-16">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
         <div>
           <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-6 transition-colors text-sm font-bold group">
             <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil
@@ -145,6 +146,36 @@ const QuestsPage: React.FC = () => {
           <button onClick={() => setIsModalOpen(true)} className="bg-gray-900 text-white px-8 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3">
             <Plus size={18} /> Proposer un Sentier
           </button>
+        </div>
+      </div>
+
+      {/* Guide des Sentiers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex gap-5 items-start">
+          <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-200">
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-2 flex items-center gap-2">
+              Invoquer Vision IA
+            </h3>
+            <p className="text-xs text-blue-900/60 leading-relaxed font-medium">
+              L'intelligence du Cercle analyse les besoins de la Nation pour vous suggérer une action inspirante et structurée, prête à être lancée.
+            </p>
+          </div>
+        </div>
+        <div className="bg-gray-100/50 p-6 rounded-[2rem] border border-gray-200 flex gap-5 items-start">
+          <div className="w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+            <Plus size={18} />
+          </div>
+          <div>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-900 mb-2 flex items-center gap-2">
+              Proposer un Sentier
+            </h3>
+            <p className="text-xs text-gray-900/40 leading-relaxed font-medium">
+              Devenez architecte du changement en créant votre propre initiative locale. Elle sera soumise au conseil pour validation communautaire.
+            </p>
+          </div>
         </div>
       </div>
 
