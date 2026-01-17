@@ -1,5 +1,5 @@
 
-/* CSS Global - Cercle Citoyen */
+/* CSS Global - Cercle Citoyen - Raffinement Visuel */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,49 +12,41 @@
 body {
   @apply antialiased text-gray-900 bg-[#fcfcfc] overflow-x-hidden;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-size: 14px; /* Base réduite pour l'élégance */
 }
 
 .font-serif {
   font-family: 'Playfair Display', serif;
 }
 
-/* Animations Spéciales */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+/* Animations Fluides */
+.page-transition {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Custom Utilities */
 .shadow-prestige {
-  box-shadow: 0 48px 96px -24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05);
 }
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
-/* Smooth Transitions */
-.page-transition {
-  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+/* Ajustement des poids pour la finesse Prestige */
+.font-black {
+  font-weight: 800; /* Plus fin que 900 */
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.font-bold {
+  font-weight: 600; /* Semi-bold au lieu de Bold massif */
 }
 
-/* Scrollbar Style */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-200 rounded-full hover:bg-gray-300 transition-colors;
+.drop-shadow-prestige {
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.03));
 }
