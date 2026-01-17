@@ -8,7 +8,7 @@ import {
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, BookText,
-  Bold, Italic, List, Smile, Type
+  Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -186,6 +186,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const [author, setAuthor] = useState<any>(null);
   const [isReading, setIsReading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -238,6 +239,11 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isAuthor = currentUser && (currentUser.id === post.author_id || (currentUser.role === Role.SUPER_ADMIN && post.author_id === ADMIN_ID));
+  
+  // Logique de troncature
+  const TRUNCATE_LIMIT = 280;
+  const shouldTruncate = post.content.length > TRUNCATE_LIMIT && !isMajestic;
+  const displayContent = isExpanded || !shouldTruncate ? post.content : post.content.slice(0, TRUNCATE_LIMIT).trim() + "...";
 
   return (
     <article className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm mb-6 overflow-hidden animate-in fade-in duration-500">
@@ -277,9 +283,22 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
           </div>
         </div>
 
-        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-5'}`}>
-          {formatContent(post.content)}
+        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-2'}`}>
+          {formatContent(displayContent)}
         </div>
+
+        {shouldTruncate && (
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mb-5 flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:text-blue-700 transition-colors"
+          >
+            {isExpanded ? (
+              <><ChevronUp size={14} /> Voir moins</>
+            ) : (
+              <><ChevronDown size={14} /> Lire la suite</>
+            )}
+          </button>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
           <div className="flex gap-1">
