@@ -2,9 +2,36 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Handshake, Plus, Search, Loader2, Package, Sparkles, Heart, ArrowRight, X, CheckCircle2, ShoppingBag, ChevronLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase.ts';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { User, ResourceGift } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
+
+const MOCK_RESOURCES: ResourceGift[] = [
+  {
+    id: 'm1',
+    donor_id: 'u1',
+    title: 'Kit de semences maraîchères',
+    description: 'Lot de graines de tomates, piments et gombos pour potager citoyen.',
+    category: 'Agriculture',
+    status: 'available'
+  },
+  {
+    id: 'm2',
+    donor_id: 'u2',
+    title: 'Lot de 10 manuels scolaires',
+    description: 'Livres de mathématiques et français niveau CM2, très bon état.',
+    category: 'Éducation',
+    status: 'available'
+  },
+  {
+    id: 'm3',
+    donor_id: 'u3',
+    title: 'Machine à coudre manuelle',
+    description: 'Fonctionnelle, idéale pour apprentissage en centre communautaire.',
+    category: 'Outils',
+    status: 'claimed'
+  }
+];
 
 const ResourceCard: React.FC<{ resource: ResourceGift, onClaim: (id: string) => void }> = ({ resource, onClaim }) => (
   <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
@@ -22,7 +49,7 @@ const ResourceCard: React.FC<{ resource: ResourceGift, onClaim: (id: string) => 
     </div>
 
     <h3 className="text-xl font-serif font-bold text-gray-900 mb-3">{resource.title}</h3>
-    <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-grow">{resource.description}</p>
+    <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-grow line-clamp-2">{resource.description}</p>
 
     <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{resource.category}</span>
@@ -50,49 +77,87 @@ const ResourceExchange: React.FC<{ user: User }> = ({ user }) => {
   }, []);
 
   const fetchResources = async () => {
-    if (!supabase) return;
-    const { data } = await supabase.from('resource_gifts').select('*').order('created_at', { ascending: false });
-    if (data) setResources(data);
-    setLoading(false);
+    setLoading(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { data } = await supabase.from('resource_gifts').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+          setResources(data);
+        } else {
+          setResources(MOCK_RESOURCES);
+        }
+      } else {
+        // Simulation d'un délai réseau pour l'immersion
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setResources(MOCK_RESOURCES);
+      }
+    } catch (e) {
+      setResources(MOCK_RESOURCES);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreate = async () => {
-    if (!newResource.title.trim() || !supabase) return;
-    const { error } = await supabase.from('resource_gifts').insert([{
-      donor_id: user.id,
-      title: newResource.title,
-      description: newResource.description,
-      category: newResource.category,
-      status: 'available'
-    }]);
-
-    if (!error) {
-      addToast("Don ajouté au catalogue !", "success");
-      setIsModalOpen(false);
-      setNewResource({ title: '', description: '', category: 'Outils' });
-      fetchResources();
+    if (!newResource.title.trim()) return;
+    
+    if (isRealSupabase && supabase) {
+      const { error } = await supabase.from('resource_gifts').insert([{
+        donor_id: user.id,
+        title: newResource.title,
+        description: newResource.description,
+        category: newResource.category,
+        status: 'available'
+      }]);
+      if (error) {
+        addToast("Erreur lors de la publication.", "error");
+        return;
+      }
+    } else {
+      const mockNew: ResourceGift = {
+        id: Date.now().toString(),
+        donor_id: user.id,
+        title: newResource.title,
+        description: newResource.description,
+        category: newResource.category,
+        status: 'available'
+      };
+      setResources(prev => [mockNew, ...prev]);
     }
+
+    addToast("Don ajouté au catalogue !", "success");
+    setIsModalOpen(false);
+    setNewResource({ title: '', description: '', category: 'Outils' });
+    if (isRealSupabase) fetchResources();
   };
 
   const handleClaim = async (id: string) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('resource_gifts').update({ status: 'claimed' }).eq('id', id);
-    if (!error) {
-      addToast("Demande transmise au donateur !", "success");
-      fetchResources();
+    if (isRealSupabase && supabase) {
+      const { error } = await supabase.from('resource_gifts').update({ status: 'claimed' }).eq('id', id);
+      if (error) {
+        addToast("Erreur lors de la réclamation.", "error");
+        return;
+      }
+    } else {
+      setResources(prev => prev.map(r => r.id === id ? { ...r, status: 'claimed' } : r));
     }
+    addToast("Demande transmise au donateur !", "success");
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
-      <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
-        <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
-      </Link>
+      <div className="mb-8">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
+        </Link>
+      </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16 text-center md:text-left">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
         <div>
           <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Le Marché de Solidarité</h1>
-          <p className="text-gray-500 max-w-xl text-lg">L'économie circulaire citoyenne.</p>
+          <p className="text-gray-500 max-w-xl text-lg font-medium leading-relaxed">
+            Ici, les surplus des uns deviennent les opportunités des autres. L'économie circulaire citoyenne.
+          </p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -133,8 +198,30 @@ const ResourceExchange: React.FC<{ user: User }> = ({ user }) => {
                 <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-white rounded-xl transition-all"><X /></button>
               </div>
               <div className="p-10 space-y-6">
-                <input value={newResource.title} onChange={e => setNewResource({...newResource, title: e.target.value})} className="w-full bg-gray-50 p-5 rounded-2xl outline-none font-bold" placeholder="Qu'offrez-vous ?" />
-                <button onClick={handleCreate} className="w-full bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl">Publier</button>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Titre de la ressource</label>
+                  <input 
+                    value={newResource.title} 
+                    onChange={e => setNewResource({...newResource, title: e.target.value})} 
+                    className="w-full bg-gray-50 p-5 rounded-2xl outline-none font-bold focus:bg-white border border-transparent focus:border-rose-100 transition-all" 
+                    placeholder="Ex: Sac de riz, Outils de bricolage..." 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Description</label>
+                  <textarea 
+                    value={newResource.description} 
+                    onChange={e => setNewResource({...newResource, description: e.target.value})} 
+                    className="w-full h-32 bg-gray-50 p-5 rounded-2xl outline-none font-medium resize-none focus:bg-white border border-transparent focus:border-rose-100 transition-all" 
+                    placeholder="Détaillez l'état et la disponibilité..." 
+                  />
+                </div>
+                <button 
+                  onClick={handleCreate} 
+                  className="w-full bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl"
+                >
+                  Publier dans la Cité
+                </button>
               </div>
            </div>
         </div>
