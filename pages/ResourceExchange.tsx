@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Handshake, Plus, Search, Loader2, Package, Sparkles, Heart, ArrowRight, X, CheckCircle2, ShoppingBag, ChevronLeft } from 'lucide-react';
+import { Handshake, Plus, Search, Loader2, Package, Sparkles, Heart, ArrowRight, X, CheckCircle2, ShoppingBag, ChevronLeft, ShieldCheck, Zap } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { User, ResourceGift } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -32,6 +32,16 @@ const MOCK_RESOURCES: ResourceGift[] = [
     status: 'claimed'
   }
 ];
+
+const StepCard: React.FC<{ icon: React.ReactNode, title: string, text: string, color: string }> = ({ icon, title, text, color }) => (
+  <div className={`p-6 rounded-[2rem] border ${color} bg-white/50 flex flex-col items-center text-center shadow-sm`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm bg-white text-gray-900`}>
+      {icon}
+    </div>
+    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2">{title}</h4>
+    <p className="text-xs text-gray-500 font-medium leading-relaxed">{text}</p>
+  </div>
+);
 
 const ResourceCard: React.FC<{ resource: ResourceGift, onClaim: (id: string) => void }> = ({ resource, onClaim }) => (
   <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
@@ -87,7 +97,6 @@ const ResourceExchange: React.FC<{ user: User }> = ({ user }) => {
           setResources(MOCK_RESOURCES);
         }
       } else {
-        // Simulation d'un délai réseau pour l'immersion
         await new Promise(resolve => setTimeout(resolve, 800));
         setResources(MOCK_RESOURCES);
       }
@@ -165,6 +174,28 @@ const ResourceExchange: React.FC<{ user: User }> = ({ user }) => {
         >
           <Plus size={20} /> Proposer un Don
         </button>
+      </div>
+
+      {/* SECTION EXPLICATIVE : LE PACTE DE SOLIDARITÉ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <StepCard 
+          icon={<Heart className="text-rose-500" />}
+          title="1. Offrez"
+          text="Mettez à disposition une ressource dont vous n'avez plus l'utilité directe pour la communauté."
+          color="border-rose-100 bg-rose-50/20"
+        />
+        <StepCard 
+          icon={<Handshake className="text-blue-500" />}
+          title="2. Échangez"
+          text="Un citoyen réclame la ressource. Le système organise la rencontre en toute sécurité."
+          color="border-blue-100 bg-blue-50/20"
+        />
+        <StepCard 
+          icon={<Zap className="text-amber-500" />}
+          title="3. Impactez"
+          text="Validez l'échange pour transformer ce geste en points d'impact (XP) pour votre profil souverain."
+          color="border-amber-100 bg-amber-50/20"
+        />
       </div>
 
       <div className="mb-12 relative max-w-2xl mx-auto">
