@@ -2,6 +2,7 @@
 // @google/genai utility functions for CERCLE CITOYEN
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
+// Always use a named parameter and process.env.API_KEY directly
 const getAI = () => {
   const key = process.env.API_KEY;
   if (!key) return null;
@@ -37,6 +38,7 @@ export async function decodeAudioData(
   return buffer;
 }
 
+// Fix: Standardize contents structure and use responseSchema for JSON output
 export async function analyzePollutionImage(base64Image: string) {
   try {
     const ai = getAI();
@@ -46,14 +48,13 @@ export async function analyzePollutionImage(base64Image: string) {
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: [
-        {
-          parts: [
-            { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
-            { text: "Tu es le système expert 'Sentinelle Verte' pour la Côte d'Ivoire. Analyse cette image de dégradation urbaine. Cela peut être des ordures, des eaux usées, ou des encombrants comme des véhicules vétustes abandonnés (épaves). Si la localisation exacte n'est pas visible, utilise 'Localité à préciser'. Identifie la nature exacte (ex: Véhicule hors d'usage et dépôts sauvages) et propose un plan d'action pour libérer l'espace public." }
-          ]
-        }
-      ],
+      // Fix: Simplified contents structure following guidelines
+      contents: {
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
+          { text: "Tu es le système expert 'Sentinelle Verte' pour la Côte d'Ivoire. Analyse cette image de dégradation urbaine. Cela peut être des ordures, des eaux usées, ou des encombrants comme des véhicules vétustes abandonnés (épaves). Si la localisation exacte n'est pas visible, utilise 'Localité à préciser'. Identifie la nature exacte (ex: Véhicule hors d'usage et dépôts sauvages) et propose un plan d'action pour libérer l'espace public." }
+        ]
+      },
       config: { 
         responseMimeType: "application/json",
         responseSchema: {
@@ -76,11 +77,11 @@ export async function analyzePollutionImage(base64Image: string) {
       }
     });
 
+    // Fix: Access text property directly (not as a method)
     if (!response.text) throw new Error("Réponse vide");
-    return JSON.parse(response.text);
+    return JSON.parse(response.text.trim());
   } catch (e) { 
     console.error("Erreur Analyse Pollution:", e);
-    // Fallback structuré pour éviter le crash UI
     return {
       city: "Localité à préciser",
       sector: "Secteur à préciser",
@@ -93,6 +94,7 @@ export async function analyzePollutionImage(base64Image: string) {
   }
 }
 
+// Fix: Use generateContent for nano-banana image models as per guidelines
 export async function generateCleanVision(base64Image: string) {
   try {
     const ai = getAI();
@@ -110,6 +112,7 @@ export async function generateCleanVision(base64Image: string) {
       }
     });
     
+    // Fix: Correct iteration through parts to find image data
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
     return part ? `data:image/png;base64,${part.inlineData.data}` : null;
   } catch (e) { 
@@ -118,13 +121,14 @@ export async function generateCleanVision(base64Image: string) {
   }
 }
 
+// Fix: Correct TTS model name and modalities
 export async function getGriotReading(content: string) {
   try {
     const ai = getAI();
     if (!ai) return null;
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Lis avec sagesse : ${content}` }] }],
+      contents: `Lis avec sagesse : ${content}`,
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -132,6 +136,7 @@ export async function getGriotReading(content: string) {
         },
       },
     });
+    // Fix: Extract audio from candidates structure correctly
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   } catch (e) { return null; }
 }
@@ -148,13 +153,20 @@ export async function summarizeCircleDiscussions(circleType: string, posts: stri
   } catch (e) { return "Synthèse indisponible."; }
 }
 
+// Fix: Proper grounding processing using googleMaps tool
 export async function findInitiatives(query: string, lat?: number, lng?: number) {
   try {
     const ai = getAI();
     if (!ai) return { text: "Recherche indisponible.", places: [] };
-    const config: any = { tools: [{ googleMaps: {} }] };
+    const config: any = { 
+      tools: [{ googleMaps: {} }]
+    };
     if (lat && lng) {
-      config.toolConfig = { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } };
+      config.toolConfig = { 
+        retrievalConfig: { 
+          latLng: { latitude: lat, longitude: lng } 
+        } 
+      };
     }
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-09-2025",
@@ -168,6 +180,7 @@ export async function findInitiatives(query: string, lat?: number, lng?: number)
   } catch (e) { return { text: "Erreur localisation.", places: [] }; }
 }
 
+// Fix: Add responseSchema for structured JSON output
 export async function analyzeIdeaImpact(title: string, description: string) {
   try {
     const ai = getAI();
@@ -175,12 +188,23 @@ export async function analyzeIdeaImpact(title: string, description: string) {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analyse l'impact de l'idée : ${title} - ${description}`,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            potentialImpact: { type: Type.STRING },
+            neededExpertises: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["potentialImpact", "neededExpertises"]
+        }
+      }
     });
     return JSON.parse(response.text || "{}");
   } catch (e) { return { potentialImpact: "Inconnu", neededExpertises: [] }; }
 }
 
+// Fix: Add responseSchema for structured JSON output
 export async function analyzeCommunityReputation(entityName: string, vouches: string[]) {
   try {
     const ai = getAI();
@@ -188,7 +212,18 @@ export async function analyzeCommunityReputation(entityName: string, vouches: st
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analyse réputation de ${entityName} basée sur : ${vouches.join(' | ')}`,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            score: { type: Type.NUMBER },
+            summary: { type: Type.STRING },
+            strengths: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["score", "summary", "strengths"]
+        }
+      }
     });
     return JSON.parse(response.text || "{}");
   } catch (e) { return { score: 50, summary: "Erreur", strengths: [] }; }
@@ -218,6 +253,7 @@ export async function getConsensusSummary(messages: {sender: string, text: strin
   } catch (e) { return "Consensus indisponible."; }
 }
 
+// Fix: Add responseSchema for structured JSON output
 export async function simplifyLegalText(text: string) {
   try {
     const ai = getAI();
@@ -225,7 +261,18 @@ export async function simplifyLegalText(text: string) {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Simplifie ce texte législatif ou administratif pour un citoyen ivoirien : ${text}`,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING },
+            impacts: { type: Type.ARRAY, items: { type: Type.STRING } },
+            alerts: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["summary", "impacts", "alerts"]
+        }
+      }
     });
     return JSON.parse(response.text || '{}');
   } catch (e) { return { summary: "Erreur", impacts: [], alerts: [] }; }

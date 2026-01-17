@@ -4,7 +4,8 @@ import { User, Role, UserCategory, Post, CircleType, Contribution, EntityApplica
 export { Role, UserCategory, CircleType };
 export type { User, Post, Contribution, EntityApplication, Edict };
 
-export const ADMIN_ID = 'admin-suprême';
+// Unification avec l'ID utilisé dans LandingPage
+export const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 
 export const MOCK_USERS: Record<string, User> = {
   u1: {
@@ -37,14 +38,14 @@ export const MOCK_USERS: Record<string, User> = {
   },
   [ADMIN_ID]: {
     id: ADMIN_ID,
-    name: 'Kouassi GOBLE Ouréga',
+    name: 'Kouassi G. Ouréga',
     email: 'cerclecitoyenci@gmail.com',
-    pseudonym: 'GardienSuprême',
+    pseudonym: 'Gardien',
     bio: 'Fondateur et Gardien du Cercle. Citoyen engagé pour la souveraineté numérique et sociale.',
     role: Role.SUPER_ADMIN,
     category: UserCategory.CITIZEN,
     interests: ['Gouvernance', 'Éthique', 'Éducation'],
-    avatar: 'https://picsum.photos/seed/goble/300/300',
+    avatar: 'https://picsum.photos/seed/admin/200/200',
     impactScore: 19740,
     impact_score: 19740,
     civicStats: { thought: 40, link: 30, action: 30 }
@@ -57,7 +58,7 @@ export const MOCK_POSTS: Post[] = [
     author_id: ADMIN_ID,
     circle_type: CircleType.PEACE,
     is_majestic: true,
-    content: "**LE SACRE DE LA PAIX : AU-DELÀ DES URNES, LA FRATERNITÉ**\n\nFrères et Sœurs, le bruit des urnes s'est tu, mais l'écho des tensions résonne encore dans nos foyers et nos quartiers. Les cicatrices de ces périodes électorales ne doivent pas devenir les fossés de demain.\n\nLa démocratie est un outil, mais la Paix est notre fondation. Une élection n'est qu'un passage ; notre destin de peuple, lui, est éternel. Ici, dans ce Cercle, nous refusons que le sang ou la colère dictent notre marche.\n\nJ'appelle chaque citoyen au **Grand Palabre de la Réconciliation**. Ne cherchez pas qui a tort, cherchez comment nous pouvons, ensemble, recoudre le pagne déchiré de notre unité nationale. La Côte d'Ivoire ne se construit pas contre l'autre, elle se bâtit avec lui.\n\nKouassi GOBLE Ouréga",
+    content: "**LE SACRE DE LA PAIX : AU-DELÀ DES URNES, LA FRATERNITÉ**\n\nFrères et Sœurs, le bruit des urnes s'est tu, mais l'écho des tensions résonne encore dans nos foyers et nos quartiers. Les cicatrices de ces périodes électorales ne doivent pas devenir les fossés de demain.\n\nLa démocratie est un outil, mais la Paix est notre fondation. Une élection n'est qu'un passage ; notre destin de peuple, lui, est éternel. Ici, dans ce Cercle, nous refusons que le sang ou la colère dictent notre marche.\n\nJ'appelle chaque citoyen au **Grand Palabre de la Réconciliation**. Ne cherchez pas qui a tort, cherchez comment nous pouvons, ensemble, recoudre le pagne déchiré de notre unité nationale. La Côte d'Ivoire ne se construit pas contre l'autre, elle se bâtit avec lui.\n\nKouassi G. Ouréga",
     created_at: new Date().toISOString(),
     reactions: { useful: 2450, relevant: 1890, inspiring: 4200 },
     comments: []
