@@ -7,7 +7,7 @@ import {
   Pencil, Crown, Share2, Volume2, Trash2, 
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
-  Video, User as UserIcon, LogOut
+  Video, User as UserIcon, LogOut, Bold, Italic, List
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -46,11 +46,79 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; acti
   <Link 
     to={to} 
     onClick={onClick}
-    className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold text-[10px] uppercase tracking-widest ${active ? `bg-blue-50/50 ${color} shadow-sm ring-1 ring-blue-100/30` : 'text-gray-400 hover:bg-gray-50 hover:text-gray-900'}`}
+    className={`flex items-center gap-3 p-3 rounded-xl transition-all font-bold text-[10px] uppercase tracking-widest ${active ? `bg-blue-50/50 ${color} shadow-sm ring-1 ring-blue-100/30` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
   >
-    <span className={active ? color : "text-gray-300"}>{icon}</span> {label}
+    <span className={active ? color : "text-gray-400"}>{icon}</span> {label}
   </Link>
 );
+
+const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void, onPublish: (post: any) => void }> = ({ user, isOpen, onClose, onPublish }) => {
+  const [content, setContent] = useState('');
+  const [circleType, setCircleType] = useState<CircleType>(CircleType.IDEAS);
+  const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
+
+  if (!isOpen) return null;
+
+  const handlePost = async () => {
+    if (!content.trim()) return;
+    setLoading(true);
+    const postData = {
+      id: Date.now().toString(),
+      author_id: user.id,
+      circle_type: circleType,
+      content,
+      created_at: new Date().toISOString(),
+      reactions: { useful: 0, relevant: 0, inspiring: 0 },
+      comments: []
+    };
+
+    if (isRealSupabase && supabase) await supabase.from('posts').insert([postData]);
+    onPublish(postData);
+    setContent('');
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[500] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde</h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400"><X size={20}/></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
+            <select 
+              value={circleType}
+              onChange={e => setCircleType(e.target.value as CircleType)}
+              className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-lg outline-none"
+            >
+              {Object.values(CircleType).map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <textarea 
+            autoFocus
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder="Quelle réflexion souhaitez-vous partager ?"
+            className="w-full min-h-[200px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
+          />
+        </div>
+        <div className="p-6 border-t border-gray-50 bg-gray-50/30 flex justify-end">
+          <button 
+            onClick={handlePost}
+            disabled={loading || !content.trim()}
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const PostCard: React.FC<{ 
   post: Post, 
@@ -114,11 +182,6 @@ const PostCard: React.FC<{
     } catch (e) { setIsReading(false); }
   };
 
-  const handleReaction = (type: 'useful' | 'relevant' | 'inspiring') => {
-    setReactions(prev => ({ ...prev, [type]: prev[type] + 1 }));
-    addToast("Soutien enregistré", "success");
-  };
-
   const handleDelete = async () => {
     setShowMenu(false);
     if (!window.confirm("Supprimer cette réflexion ?")) return;
@@ -135,11 +198,10 @@ const PostCard: React.FC<{
   if (!author) return <PostSkeleton />;
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
-  // Comparaison robuste pour l'affichage des boutons
   const isAuthor = currentUser && (currentUser.id === post.author_id || (currentUser.role === Role.SUPER_ADMIN && post.author_id === ADMIN_ID));
 
   return (
-    <article className={`bg-white rounded-[2rem] border border-gray-100 shadow-sm mb-6 overflow-hidden animate-in fade-in duration-500`}>
+    <article className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm mb-6 overflow-hidden animate-in fade-in duration-500">
       <div className="p-5 md:p-8">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -176,27 +238,22 @@ const PostCard: React.FC<{
           </div>
         </div>
 
-        <div className={`text-gray-700 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-5'}`}>
+        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-5'}`}>
           {post.content}
         </div>
 
         {post.image_url && (
-          <div className="relative rounded-[1.5rem] overflow-hidden border border-gray-50 mb-5 aspect-video bg-gray-50">
+          <div className="relative rounded-[1rem] overflow-hidden border border-gray-50 mb-5 aspect-video bg-gray-50">
             <img src={showClean && post.clean_vision_url ? post.clean_vision_url : post.image_url} className="w-full h-full object-cover" alt="" />
-            {post.clean_vision_url && (
-              <button onClick={() => setShowClean(!showClean)} className="absolute bottom-4 left-4 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-full font-black text-[7px] uppercase tracking-widest flex items-center gap-2 shadow-lg border border-white">
-                <Sparkles size={10} className="text-emerald-500" /> {showClean ? 'ORIGINAL' : 'VISION PROPRE'}
-              </button>
-            )}
           </div>
         )}
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
           <div className="flex gap-1">
-            <button onClick={() => handleReaction('useful')} className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all">
+            <button className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all">
               <ThumbsUp size={14} /> <span className="text-[10px] font-bold">{reactions.useful}</span>
             </button>
-            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all">
+            <button className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all">
               <Lightbulb size={14} /> <span className="text-[10px] font-bold">{reactions.relevant}</span>
             </button>
           </div>
@@ -214,6 +271,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const { addToast } = useToast();
 
   const fetchPosts = async () => {
@@ -258,6 +316,13 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
 
   return (
     <div className="min-h-screen bg-[#fafafa] pb-24 lg:pb-0">
+      <PublishModal 
+        user={user} 
+        isOpen={isPublishModalOpen} 
+        onClose={() => setIsPublishModalOpen(false)} 
+        onPublish={(p) => setPosts(prev => [p, ...prev])} 
+      />
+
       {/* Sidebar Mobile */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden">
@@ -300,7 +365,15 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
         <main className="flex-1 max-w-2xl">
           <header className="mb-8 flex justify-between items-end px-2">
             <div><h1 className="text-3xl font-serif font-bold text-gray-900 mb-1">Agora</h1><p className="text-gray-400 font-bold italic text-[12px]">Le pouls de la Nation.</p></div>
-            <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsPublishModalOpen(true)}
+                className="hidden md:flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg"
+              >
+                <Plus size={14} /> NOUVELLE ONDE
+              </button>
+              <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
+            </div>
           </header>
 
           <div className="space-y-4">
@@ -308,6 +381,14 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
           </div>
         </main>
       </div>
+
+      {/* Bouton Flottant Mobile pour Publication */}
+      <button 
+        onClick={() => setIsPublishModalOpen(true)}
+        className="lg:hidden fixed right-6 bottom-24 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl z-[120] active:scale-90 transition-transform"
+      >
+        <Plus size={24} />
+      </button>
 
       {/* Barre Navigation Mobile */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-3xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-[0_-10px_30px_rgba(0,0,0,0.02)] rounded-t-[1.5rem]">

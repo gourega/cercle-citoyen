@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Video, Loader2, Download, Play, HelpCircle, Smartphone, Sparkles, Send, Smartphone as PhoneIcon, ChevronLeft, X, CheckCircle } from 'lucide-react';
+import { Video, Loader2, Play, Sparkles, Send, ChevronLeft, X, CheckCircle, Smartphone as PhoneIcon } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { useToast } from '../ToastContext.tsx';
 
@@ -25,14 +25,14 @@ const ContributionModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="bg-[#00adef] p-8 flex flex-col items-center text-white relative">
           <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors"><X size={24} /></button>
           <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-4 shadow-lg"><img src="https://www.wave.com/static/favicon.png" className="w-8 h-8" alt="Wave" /></div>
-          <h3 className="text-xl font-serif font-bold text-center">Soutenir le Griot</h3>
+          <h3 className="text-xl font-serif font-bold text-center text-white">Soutenir le Griot</h3>
         </div>
         <div className="p-6">
           {step === 1 ? (
             <div className="space-y-6 flex flex-col items-center">
-              <p className="text-xs text-gray-500 leading-relaxed text-center font-bold uppercase tracking-widest">Le financement citoyen est garant de notre souveraineté.</p>
+              <p className="text-xs text-gray-500 leading-relaxed text-center font-bold uppercase tracking-widest">Le financement citoyen garantit notre autonomie.</p>
               <div className="p-4 bg-gray-50 rounded-[1.5rem] border border-gray-100 shadow-inner"><img src="https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/assets/wave-qr-sample.png" className="w-32 h-32 opacity-80" alt="QR" /></div>
-              <button onClick={handleWaveSupport} disabled={loading} className="w-full bg-[#00adef] text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#008cc2] transition-all flex items-center justify-center gap-3">
+              <button onClick={handleWaveSupport} disabled={loading} className="w-full bg-[#00adef] text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#008cc2] transition-all flex items-center justify-center gap-3 shadow-lg shadow-[#00adef]/20">
                 {loading ? <Loader2 className="animate-spin" /> : <PhoneIcon size={16} />} Soutenir via Wave
               </button>
             </div>
@@ -94,33 +94,33 @@ const GriotStudio: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700 bg-[#fcfcfc] min-h-screen">
+    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700 bg-[#fcfcfc] min-h-screen text-gray-900">
       <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-xs font-bold group">
         <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour Agora
       </Link>
       {showContrib && <ContributionModal onClose={() => setShowContrib(false)} />}
 
       <div className="text-center mb-12">
-        <div className="w-16 h-16 bg-amber-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-amber-50">
+        <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-amber-200">
            <Video className="w-8 h-8" />
         </div>
-        <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Le Griot Numérique</h1>
-        <p className="text-gray-400 font-bold italic text-sm">Racontez l'avenir en images animées.</p>
+        <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Le Griot Numérique</h1>
+        <p className="text-gray-500 font-bold italic text-sm">Racontez l'avenir de votre cité en images animées.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
-          <div className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+          <div className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-gray-100 shadow-sm relative">
             <div className="flex items-center justify-between mb-8">
-              <span className="text-[10px] font-black uppercase text-amber-600 tracking-widest flex items-center gap-2"><Sparkles size={12}/> Souveraineté</span>
-              <span className="px-3 py-1 bg-gray-50 rounded-full text-[9px] font-black uppercase text-gray-300">{dailyCount}/2 essais</span>
+              <span className="text-[10px] font-black uppercase text-amber-600 tracking-widest flex items-center gap-2"><Sparkles size={12}/> Création Libre</span>
+              <span className="px-3 py-1 bg-gray-50 rounded-full text-[9px] font-black uppercase text-gray-400">{dailyCount}/2 essais</span>
             </div>
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Décrivez une scène d'entraide ou de progrès..." className="w-full h-40 bg-gray-50 rounded-[1.5rem] p-6 text-gray-800 outline-none border border-transparent focus:border-amber-100 focus:bg-white transition-all resize-none mb-6 font-medium" />
+            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Décrivez une scène d'impact social..." className="w-full h-40 bg-gray-50 rounded-[1.5rem] p-6 text-gray-800 outline-none border border-transparent focus:border-amber-100 focus:bg-white transition-all resize-none mb-6 font-medium placeholder:text-gray-300" />
             <button onClick={handleGenerate} disabled={loading || dailyCount >= 2 || !prompt.trim()} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-30 flex items-center justify-center gap-3">
-              {loading ? <Loader2 className="animate-spin" /> : <Send size={16} />} {loading ? "Tissage en cours..." : "Éveiller le Griot"}
+              {loading ? <Loader2 className="animate-spin" /> : <Send size={16} />} {loading ? "Tissage IA..." : "Éveiller le Griot"}
             </button>
           </div>
-          <button onClick={() => setShowContrib(true)} className="w-full py-4 bg-[#00adef]/10 text-[#00adef] rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-[#00adef] hover:text-white transition-all border border-[#00adef]/20">Soutenir l'outil via Wave</button>
+          <button onClick={() => setShowContrib(true)} className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-100">Aider à financer l'infrastructure</button>
         </div>
 
         <div className="relative">
