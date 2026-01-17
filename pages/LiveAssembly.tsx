@@ -71,7 +71,7 @@ const LiveAssembly: React.FC = () => {
     sessionPromiseRef.current = null;
     setIsActive(false);
     setIsConnecting(false);
-    setStatus('L\'Esprit s\'est retiré');
+    setStatus('La Sagesse s\'est retirée');
     setTranscription('');
     for (const source of sourcesRef.current) {
       try { source.stop(); } catch(e) {}
@@ -81,7 +81,7 @@ const LiveAssembly: React.FC = () => {
 
   const startSession = async () => {
     setIsConnecting(true);
-    setStatus('Appel à l\'Esprit du Gardien...');
+    setStatus('Appel à la Sagesse du Cercle...');
     
     try {
       // Create new instance right before use
@@ -99,7 +99,7 @@ const LiveAssembly: React.FC = () => {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
           },
-          systemInstruction: 'Tu es "L\'Esprit du Gardien", l\'émanation numérique de la sagesse suprême de Kouassi GOBLE Ouréga. Ta voix est masculine, posée et protectrice. Ton but est d\'écouter le citoyen avec la profondeur d\'un ancien et de l\'aider à tracer son chemin d\'action. Sois solennel, inspirant et utilise une autorité sage et fraternelle.',
+          systemInstruction: 'Tu es "La Sagesse du Cercle", l\'émanation numérique de l\'intelligence collective de la Nation, inspirée par la vision de Kouassi GOBLE Ouréga. Ta voix est masculine, posée et protectrice. Ton but est d\'écouter le citoyen avec la profondeur d\'un ancien et de l\'aider à tracer son chemin d\'action. Sois solennel, inspirant et utilise une autorité sage et fraternelle.',
           inputAudioTranscription: {},
           outputAudioTranscription: {},
         },
@@ -107,7 +107,7 @@ const LiveAssembly: React.FC = () => {
           onopen: () => {
             setIsConnecting(false);
             setIsActive(true);
-            setStatus('L\'Esprit du Gardien est présent');
+            setStatus('La Sagesse du Cercle est présente');
             
             const source = audioContextRef.current!.createMediaStreamSource(stream);
             const scriptProcessor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
@@ -165,7 +165,7 @@ const LiveAssembly: React.FC = () => {
     } catch (err) {
       console.error(err);
       setIsConnecting(false);
-      setStatus('L\'Esprit n\'a pu être invoqué');
+      setStatus('La Sagesse n\'a pu être invoquée');
     }
   };
 
@@ -217,7 +217,7 @@ const LiveAssembly: React.FC = () => {
               className="flex items-center gap-4 px-10 py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50"
             >
               {isConnecting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5 text-blue-400" />}
-              {isConnecting ? "Invocation..." : "Invoquer l'Esprit"}
+              {isConnecting ? "Invocation..." : "Invoquer la sagesse du Cercle"}
             </button>
           ) : (
             <button 
@@ -238,7 +238,7 @@ const LiveAssembly: React.FC = () => {
           </div>
           <h3 className="font-serif font-bold text-xl text-gray-900 mb-4">Parole du Gardien</h3>
           <p className="text-sm text-gray-600 leading-relaxed">
-            L'Esprit s'exprime désormais avec une voix masculine (Zephyr), reflétant l'identité du Gardien Kouassi GOBLE Ouréga pour un dialogue direct et authentique.
+            La parole est le socle de notre unité. En consultant l'Esprit, vous participez à la co-construction d'une sagesse partagée, pilier indispensable de notre souveraineté.
           </p>
         </div>
         <div className="p-8 bg-emerald-50/50 rounded-[2.5rem] border border-emerald-100">
