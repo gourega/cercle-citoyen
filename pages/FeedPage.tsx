@@ -7,7 +7,7 @@ import {
   Pencil, Crown, Share2, Volume2, Trash2, 
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
-  Video, User as UserIcon, LogOut
+  Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, BookText
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -200,7 +200,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             </div>
           </div>
           
-          <div className="relative" ref={menuRef}>
+          <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-gray-50 rounded-xl text-gray-300 hover:text-gray-900 transition-colors">
               <MoreVertical size={18} />
             </button>
@@ -265,26 +265,28 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Navigation</div>
         <NavLink to="/feed" active icon={<Home size={18} />} label="Agora" onClick={onLinkClick} />
-        <NavLink to="/sentinel" icon={<Camera size={18} className="text-emerald-500" />} label="Sentinelle" color="text-emerald-600" onClick={onLinkClick} />
-        <NavLink to="/map" icon={<MapIcon size={18} className="text-blue-500" />} label="Empreinte" color="text-blue-600" onClick={onLinkClick} />
+        <NavLink to="/sentinel" icon={<Camera size={18} />} label="Sentinelle" color="text-emerald-600" onClick={onLinkClick} />
+        <NavLink to="/map" icon={<MapIcon size={18} />} label="Empreinte" color="text-blue-600" onClick={onLinkClick} />
+        <NavLink to="/assembly" icon={<Mic2 size={18} />} label="Assemblée" color="text-indigo-600" onClick={onLinkClick} />
       </section>
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Action</div>
-        <NavLink to="/quests" icon={<Target size={18} className="text-rose-500" />} label="Sentiers" color="text-rose-600" onClick={onLinkClick} />
-        <NavLink to="/solidarity" icon={<Handshake size={18} className="text-amber-500" />} label="Marché" color="text-amber-600" onClick={onLinkClick} />
-        <NavLink to="/ideas" icon={<Lightbulb size={18} className="text-yellow-500" />} label="Idées" color="text-yellow-600" onClick={onLinkClick} />
+        <NavLink to="/quests" icon={<Target size={18} />} label="Sentiers" color="text-rose-600" onClick={onLinkClick} />
+        <NavLink to="/solidarity" icon={<Handshake size={18} />} label="Marché" color="text-amber-600" onClick={onLinkClick} />
+        <NavLink to="/ideas" icon={<Lightbulb size={18} />} label="Idées" color="text-yellow-600" onClick={onLinkClick} />
+        <NavLink to="/governance" icon={<Gavel size={18} />} label="Édits" color="text-slate-600" onClick={onLinkClick} />
       </section>
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Intelligence</div>
-        <NavLink to="/griot" icon={<Video size={18} className="text-amber-500" />} label="Studio Griot" color="text-amber-600" onClick={onLinkClick} />
-        <NavLink to="/studio" icon={<Rocket size={18} className="text-purple-500" />} label="Studio Impact" color="text-purple-600" onClick={onLinkClick} />
+        <NavLink to="/griot" icon={<Video size={18} />} label="Studio Griot" color="text-amber-600" onClick={onLinkClick} />
+        <NavLink to="/studio" icon={<Rocket size={18} />} label="Studio Impact" color="text-purple-600" onClick={onLinkClick} />
+        <NavLink to="/compass" icon={<Compass size={18} />} label="Boussole" color="text-blue-700" onClick={onLinkClick} />
       </section>
-      {user.role === Role.SUPER_ADMIN && (
-        <section className="space-y-1 border-t border-gray-100 pt-4">
-          <div className="text-[8px] font-black text-amber-600 uppercase tracking-widest px-3 mb-2">Gardien</div>
-          <NavLink to="/admin" icon={<Landmark size={18} className="text-amber-700" />} label="Conseil" color="text-amber-700" onClick={onLinkClick} />
-        </section>
-      )}
+      <section className="space-y-1 border-t border-gray-100 pt-4">
+        <div className="text-[8px] font-black text-amber-600 uppercase tracking-widest px-3 mb-2">Gardien</div>
+        <NavLink to="/admin" icon={<Landmark size={18} />} label="Conseil" color="text-amber-700" onClick={onLinkClick} />
+        <NavLink to="/transparency" icon={<BookText size={18} />} label="Registre" color="text-gray-600" onClick={onLinkClick} />
+      </section>
     </div>
   );
 
@@ -300,7 +302,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       {/* Sidebar Mobile */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden">
-          <div className="absolute inset-0 bg-gray-950/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
           <div className="absolute inset-y-0 left-0 w-72 bg-white shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col">
             <div className="p-6 border-b flex justify-between items-center bg-gray-50/30">
               <Logo size={20} showText variant="blue" />
@@ -339,16 +341,20 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
         <main className="flex-1 max-w-2xl">
           <header className="mb-8 flex justify-between items-end px-2">
             <div><h1 className="text-3xl font-serif font-bold text-gray-900 mb-1">Agora</h1><p className="text-gray-400 font-bold italic text-[12px]">Le pouls de la Nation.</p></div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setIsPublishModalOpen(true)}
-                className="hidden md:flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg"
-              >
-                <Plus size={14} /> NOUVELLE ONDE
-              </button>
-              <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
-            </div>
+            <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
           </header>
+
+          {/* GROS BOUTON DE PUBLICATION */}
+          <button 
+            onClick={() => setIsPublishModalOpen(true)}
+            className="w-full bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm mb-10 flex items-center gap-6 hover:shadow-md hover:border-blue-100 transition-all group"
+          >
+            <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+            <span className="text-gray-400 font-medium text-lg flex-1 text-left group-hover:text-gray-600">Quelle est votre onde aujourd'hui ?</span>
+            <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-105 transition-transform">
+              <Plus size={24} />
+            </div>
+          </button>
 
           <div className="space-y-4">
             {loading ? Array.from({ length: 3 }).map((_, i) => <PostSkeleton key={i} />) : posts.map(post => <PostCard key={post.id} post={post} currentUser={user} onUpdate={fetchPosts} />)}

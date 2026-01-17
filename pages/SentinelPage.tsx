@@ -19,7 +19,11 @@ import {
   FileText,
   Info,
   RotateCcw,
-  LogOut
+  LogOut,
+  Target,
+  Maximize,
+  ArrowRight,
+  Focus
 } from 'lucide-react';
 import { User, WasteReport, CircleType } from '../types.ts';
 import { analyzePollutionImage, generateCleanVision } from '../lib/gemini.ts';
@@ -29,7 +33,7 @@ import { useToast } from '../ToastContext.tsx';
 const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [view, setView] = useState<'hub' | 'camera' | 'processing' | 'result' | 'success'>('hub');
+  const [view, setView] = useState<'hub' | 'instructions' | 'camera' | 'processing' | 'result' | 'success'>('hub');
   
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [cleanVision, setCleanVision] = useState<string | null>(null);
@@ -38,6 +42,8 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const [reports, setReports] = useState<WasteReport[]>([]);
   const [showClean, setShowClean] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [simulatedDistance, setSimulatedDistance] = useState("2.5m");
   
   const [editingReport, setEditingReport] = useState<WasteReport | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -51,6 +57,17 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     checkLocation();
     return () => stopCamera();
   }, []);
+
+  // Simulation d'une distance qui change légèrement
+  useEffect(() => {
+    if (view === 'camera') {
+      const interval = setInterval(() => {
+        const d = (Math.random() * 2 + 1.5).toFixed(1);
+        setSimulatedDistance(`${d}m`);
+      }, 1500);
+      return () => clearInterval(interval);
+    }
+  }, [view]);
 
   const checkLocation = () => {
     if (navigator.geolocation) {
@@ -192,6 +209,46 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     }
   };
 
+  // VUES SPECIFIQUES
+  if (view === 'instructions') {
+    return (
+      <div className="fixed inset-0 z-[300] bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-lg rounded-[3.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+           <div className="bg-emerald-600 p-8 text-white relative">
+              <button onClick={() => setView('hub')} className="absolute top-6 right-6 opacity-60 hover:opacity-100 transition-opacity"><X size={24} /></button>
+              <ShieldCheck size={48} className="mb-4" />
+              <h2 className="text-3xl font-serif font-bold">Protocole Sentinelle</h2>
+              <p className="text-emerald-100 text-sm mt-1 uppercase tracking-widest font-black text-[9px]">Analyse de salubrité territoriale</p>
+           </div>
+           <div className="p-8 md:p-10">
+              <div className="space-y-8">
+                 {[
+                   { icon: <Camera size={20} />, title: "Capture de l'Anomalie", desc: "Photographiez la nuisance urbaine (ordures, épave, obstruction)." },
+                   { icon: <Sparkles size={20} />, title: "Scan & Localisation", desc: "L'IA identifie la nature exacte et valide votre position géographique." },
+                   { icon: <Zap size={20} />, title: "Vision Propre", desc: "Le système génère une projection du lieu réhabilité pour inspirer le changement." },
+                   { icon: <CheckCircle size={20} />, title: "Engagement du Cercle", desc: "Le signalement est archivé et partagé pour mobiliser l'action citoyenne." }
+                 ].map((step, i) => (
+                   <div key={i} className="flex gap-6 items-start">
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-50 shadow-sm">{step.icon}</div>
+                      <div>
+                         <h4 className="font-bold text-gray-900 text-sm mb-1">{step.title}</h4>
+                         <p className="text-gray-500 text-xs leading-relaxed font-medium">{step.desc}</p>
+                      </div>
+                   </div>
+                 ))}
+              </div>
+              <button 
+                onClick={startCamera} 
+                className="w-full mt-12 bg-gray-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3"
+              >
+                Activer le Scrutateur <ArrowRight size={18} />
+              </button>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   if (view === 'success') {
     return (
       <div className="min-h-screen bg-[#fcfcfc] flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-500 text-gray-900">
@@ -207,10 +264,68 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
 
   if (view === 'camera') {
     return (
-      <div className="fixed inset-0 z-[200] bg-black flex flex-col">
-        <video ref={videoRef} autoPlay playsInline muted className="flex-1 object-cover" />
-        <div className="absolute top-8 left-8"><button onClick={() => { stopCamera(); setView('hub'); }} className="p-4 bg-white/20 backdrop-blur-md rounded-full text-white"><X size={24} /></button></div>
-        <div className="absolute bottom-12 inset-x-0 flex justify-center"><button onClick={capturePhoto} className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-[8px] border-white/20 active:scale-90 transition-all"><div className="w-14 h-14 bg-emerald-500 rounded-full shadow-2xl"></div></button></div>
+      <div className="fixed inset-0 z-[200] bg-black flex flex-col overflow-hidden">
+        <video ref={videoRef} autoPlay playsInline muted className="flex-1 object-cover opacity-80" />
+        
+        {/* Overlay Technique */}
+        <div className="absolute inset-0 pointer-events-none border-[20px] border-black/20">
+           {/* Réticule de visée */}
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border border-emerald-500/30 flex items-center justify-center">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-emerald-500"></div>
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-emerald-500"></div>
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-emerald-500"></div>
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-emerald-500"></div>
+           </div>
+
+           {/* Distance Dynamique */}
+           <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-2 rounded-full border border-emerald-500/50 flex items-center gap-3">
+              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Distance :</span>
+              <span className="text-lg font-mono text-white font-bold">{simulatedDistance}</span>
+           </div>
+
+           {/* Stats latérales */}
+           <div className="absolute top-1/2 -translate-y-1/2 left-8 flex flex-col gap-4">
+              <div className="flex flex-col"><span className="text-[7px] text-gray-500 font-bold uppercase">ISO</span><span className="text-[10px] text-white font-mono">400</span></div>
+              <div className="flex flex-col"><span className="text-[7px] text-gray-500 font-bold uppercase">SHUTTER</span><span className="text-[10px] text-white font-mono">1/60</span></div>
+              <div className="flex flex-col"><span className="text-[7px] text-emerald-500 font-bold uppercase">SENTINELLE-ID</span><span className="text-[10px] text-white font-mono">V4-X{user.id.slice(0,4)}</span></div>
+           </div>
+        </div>
+
+        {/* Ajusteur de Profondeur (Slider) */}
+        <div className="absolute right-8 top-1/2 -translate-y-1/2 h-64 w-12 flex flex-col items-center gap-3 pointer-events-auto">
+           <span className="text-[8px] text-white font-black uppercase tracking-tighter">DEPTH</span>
+           <div className="flex-1 w-1 bg-gray-800 rounded-full relative">
+              <input 
+                type="range" 
+                min="0" max="100" 
+                value={zoom * 20} 
+                onChange={(e) => setZoom(parseInt(e.target.value) / 20)}
+                className="absolute inset-x-0 h-full w-full opacity-0 cursor-pointer -rotate-180" 
+                // Fix: Cast 'slider-vertical' to any to avoid TypeScript error with standard Appearance type
+                style={{ appearance: 'slider-vertical' as any }}
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-emerald-500 rounded-full transition-all" style={{ height: `${zoom * 20}%` }}></div>
+              <div className="absolute w-4 h-4 bg-white rounded-full border-2 border-emerald-500 -left-1.5 transition-all shadow-lg" style={{ bottom: `${zoom * 20}%` }}></div>
+           </div>
+           <Focus className="text-emerald-500" size={16} />
+        </div>
+
+        {/* Barre d'Actions Caméra */}
+        <div className="absolute top-8 left-8 pointer-events-auto">
+          <button onClick={() => { stopCamera(); setView('hub'); }} className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all border border-white/10"><X size={24} /></button>
+        </div>
+
+        <div className="absolute bottom-12 inset-x-0 flex justify-center items-center gap-12 pointer-events-auto">
+           <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40"><RotateCcw size={20}/></div>
+           <button onClick={capturePhoto} className="w-24 h-24 bg-white rounded-full flex items-center justify-center border-[8px] border-white/20 active:scale-90 transition-all shadow-3xl">
+              <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center">
+                 <Camera className="text-white" size={32} />
+              </div>
+           </button>
+           <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40"><Maximize size={20}/></div>
+        </div>
+
         <canvas ref={canvasRef} className="hidden" />
       </div>
     );
@@ -282,7 +397,12 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
       )}
       <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-20">
         <div><h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Sentinelle <span className="text-emerald-500">Verte</span></h1><p className="text-gray-400 text-lg font-medium italic">Veillez sur votre territoire.</p></div>
-        <button onClick={startCamera} className="w-full md:w-auto px-12 py-6 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-4 hover:bg-emerald-700 transition-all"><Camera size={24} /> Scanner</button>
+        <button 
+          onClick={() => setView('instructions')} 
+          className="w-full md:w-auto px-12 py-6 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-4 hover:bg-emerald-700 transition-all"
+        >
+          <Camera size={24} /> Scanner l'Anomalie
+        </button>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
          <div className="lg:col-span-2 space-y-12">
@@ -305,8 +425,8 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
             </div>
          </div>
          <aside className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm h-fit">
-            <h3 className="font-serif font-bold text-xl mb-4">Guide de Protection</h3>
-            <p className="text-[13px] text-gray-500 leading-relaxed font-medium">Capturez les anomalies urbaines pour générer un plan d'action certifié par l'intelligence souveraine du Cercle.</p>
+            <h3 className="font-serif font-bold text-xl mb-4 flex items-center gap-2"><Info size={20} className="text-emerald-500" /> Guide Citoyen</h3>
+            <p className="text-[13px] text-gray-500 leading-relaxed font-medium">Capturez les anomalies urbaines pour générer un plan d'action certifié par l'intelligence souveraine du Cercle. Votre action directe est le premier levier de changement.</p>
          </aside>
       </div>
     </div>
