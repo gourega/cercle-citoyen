@@ -141,6 +141,9 @@ const LiveAssembly: React.FC = () => {
             if (msg.serverContent?.outputTranscription) {
               setTranscription(prev => prev + msg.serverContent!.outputTranscription!.text);
             }
+            if (msg.serverContent?.inputTranscription) {
+              // Optionnel: On pourrait aussi afficher la transcription utilisateur
+            }
             if (msg.serverContent?.turnComplete) {
               setTranscription('');
             }
@@ -174,7 +177,7 @@ const LiveAssembly: React.FC = () => {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-serif font-bold text-gray-900 mb-4">L'Assemblée Directe</h1>
         <p className="text-gray-500 max-w-xl mx-auto font-medium">
-          Confiez votre vision à l'Esprit du Gardien. Un dialogue authentique pour bâtir la Cité de demain.
+          Confiez votre vision à la Sagesse du Cercle. Un dialogue authentique pour bâtir la Cité de demain.
         </p>
       </div>
 
@@ -238,7 +241,7 @@ const LiveAssembly: React.FC = () => {
           </div>
           <h3 className="font-serif font-bold text-xl text-gray-900 mb-4">Parole du Gardien</h3>
           <p className="text-sm text-gray-600 leading-relaxed">
-            La parole est le socle de notre unité. En consultant l'Esprit, vous participez à la co-construction d'une sagesse partagée, pilier indispensable de notre souveraineté.
+            La parole est le socle de notre unité. En vous exprimant, vous participez à la co-construction d'une sagesse partagée, pilier indispensable de notre souveraineté dans une dynamique d'intelligence collective.
           </p>
         </div>
         <div className="p-8 bg-emerald-50/50 rounded-[2.5rem] border border-emerald-100">
