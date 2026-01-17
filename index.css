@@ -1,25 +1,31 @@
 
-/* CSS Global - Cercle Citoyen - Raffinement Visuel */
+/* CSS Global - Cercle Citoyen - Raffinement Visuel Agora */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   --cercle-blue: #2563eb;
-  --cercle-indigo: #4338ca;
 }
 
 body {
   @apply antialiased text-gray-900 bg-[#fcfcfc] overflow-x-hidden;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  font-size: 14px; /* Base réduite pour l'élégance */
+  font-size: 14px;
 }
 
 .font-serif {
   font-family: 'Playfair Display', serif;
 }
 
-/* Animations Fluides */
+.shadow-prestige {
+  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.04);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .page-transition {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -29,24 +35,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Custom Utilities */
-.shadow-prestige {
-  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05);
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Ajustement des poids pour la finesse Prestige */
-.font-black {
-  font-weight: 800; /* Plus fin que 900 */
-}
-
-.font-bold {
-  font-weight: 600; /* Semi-bold au lieu de Bold massif */
-}
-
-.drop-shadow-prestige {
-  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.03));
+/* Forçage thème clair prestige */
+input, textarea {
+  @apply placeholder:text-gray-300;
 }

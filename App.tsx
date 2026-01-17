@@ -57,7 +57,8 @@ const App: React.FC = () => {
   return (
     <ToastProvider>
       <Router>
-        <div className="min-h-screen bg-[#0a0c10] text-white">
+        {/* Changement radical du thème global ici : bg-[#fcfcfc] et texte foncé */}
+        <div className="min-h-screen bg-[#fcfcfc] text-gray-900 transition-colors duration-500">
           <Routes>
             <Route path="/" element={<LandingPage onLogin={handleLogin} />} />
             <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
