@@ -6,7 +6,7 @@ import {
   Users, Zap, Target, Landmark, Search, Check, 
   X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
   Database, Code, Lock, ShieldQuestion, Fingerprint,
-  ChevronLeft, AlertCircle, HardDrive
+  ChevronLeft, AlertCircle, HardDrive, UserCog
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -63,6 +63,7 @@ const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState({ totalUsers: 0, totalPosts: 0, totalPoints: 0, activeRICs: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [connStatus, setConnStatus] = useState<{ok: boolean, message: string} | null>(null);
 
   const fetchData = async () => {
@@ -96,6 +97,25 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleUpdateRole = async (userId: string, newRole: Role) => {
+    setActionLoading(userId);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+        if (error) throw error;
+        addToast(`Sceau appliqué : Nouveau rôle de ${newRole}.`, "success");
+        await fetchData();
+      } else {
+        setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p));
+        addToast(`Mode Démo : Rôle changé en ${newRole}.`, "success");
+      }
+    } catch (e) {
+      addToast("Erreur lors de l'attribution du rôle.", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleProcessRecovery = async (userId: string, email: string) => {
     const tempPass = `CERCLE-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -287,7 +307,7 @@ const AdminDashboard: React.FC = () => {
                 <thead>
                   <tr className="border-b border-gray-50">
                     <th className="pb-8 pl-4 text-[11px] font-black uppercase text-gray-400 tracking-widest">Acteur</th>
-                    <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest">Rôle</th>
+                    <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest">Attribution Rôle</th>
                     <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest">Statut</th>
                     <th className="pb-8 pr-4 text-[11px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</th>
                   </tr>
@@ -298,14 +318,34 @@ const AdminDashboard: React.FC = () => {
                       <td className="py-8 pl-4 flex items-center gap-5">
                         <img src={p.avatar_url || p.avatar} className="w-14 h-14 rounded-2xl object-cover shadow-sm ring-2 ring-white" alt="" />
                         <div>
-                          <div className="font-bold text-gray-900 text-lg">{p.name}</div>
+                          <div className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                             {p.name}
+                             {p.role === Role.SUPER_ADMIN && <Crown size={14} className="text-amber-500" />}
+                          </div>
                           <div className="text-[10px] text-gray-400 font-medium">{p.pseudonym}</div>
                         </div>
                       </td>
                       <td className="py-8">
-                         <div className="flex items-center gap-2">
-                           {p.role === Role.SUPER_ADMIN && <Crown size={14} className="text-amber-500" />}
-                           <span className="text-xs font-black uppercase text-gray-600">{p.role}</span>
+                         <div className="relative group/role">
+                           {actionLoading === p.id ? (
+                             <div className="flex items-center gap-2 text-blue-600">
+                               <Loader2 className="animate-spin" size={14} />
+                               <span className="text-[10px] font-black uppercase tracking-widest">Mise à jour...</span>
+                             </div>
+                           ) : (
+                             <select 
+                               value={p.role}
+                               onChange={(e) => handleUpdateRole(p.id, e.target.value as Role)}
+                               className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 cursor-pointer appearance-none pr-8 transition-all hover:border-blue-200"
+                             >
+                               {Object.values(Role).map(r => (
+                                 <option key={r} value={r}>{r}</option>
+                               ))}
+                             </select>
+                           )}
+                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-300">
+                             <UserCog size={12} />
+                           </div>
                          </div>
                       </td>
                       <td className="py-8">
