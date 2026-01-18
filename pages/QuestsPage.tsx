@@ -225,10 +225,18 @@ const QuestCard: React.FC<{ quest: any, currentUser: any, onCertify: () => void 
   const canCertify = isInstitution && quest.status === 'validated';
   return (
     <div className="bg-white border border-gray-100 rounded-[3rem] p-8 shadow-sm hover:shadow-xl transition-all flex flex-col relative overflow-hidden group">
-       <div className="flex justify-between items-start mb-6">
+       <div className="flex justify-between items-start mb-4">
           <span className="px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600">{quest.status}</span>
           <div className="flex items-center gap-2 text-blue-600 font-black text-xs bg-blue-50 px-3 py-1.5 rounded-xl"><Zap size={14} fill="currentColor" /> +{quest.reward_xp} XP</div>
        </div>
+
+       <div className="flex items-center gap-2 mb-4">
+         <Link to={`/profile/${quest.proposer_id}`} className="flex items-center gap-2 group/author">
+           <img src={quest.proposer?.avatar_url || `https://picsum.photos/seed/${quest.proposer_id}/50/50`} className="w-6 h-6 rounded-lg object-cover shadow-sm" alt="" />
+           <span className="text-[10px] font-bold text-gray-900 group-hover/author:text-blue-600 transition-colors">{quest.proposer?.name || "Citoyen"}</span>
+         </Link>
+       </div>
+
        <h3 className="text-2xl font-serif font-bold text-gray-900 mb-3 leading-tight">{quest.title}</h3>
        <p className="text-gray-500 text-[13px] leading-relaxed mb-8 flex-grow line-clamp-3 font-medium">{quest.description}</p>
        <div className="pt-6 border-t border-gray-50 space-y-6">

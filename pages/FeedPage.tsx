@@ -272,7 +272,9 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             </Link>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="font-bold text-gray-900 text-[13px] leading-none">{author.name}</p>
+                <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-[13px] leading-none hover:text-blue-600 transition-colors">
+                  {author.name}
+                </Link>
                 {author.role === Role.SUPER_ADMIN && <ShieldCheck size={12} className="text-amber-600" />}
               </div>
               <p className="text-[7px] font-black uppercase tracking-widest text-gray-300 mt-1.5">

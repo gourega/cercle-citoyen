@@ -14,7 +14,8 @@ const MOCK_IDEAS = [
     description: 'Une plateforme pour connecter les étudiants universitaires avec des élèves du primaire pour du soutien scolaire gratuit.',
     status: 'incubating',
     vouch_count: 42,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    author: { name: 'Amadou K.', avatar_url: 'https://picsum.photos/seed/amadou/150/150' }
   },
   {
     id: 'i2',
@@ -22,7 +23,8 @@ const MOCK_IDEAS = [
     description: 'Installer des bacs de compostage collectif dans chaque secteur pour réduire les déchets ménagers et nourrir les espaces verts.',
     status: 'spark',
     vouch_count: 12,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    author: { name: 'Citoyen', avatar_url: 'https://picsum.photos/seed/cit/150/150' }
   },
   {
     id: 'i3',
@@ -30,7 +32,8 @@ const MOCK_IDEAS = [
     description: 'Transformation de cabines téléphoniques inutilisées en points d\'échange de livres en libre-service.',
     status: 'spark',
     vouch_count: 8,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    author: { name: 'Citoyen', avatar_url: 'https://picsum.photos/seed/cit2/150/150' }
   }
 ];
 
@@ -51,7 +54,7 @@ const IdeaCard: React.FC<{ idea: any }> = ({ idea }) => {
         <Lightbulb size={80} />
       </div>
       
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
           idea.status === 'spark' 
             ? 'bg-yellow-50 text-yellow-600 border-yellow-100' 
@@ -59,6 +62,13 @@ const IdeaCard: React.FC<{ idea: any }> = ({ idea }) => {
         }`}>
            {idea.status === 'spark' ? 'Étincelle' : 'En Incubation'}
         </span>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <Link to={`/profile/${idea.author_id}`} className="flex items-center gap-2 group/author">
+          <img src={idea.author?.avatar_url || `https://picsum.photos/seed/${idea.author_id}/50/50`} className="w-6 h-6 rounded-lg object-cover shadow-sm" alt="" />
+          <span className="text-[10px] font-bold text-gray-900 group-hover/author:text-blue-600 transition-colors">{idea.author?.name || "Citoyen"}</span>
+        </Link>
       </div>
       
       <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{idea.title}</h3>
@@ -92,7 +102,10 @@ const IdeaBankPage: React.FC = () => {
     setLoading(true);
     try {
       if (isRealSupabase && supabase) {
-        const { data } = await supabase.from('ideas').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase
+          .from('ideas')
+          .select('*, author:author_id(name, avatar_url)')
+          .order('created_at', { ascending: false });
         if (data && data.length > 0) {
           setIdeas(data);
         } else {
@@ -136,7 +149,8 @@ const IdeaBankPage: React.FC = () => {
           description: newIdea.description,
           status: 'spark',
           vouch_count: 1,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          author: { name: 'Moi', avatar_url: 'https://picsum.photos/seed/me/150/150' }
         };
         setIdeas(prev => [mockNew, ...prev]);
       }
