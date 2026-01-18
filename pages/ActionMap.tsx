@@ -51,7 +51,7 @@ const ActionMap: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<MapCategory>('sentiers');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [reports, setReports] = useState<WasteReport[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [results, setResults] = useState<{text: string, places: any[]} | null>(null);
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
 
@@ -69,10 +69,8 @@ const ActionMap: React.FC = () => {
     try {
       let allItems: any[] = [];
       
-      // Dans une version finale, chaque catégorie interrogera sa table spécifique (quests, posts, resource_gifts)
-      // Pour l'instant, nous adaptons les signalements Sentinelle comme base de "Sentiers"
       if (activeCategory === 'sentiers') {
-        // Logique de récupération existante pour les signalements
+        // Chargement des signalements réels + locaux pour Sentiers
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key?.startsWith('reports_')) {
@@ -84,19 +82,24 @@ const ActionMap: React.FC = () => {
           const { data } = await supabase.from('waste_reports').select('*');
           if (data) allItems = [...data, ...allItems.filter(lr => !data.find(d => d.id === lr.id))];
         }
-      } else {
-        // Mock data pour illustrer les autres catégories en attendant les liaisons DB complètes
+      } else if (activeCategory === 'palabre') {
+        // Mocking Agora points pour Palabre (ou fetch real posts with location)
         allItems = [
-          { id: 'm1', latitude: 5.36, longitude: -3.94, city: 'Abidjan', nature: activeCategory === 'palabre' ? 'Grand Palabre de Quartier' : 'Don de Kits Scolaires' },
-          { id: 'm2', latitude: 7.69, longitude: -5.03, city: 'Bouaké', nature: activeCategory === 'palabre' ? 'Débat Souveraineté' : 'Partage de Semences' },
+          { id: 'p1', latitude: 5.3484, longitude: -4.0305, city: 'Cocody', nature: 'Grand Palabre : Souveraineté Digitale', timestamp: new Date().toISOString() },
+          { id: 'p2', latitude: 7.6898, longitude: -5.0303, city: 'Bouaké', nature: 'Débat : L’Héritage des Griots', timestamp: new Date().toISOString() }
+        ];
+      } else {
+        // Mocking Solidarity points pour Soutien
+        allItems = [
+          { id: 's1', latitude: 5.33, longitude: -4.02, city: 'Abidjan', nature: 'Don de 100 Manuels Scolaires', timestamp: new Date().toISOString() },
+          { id: 's2', latitude: 9.40, longitude: -6.88, city: 'Odienné', nature: 'Banque Alimentaire Ouverte', timestamp: new Date().toISOString() }
         ];
       }
 
-      setReports(allItems);
+      setItems(allItems);
     } catch (e) { console.error("Erreur Empreinte:", e); }
   };
 
-  // handleSearch to find initiatives based on user query and location
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || loading) return;
@@ -120,7 +123,7 @@ const ActionMap: React.FC = () => {
       <section className="mb-16">
         <h1 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-4 tracking-tighter leading-tight">Empreinte <span className="text-blue-600 italic">Territoriale</span></h1>
         <p className="text-gray-500 text-lg leading-relaxed italic font-medium max-w-2xl">
-          Visualisez l'impact de l'engagement citoyen scellé en temps réel.
+          L'action citoyenne dessine le visage de notre nation.
         </p>
       </section>
 
@@ -128,17 +131,17 @@ const ActionMap: React.FC = () => {
         <div className="absolute inset-0 bg-gray-50/50 flex items-center justify-center">
           {/* Carte stylisée du pays */}
           <svg className="w-full h-full p-10 opacity-[0.12]" viewBox="0 0 800 600" fill="none" preserveAspectRatio="xMidYMid meet">
-             <path d="M350 50 Q 420 20, 500 60 T 650 100 Q 750 150, 700 250 T 600 400 Q 550 550, 400 500 T 250 450 Q 150 400, 200 250 T 300 150 T 350 50" stroke="#2563eb" strokeWidth="3" strokeDasharray="12 12" />
+             <path d="M350 50 Q 420 20, 500 60 T 650 100 Q 750 150, 700 250 T 600 400 Q 550 550, 400 500 T 250 450 Q 150 400, 200 250 T 300 150 T 350 50" stroke="#2563eb" strokeWidth="2" strokeDasharray="8 8" />
           </svg>
 
           {/* Points de l'Empreinte */}
-          {reports.map((r) => {
+          {items.map((r) => {
             if (!r.latitude || !r.longitude) return null;
             const pos = convertCoordsToPercent(r.latitude, r.longitude);
             return <MapPoint key={r.id} x={pos.x} y={pos.y} city={r.city} label={r.nature} category={activeCategory} />;
           })}
 
-          {reports.length === 0 && (
+          {items.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="bg-white/90 backdrop-blur-md px-10 py-6 rounded-[2.5rem] border border-gray-100 shadow-2xl text-center">
                 <Locate className="w-10 h-10 text-gray-200 mx-auto mb-4" />
@@ -148,30 +151,30 @@ const ActionMap: React.FC = () => {
           )}
         </div>
 
-        {/* SÉLECTEUR DE CATÉGORIES FLOTTANT */}
-        <div className="absolute top-10 left-10 flex flex-col md:flex-row gap-2 bg-white/80 backdrop-blur-xl p-2 rounded-[2rem] border border-white/50 shadow-2xl z-50">
+        {/* SÉLECTEUR DE CATÉGORIES VERTICAL (Style Screenshot) */}
+        <div className="absolute top-10 left-10 flex flex-col gap-3 z-50">
            <button 
              onClick={() => setActiveCategory('sentiers')}
-             className={`flex items-center gap-3 px-6 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === 'sentiers' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white hover:text-blue-600'}`}
+             className={`flex items-center gap-4 px-6 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 ${activeCategory === 'sentiers' ? 'bg-white text-blue-600 border border-blue-100 ring-2 ring-blue-50' : 'bg-white/80 backdrop-blur-md text-gray-400 border border-transparent'}`}
            >
-             <Target size={16} /> Sentiers
+             <div className={`w-2.5 h-2.5 rounded-full ${activeCategory === 'sentiers' ? 'bg-blue-600 animate-pulse' : 'bg-blue-200'}`}></div> Sentiers
            </button>
            <button 
              onClick={() => setActiveCategory('palabre')}
-             className={`flex items-center gap-3 px-6 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === 'palabre' ? 'bg-amber-500 text-white shadow-lg' : 'text-gray-500 hover:bg-white hover:text-amber-600'}`}
+             className={`flex items-center gap-4 px-6 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 ${activeCategory === 'palabre' ? 'bg-white text-amber-600 border border-amber-100 ring-2 ring-amber-50' : 'bg-white/80 backdrop-blur-md text-gray-400 border border-transparent'}`}
            >
-             <MessageCircle size={16} /> Palabre
+             <div className={`w-2.5 h-2.5 rounded-full ${activeCategory === 'palabre' ? 'bg-amber-600 animate-pulse' : 'bg-amber-200'}`}></div> Palabre
            </button>
            <button 
              onClick={() => setActiveCategory('soutien')}
-             className={`flex items-center gap-3 px-6 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === 'soutien' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white hover:text-emerald-600'}`}
+             className={`flex items-center gap-4 px-6 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 ${activeCategory === 'soutien' ? 'bg-white text-emerald-600 border border-emerald-100 ring-2 ring-emerald-50' : 'bg-white/80 backdrop-blur-md text-gray-400 border border-transparent'}`}
            >
-             <Handshake size={16} /> Soutien
+             <div className={`w-2.5 h-2.5 rounded-full ${activeCategory === 'soutien' ? 'bg-emerald-600 animate-pulse' : 'bg-emerald-200'}`}></div> Soutien
            </button>
         </div>
         
         <div className="absolute bottom-10 right-10 flex flex-col gap-4">
-           <button onClick={fetchData} className="w-16 h-16 bg-gray-900 text-white rounded-[1.5rem] shadow-2xl flex items-center justify-center hover:bg-black transition-all border-4 border-white active:scale-95">
+           <button onClick={fetchData} className="w-16 h-16 bg-white border border-gray-100 text-gray-900 rounded-[1.5rem] shadow-2xl flex items-center justify-center hover:bg-gray-50 transition-all active:scale-95">
              <RefreshCw size={24} className={loading ? 'animate-spin' : ''} />
            </button>
         </div>
@@ -184,15 +187,15 @@ const ActionMap: React.FC = () => {
                 <h3 className="text-2xl font-serif font-bold text-gray-950 flex items-center gap-4">
                   <ShieldCheck className="text-blue-600" /> Registre de l'Impact
                 </h3>
-                <span className="bg-gray-50 text-gray-400 text-[9px] font-black uppercase px-3 py-1 rounded-full">{reports.length} ondes</span>
+                <span className="bg-gray-50 text-gray-400 text-[9px] font-black uppercase px-3 py-1 rounded-full">{items.length} ondes</span>
               </div>
               <div className="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar pr-2">
-                {reports.length > 0 ? reports.map(r => (
+                {items.length > 0 ? items.map(r => (
                   <div key={r.id} className="p-6 bg-gray-50/50 rounded-2xl border border-gray-100 hover:bg-white hover:shadow-md transition-all group">
                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{r.city || 'Position scellée'}</span>
-                        <div className="p-1.5 bg-white rounded-lg shadow-sm group-hover:bg-blue-50 transition-colors">
-                           <Locate size={12} className="text-blue-400" />
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${activeCategory === 'sentiers' ? 'text-blue-500' : activeCategory === 'palabre' ? 'text-amber-500' : 'text-emerald-500'}`}>{r.city || 'Position scellée'}</span>
+                        <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                           <Locate size={12} className="text-gray-400" />
                         </div>
                      </div>
                      <p className="font-bold text-gray-800 text-[13px]">{r.nature}</p>
