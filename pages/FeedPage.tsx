@@ -11,7 +11,7 @@ import {
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
   Image as ImageIcon
 } from 'lucide-react';
-import { User, CircleType, Role, Post } from '../types.ts';
+import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { MOCK_POSTS, ADMIN_ID } from '../lib/mocks.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -79,13 +79,11 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        addToast("Image trop lourde (max 2Mo pour le prototype)", "error");
+        addToast("Image trop lourde (max 2Mo)", "error");
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-      };
+      reader.onloadend = () => setImage(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -109,7 +107,6 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   const handlePost = async () => {
     if (!content.trim() && !image) return;
     setLoading(true);
-    
     const postData = {
       author_id: user.id,
       circle_type: circleType,
@@ -118,101 +115,47 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
       created_at: new Date().toISOString(),
       reactions: { useful: 0, relevant: 0, inspiring: 0 }
     };
-
     try {
       if (isRealSupabase && supabase) {
         const { data, error } = await supabase.from('posts').insert([postData]).select();
-        
-        if (error) {
-          console.error("Supabase Error:", error);
-          if (error.code === '42501' || error.message.includes('Unauthorized')) {
-            throw new Error("Erreur de permission. Vérifiez vos règles RLS (exécutez le script SQL d'assouplissement).");
-          }
-          throw error;
-        }
-        
+        if (error) throw error;
         onPublish(data[0]);
-        addToast("Votre onde positive a été diffusée", "success");
+        addToast("Onde diffusée", "success");
       } else {
         onPublish({ ...postData, id: Date.now().toString() });
         addToast("Diffusé (Mode Démo)", "success");
       }
-      
-      setContent('');
-      setImage(null);
-      onClose();
+      setContent(''); setImage(null); onClose();
     } catch (e: any) {
-      console.error("Publishing fail:", e);
-      addToast(e.message || "Échec de la publication", "error");
-    } finally {
-      setLoading(false);
-    }
+      addToast(e.message || "Échec", "error");
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="fixed inset-0 z-[500] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-          <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde Positive</h3>
+          <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
-              <select 
-                value={circleType}
-                onChange={e => setCircleType(e.target.value as CircleType)}
-                className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-lg outline-none cursor-pointer"
-              >
-                {Object.values(CircleType).map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
+          <div className="flex items-center gap-3">
+            <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover" alt="" />
+            <select value={circleType} onChange={e => setCircleType(e.target.value as CircleType)} className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-lg outline-none cursor-pointer">
+              {Object.values(CircleType).map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
-
           <div className="flex items-center gap-2 border-b border-gray-50 pb-4">
-            <button onClick={() => insertText('**', '**')} title="Gras" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><Bold size={18} /></button>
-            <button onClick={() => insertText('*', '*')} title="Italique" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><Italic size={18} /></button>
-            <button onClick={() => insertText('\n* ', '')} title="Liste" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><List size={18} /></button>
+            <button onClick={() => insertText('**', '**')} className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600"><Bold size={18} /></button>
+            <button onClick={() => insertText('*', '*')} className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600"><Italic size={18} /></button>
             <div className="w-px h-6 bg-gray-100 mx-1"></div>
-            <button onClick={() => fileInputRef.current?.click()} title="Ajouter une photo" className={`p-2.5 rounded-xl transition-all active:scale-90 ${image ? 'bg-emerald-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}>
-              <ImageIcon size={18} />
-            </button>
-            <button onClick={() => setShowEmojis(!showEmojis)} title="Émojis" className={`p-2.5 rounded-xl transition-all active:scale-90 ${showEmojis ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}><Smile size={18} /></button>
+            <button onClick={() => fileInputRef.current?.click()} className={`p-2.5 rounded-xl transition-all ${image ? 'bg-emerald-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}><ImageIcon size={18} /></button>
             <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
           </div>
-
-          {showEmojis && (
-            <div className="grid grid-cols-8 gap-2 p-4 bg-gray-50 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
-              {['✨', '🇨🇮', '🔥', '🤝', '💡', '⚖️', '🌱', '🌍', '🧡', '🤍', '💚', '✊', '🏛️', '🛡️', '📢', '🚀'].map(emoji => (
-                <button key={emoji} onClick={() => { setContent(prev => prev + emoji); setShowEmojis(false); }} className="text-xl p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all transform hover:scale-125">{emoji}</button>
-              ))}
-            </div>
-          )}
-
-          {image && (
-            <div className="relative rounded-[2rem] overflow-hidden group animate-in zoom-in duration-300">
-              <img src={image} className="w-full h-auto max-h-[300px] object-cover" />
-              <button 
-                onClick={() => setImage(null)}
-                className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-black transition-all"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
-
-          <textarea 
-            ref={textareaRef}
-            autoFocus
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            placeholder="Quelle réflexion positive souhaitez-vous partager ?"
-            className="w-full min-h-[150px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
-          />
+          <textarea ref={textareaRef} autoFocus value={content} onChange={e => setContent(e.target.value)} placeholder="Quelle réflexion souhaitez-vous partager ?" className="w-full min-h-[150px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed" />
         </div>
         <div className="p-6 border-t border-gray-50 flex justify-end bg-gray-50/20">
-          <button onClick={handlePost} disabled={loading || (!content.trim() && !image)} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3">
+          <button onClick={handlePost} disabled={loading || (!content.trim() && !image)} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl disabled:opacity-50 flex items-center gap-3">
             {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Diffuser l'Onde
           </button>
         </div>
@@ -229,6 +172,12 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const [editContent, setEditContent] = useState(post.content);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [showComments, setShowComments] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+  const [isCommenting, setIsCommenting] = useState(false);
+  const [comments, setComments] = useState<Comment[]>(post.comments || []);
+
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -237,19 +186,62 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
         setAuthor({ name: "Kouassi G. Ouréga", pseudonym: "Gardien", avatar: 'https://picsum.photos/seed/admin/200/200', role: Role.SUPER_ADMIN });
         return;
       }
-      if (!isRealSupabase || !supabase) {
-        setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
-        return;
-      }
-      try {
-        const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-        setAuthor(data ? { ...data, avatar: data.avatar_url || data.avatar } : { name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
-      } catch (e) {
+      if (isRealSupabase && supabase) {
+        try {
+          const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
+          setAuthor(data ? { ...data, avatar: data.avatar_url || data.avatar } : { name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        } catch (e) {
+          setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        }
+      } else {
         setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
       }
     };
     fetchAuthor();
-  }, [post.author_id]);
+    
+    if (isRealSupabase && supabase && showComments) {
+      fetchComments();
+    }
+  }, [post.author_id, showComments]);
+
+  const fetchComments = async () => {
+    if (!isRealSupabase || !supabase) return;
+    const { data } = await supabase.from('comments').select('*').eq('post_id', post.id).order('created_at', { ascending: true });
+    if (data) setComments(data);
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentInput.trim() || !currentUser || isCommenting) return;
+    setIsCommenting(true);
+    
+    const newComment: Comment = {
+      id: crypto.randomUUID(),
+      author: currentUser.name,
+      avatar: currentUser.avatar,
+      content: commentInput.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      if (isRealSupabase && supabase) {
+        await supabase.from('comments').insert([{
+          post_id: post.id,
+          author_id: currentUser.id,
+          author: currentUser.name,
+          avatar: currentUser.avatar,
+          content: commentInput.trim()
+        }]);
+      }
+      setComments([...comments, newComment]);
+      setCommentInput('');
+      addToast("Pensée ajoutée au dialogue", "success");
+    } catch (e) {
+      addToast("Erreur lors du commentaire", "error");
+    } finally {
+      setIsCommenting(false);
+    }
+  };
 
   const handleListen = async () => {
     if (isReading) return;
@@ -298,17 +290,13 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
       setIsEditing(false);
       onUpdate();
       addToast("Onde rectifiée", "success");
-    } catch (e) { addToast("Erreur lors de la mise à jour", "error"); } finally { setIsSaving(false); }
+    } catch (e) { addToast("Erreur", "error"); } finally { setIsSaving(false); }
   };
 
   if (!author) return <PostSkeleton />;
-  
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
-  
-  // LIMITE DE TRONCATURE À 120 CARACTÈRES
-  const TRUNCATE_LIMIT = 120;
-  
+  const TRUNCATE_LIMIT = 150;
   const shouldTruncate = post.content && post.content.length > TRUNCATE_LIMIT && !isMajestic;
   const displayContent = isExpanded || !shouldTruncate ? post.content : post.content.slice(0, TRUNCATE_LIMIT).trim() + "...";
 
@@ -336,9 +324,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full min-h-[120px] bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none text-sm font-medium resize-none focus:bg-white transition-all" />
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Annuler</button>
-              <button onClick={handleSaveEdit} disabled={isSaving || !editContent.trim()} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg disabled:opacity-50">
-                {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Sauvegarder
-              </button>
+              <button onClick={handleSaveEdit} disabled={isSaving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg">{isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Sauvegarder</button>
             </div>
           </div>
         ) : (
@@ -346,13 +332,11 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-4'}`}>
               {formatContent(displayContent)}
             </div>
-            
             {(post.image_url || post.clean_vision_url) && (
               <div className="mb-6 rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm animate-in zoom-in duration-500">
-                <img src={post.image_url || post.clean_vision_url} className="w-full h-auto object-cover" alt="Illustration citoyenne" />
+                <img src={post.image_url || post.clean_vision_url} className="w-full h-auto object-cover" alt="" />
               </div>
             )}
-
             {shouldTruncate && (
               <button onClick={() => setIsExpanded(!isExpanded)} className="mb-5 flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:text-blue-700 transition-colors">
                 {isExpanded ? <><ChevronUp size={14} /> Voir moins</> : <><ChevronDown size={14} /> Lire la suite</>}
@@ -364,15 +348,17 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
         <div className="flex flex-wrap items-center justify-between pt-4 border-t border-gray-50 gap-y-3">
           <div className="flex gap-1 items-center">
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><ThumbsUp size={14} /> <span className="text-[10px] font-bold">{post.reactions.useful}</span></button>
-            <button className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all"><Lightbulb size={14} /> <span className="text-[10px] font-bold">{post.reactions.relevant}</span></button>
+            <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-1.5 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all ${showComments ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}>
+              <MessageCircle size={14} /> <span className="text-[10px] font-bold">{comments.length}</span>
+            </button>
             <div className="w-px h-4 bg-gray-100 mx-1"></div>
             <button onClick={handleShare} className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-all"><Share2 size={14} /> <span className="text-[10px] font-bold">PARTAGER</span></button>
           </div>
           <div className="flex items-center gap-2">
             {isOwner && !isEditing && (
               <div className="flex gap-1">
-                <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><Pencil size={13} /> <span className="text-[9px] font-black uppercase">Modifier</span></button>
-                <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all"><Trash2 size={13} /> <span className="text-[9px] font-black uppercase">Supprimer</span></button>
+                <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><Pencil size={13} /></button>
+                <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all"><Trash2 size={13} /></button>
               </div>
             )}
             <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400'}`}>
@@ -380,6 +366,48 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             </button>
           </div>
         </div>
+
+        {/* SECTION COMMENTAIRES DÉPLOYABLE */}
+        {showComments && (
+          <div className="mt-6 pt-6 border-t border-gray-50 animate-in slide-in-from-top-4 duration-300">
+             <div className="space-y-4 mb-6 max-h-60 overflow-y-auto no-scrollbar pr-2">
+                {comments.length > 0 ? comments.map((c, i) => (
+                  <div key={c.id || i} className="flex gap-4 items-start group">
+                    <img src={c.avatar} className="w-8 h-8 rounded-lg object-cover shadow-sm" alt="" />
+                    <div className="bg-gray-50/80 p-4 rounded-2xl rounded-tl-none flex-1">
+                       <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{c.author}</span>
+                          <span className="text-[8px] font-bold text-gray-400">{getRelativeTime(c.created_at)}</span>
+                       </div>
+                       <p className="text-xs text-gray-600 leading-relaxed">{c.content}</p>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-center py-4 text-[10px] font-black uppercase text-gray-300 tracking-widest">Aucun commentaire. Démarrez le dialogue.</p>
+                )}
+             </div>
+             
+             {currentUser && (
+               <form onSubmit={handleAddComment} className="flex gap-3 items-center">
+                  <img src={currentUser.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
+                  <div className="flex-1 flex gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 focus-within:bg-white focus-within:border-blue-100 transition-all">
+                    <input 
+                      value={commentInput}
+                      onChange={e => setCommentInput(e.target.value)}
+                      placeholder="Pensée constructive..."
+                      className="flex-1 bg-transparent px-4 py-2 text-xs font-medium outline-none"
+                    />
+                    <button 
+                      disabled={!commentInput.trim() || isCommenting}
+                      className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 shadow-lg disabled:opacity-30 active:scale-95 transition-all"
+                    >
+                      {isCommenting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    </button>
+                  </div>
+               </form>
+             )}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -411,8 +439,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (data && data.length > 0) setPosts(data); else setPosts(MOCK_POSTS);
-        
-        // Rafraîchir aussi le profil de l'utilisateur courant pour l'avatar
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         if (profile) {
           const updatedUser = { ...user, ...profile, avatar: profile.avatar_url || profile.avatar };
@@ -433,8 +459,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
         {user.role === Role.SUPER_ADMIN && <NavLink to="/admin" icon={<Crown size={18} />} label="Conseil" color="text-amber-600" onClick={onLinkClick} />}
         <NavLink to="/sentinel" icon={<Camera size={18} />} label="Sentinelle" color="text-emerald-600" onClick={onLinkClick} />
         <NavLink to="/map" icon={<MapIcon size={18} />} label="Empreinte" color="text-blue-600" onClick={onLinkClick} />
-        <NavLink to="/assembly" icon={<Mic2 size={18} />} label="Assemblée" color="text-indigo-600" onClick={onLinkClick} />
-        <NavLink to="/compass" icon={<Compass size={18} />} label="Boussole" color="text-teal-600" onClick={onLinkClick} />
       </section>
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Action</div>
@@ -449,7 +473,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
   return (
     <div className="min-h-screen bg-[#fafafa] pb-24 lg:pb-0">
       <PublishModal user={user} isOpen={isPublishModalOpen} onClose={() => setIsPublishModalOpen(false)} onPublish={(p) => setPosts(prev => [p, ...prev])} />
-
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
@@ -459,18 +482,14 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
               <X size={20} className="text-gray-300" onClick={() => setIsMobileMenuOpen(false)} />
             </div>
             <div className="flex-1 p-5 overflow-y-auto no-scrollbar"><NavSections onLinkClick={() => setIsMobileMenuOpen(false)} /></div>
-            <div className="p-6 border-t border-gray-100 space-y-3">
-               <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-4 text-rose-600 bg-rose-50 rounded-xl font-black text-[10px] uppercase tracking-widest"><LogOut size={16} /> Déconnexion</button>
-            </div>
+            <div className="p-6 border-t border-gray-100"><button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-4 text-rose-600 bg-rose-50 rounded-xl font-black text-[10px] uppercase tracking-widest"><LogOut size={16} /> Déconnexion</button></div>
           </div>
         </div>
       )}
-
       <header className="lg:hidden sticky top-0 z-[100] bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-3 flex justify-between items-center shadow-sm">
         <Logo size={20} showText variant="blue" />
         <Link to="/profile" className="w-8 h-8 rounded-xl overflow-hidden shadow-sm border border-gray-50"><img src={user.avatar} className="w-full h-full object-cover" /></Link>
       </header>
-
       <div className="max-w-7xl mx-auto px-4 py-6 lg:py-12 flex flex-col lg:flex-row gap-8">
         <aside className="hidden lg:block lg:w-60 space-y-6 sticky top-12 self-start">
           <div className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm"><Logo size={24} showText variant="blue" className="mb-8 px-2"/><NavSections /></div>
@@ -478,36 +497,19 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform"><Sparkles size={40} /></div>
              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-3">Impact</p>
              <p className="text-xl font-serif font-bold mb-4">{user.impactScore || user.impact_score || 0} XP</p>
-             <div className="space-y-2">
-               <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest border border-white/5">Registre</button>
-             </div>
+             <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest border border-white/5">Registre</button>
           </div>
         </aside>
-
         <main className="flex-1 max-w-2xl">
           <header className="mb-8 flex justify-between items-end px-2">
             <div><h1 className="text-3xl font-serif font-bold text-gray-900 mb-1">Agora</h1><p className="text-gray-400 font-bold italic text-[12px]">Le pouls de la Nation.</p></div>
-            <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
+            <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
           </header>
-
           <div className="w-full bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm mb-10 flex items-center gap-6 hover:shadow-md transition-all group">
-            <Link to="/profile" className="shrink-0" title="Voir mon profil">
-              <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm hover:scale-110 transition-transform active:scale-95" />
-            </Link>
-            <button 
-              onClick={() => setIsPublishModalOpen(true)} 
-              className="flex-1 text-left text-gray-400 font-medium text-lg group-hover:text-gray-600"
-            >
-              Quelle est votre onde positive ?
-            </button>
-            <button 
-              onClick={() => setIsPublishModalOpen(true)}
-              className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"
-            >
-              <Plus size={24} />
-            </button>
+            <Link to="/profile" className="shrink-0"><img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm hover:scale-110 transition-transform" /></Link>
+            <button onClick={() => setIsPublishModalOpen(true)} className="flex-1 text-left text-gray-400 font-medium text-lg group-hover:text-gray-600">Quelle est votre onde positive ?</button>
+            <button onClick={() => setIsPublishModalOpen(true)} className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"><Plus size={24} /></button>
           </div>
-
           <div className="space-y-4">
             {posts.map((post, index) => (
               <React.Fragment key={post.id}>
@@ -516,7 +518,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                   <div className="bg-blue-600 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden mb-6 group">
                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform"><Smartphone size={100} /></div>
                      <h3 className="text-2xl font-serif font-bold mb-4 leading-tight">Devenez Pilier du Cercle</h3>
-                     <p className="text-blue-100 text-sm mb-8 font-medium">Votre soutien direct via Wave finance l'intelligence souveraine de la Cité.</p>
+                     <p className="text-blue-100 text-sm mb-8 font-medium">Votre soutien direct via Wave finance l'intelligence souveraine.</p>
                      <button onClick={() => navigate('/transparency')} className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">Soutenir maintenant</button>
                   </div>
                 )}
@@ -524,7 +526,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
             ))}
           </div>
         </main>
-
         <aside className="hidden xl:block w-72 sticky top-12 self-start space-y-8">
            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8 px-2 flex items-center gap-2"><Target size={14} className="text-blue-600" /> Missions du Citoyen</h3>
@@ -537,7 +538,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
            </div>
         </aside>
       </div>
-
       <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-3xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-lg rounded-t-[1.5rem]">
         <Link to="/feed" className="flex flex-col items-center gap-1 text-blue-600"><Home size={20} /><span className="text-[6px] font-black uppercase">Agora</span></Link>
         <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-300"><Camera size={20} /><span className="text-[6px] font-black uppercase">Sentinelle</span></Link>
