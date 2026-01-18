@@ -50,7 +50,7 @@ export async function analyzePollutionImage(base64Image: string) {
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
-          { text: "Tu es le système expert 'Sentinelle Verte' pour la Côte d'Ivoire. Analyse cette image de dégradation urbaine. Cela peut être des ordures, des eaux usées, ou des encombrants comme des véhicules vétustes abandonnés (épaves). Si la localisation exacte n'est pas visible, utilise 'Localité à préciser'. Identifie la nature exacte (ex: Véhicule hors d'usage et dépôts sauvages) et propose un plan d'action pour libérer l'espace public. Réponds UNIQUEMENT en JSON valide selon le schéma fourni." }
+          { text: "Tu es le système expert 'Sentinelle Verte'. Analyse cette image de dégradation urbaine. ATTENTION : Si l'image est un gros plan (macro) sur un caniveau, des ordures ou des eaux usées, c'est VALIDÉ. N'échoue pas par manque de contexte géographique. Si tu ne vois pas la rue ou la ville, utilise 'Localité à préciser' et 'Quartier à identifier'. Identifie précisément la nuisance (ex: Caniveau bouché par des déchets plastiques, stagnation d'eaux usées, épave encombrante). Propose un plan d'action de 3 points. Réponds UNIQUEMENT en JSON valide." }
         ]
       },
       config: { 
@@ -58,26 +58,24 @@ export async function analyzePollutionImage(base64Image: string) {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            city: { type: Type.STRING, description: "Ville ou 'Localité à préciser'" },
-            sector: { type: Type.STRING, description: "Quartier ou 'Secteur à préciser'" },
-            nature: { type: Type.STRING, description: "Type de nuisance identifiée précisément" },
-            status: { type: Type.STRING, description: "Urgence : reported ou critical" },
-            description: { type: Type.STRING, description: "Description de l'obstruction ou pollution" },
+            city: { type: Type.STRING },
+            sector: { type: Type.STRING },
+            nature: { type: Type.STRING },
+            status: { type: Type.STRING },
+            description: { type: Type.STRING },
             actionPlan: { 
               type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "3 étapes concrètes de résolution" 
+              items: { type: Type.STRING }
             },
-            insight: { type: Type.STRING, description: "Une parole de sagesse sur le cadre de vie et la responsabilité" }
+            insight: { type: Type.STRING }
           },
           required: ["city", "sector", "nature", "description", "actionPlan", "insight"]
         }
       }
     });
 
-    if (!response.text) throw new Error("Réponse vide de l'IA");
+    if (!response.text) throw new Error("Réponse vide");
     
-    // Nettoyage au cas où le modèle renverrait du markdown autour du JSON
     let cleanJson = response.text.trim();
     if (cleanJson.startsWith('```')) {
       cleanJson = cleanJson.replace(/^```json\n?/, '').replace(/\n?```$/, '');
@@ -85,7 +83,7 @@ export async function analyzePollutionImage(base64Image: string) {
     
     return JSON.parse(cleanJson);
   } catch (e) { 
-    console.error("Erreur Analyse Pollution détaillée:", e);
+    console.error("Erreur IA Sentinelle:", e);
     return null;
   }
 }
@@ -102,17 +100,14 @@ export async function generateCleanVision(base64Image: string) {
       contents: {
         parts: [
           { inlineData: { data: dataOnly, mimeType: 'image/jpeg' } },
-          { text: "Agis comme un architecte paysagiste urbain. Sur cette photo, retire tous les éléments de pollution, les déchets et surtout les véhicules abandonnés ou épaves. Remplace-les par un trottoir propre, des plantes tropicales ou un petit espace de repos citoyen. L'image doit être lumineuse et inspirante." }
+          { text: "Rénovation urbaine : retire les déchets, nettoie l'eau stagnante et remplace par un caniveau propre ou une bordure fleurie. Rends l'image lumineuse." }
         ]
       }
     });
     
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
     return part ? `data:image/png;base64,${part.inlineData.data}` : null;
-  } catch (e) { 
-    console.error("Erreur Clean Vision:", e);
-    return null; 
-  }
+  } catch (e) { return null; }
 }
 
 export async function getGriotReading(content: string) {

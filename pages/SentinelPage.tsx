@@ -26,7 +26,8 @@ import {
   Focus,
   Scan,
   History,
-  Layers
+  Layers,
+  AlertTriangle
 } from 'lucide-react';
 import { User, WasteReport, CircleType } from '../types.ts';
 import { analyzePollutionImage, generateCleanVision } from '../lib/gemini.ts';
@@ -152,26 +153,34 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     setView('processing');
     try {
       const analysisPromise = analyzePollutionImage(img);
-      const visionPromise = generateCleanVision(img).catch(err => {
-        console.warn("Vision Propre échouée:", err);
-        return null;
-      });
+      const visionPromise = generateCleanVision(img).catch(() => null);
 
       const [res, clean] = await Promise.all([analysisPromise, visionPromise]);
       
       if (!res) {
-        throw new Error("L'IA n'a pas pu identifier la nuisance.");
+        // Fallback Manuel si l'IA échoue
+        setAnalysis({
+          city: "Localité à préciser",
+          sector: "Secteur à identifier",
+          nature: "Inconnue (Analyse IA échouée)",
+          status: "reported",
+          description: "L'IA n'a pas pu identifier la nuisance automatiquement. Veuillez remplir manuellement.",
+          actionPlan: ["Identifier la source", "Sécuriser le lieu", "Alerter les services d'hygiène"],
+          insight: "Même quand l'IA doute, la vigilance citoyenne reste le premier rempart."
+        });
+        setCleanVision(null);
+        addToast("L'IA a eu un doute. Complétez le rapport manuellement.", "info");
+      } else {
+        setAnalysis({
+          ...res,
+          actionPlan: res.actionPlan || ["Sécuriser la zone", "Organiser le ramassage", "Sensibiliser le voisinage"]
+        });
+        setCleanVision(clean);
       }
-      
-      setAnalysis({
-        ...res,
-        actionPlan: res.actionPlan || ["Sécuriser la zone", "Organiser le ramassage", "Sensibiliser le voisinage"]
-      });
-      setCleanVision(clean);
       setView('result');
     } catch (e: any) {
       console.error("Processing error:", e);
-      addToast(e.message || "Analyse impossible. Réessayez avec une photo plus claire.", "error");
+      addToast("Erreur lors du traitement. Réessayez.", "error");
       setView('hub');
     }
   };
@@ -248,7 +257,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
            <div className="p-10 space-y-8">
               <div className="space-y-6">
                  {[
-                   { icon: <Camera size={22} />, title: "Capture de l'Anomalie", desc: "Visez la nuisance (ordures, épaves, etc.). L'IA détecte les contours." },
+                   { icon: <Camera size={22} />, title: "Capture de l'Anomalie", desc: "Visez la nuisance (caniveau, ordures, eaux usées). L'IA détecte les contours même de près." },
                    { icon: <Scan size={22} />, title: "Scan de Précision", desc: "Le système analyse la nature chimique et urbaine du signalement." },
                    { icon: <Zap size={22} />, title: "Vision Propre", desc: "Générez un visuel haute fidélité du lieu réhabilité pour inspirer l'action." }
                  ].map((step, i) => (
@@ -321,7 +330,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
             <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-emerald-400 rounded-tl-2xl shadow-[-4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
             <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-emerald-400 rounded-tr-2xl shadow-[4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
             <div className="absolute bottom-0 left-0 w-12 h-12 border-b-2 border-l-2 border-emerald-400 rounded-bl-2xl shadow-[-4px_4px_10px_rgba(52,211,153,0.3)]"></div>
-            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-emerald-400 rounded-br-2xl shadow-[4px_4px_10px_rgba(52,211,153,0.3)]"></div>
+            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-emerald-400 rounded-br-2xl shadow-[4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
             
             {/* Animation de scan latérale */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent w-1 h-full animate-[scanline_2s_ease-in-out_infinite] left-0"></div>
@@ -461,13 +470,41 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                   <ShieldCheck size={32} />
                </div>
             </div>
+
+            {analysis?.nature?.includes("Inconnue") && (
+              <div className="bg-amber-50 border border-amber-100 p-6 rounded-3xl flex items-start gap-4 text-amber-800 text-xs font-bold animate-in slide-in-from-top-2">
+                <AlertTriangle className="shrink-0 text-amber-500" size={20} />
+                <p>L'IA n'a pas pu identifier automatiquement la nuisance. Vous pouvez modifier les champs ci-dessous avant de publier.</p>
+              </div>
+            )}
+
             <div>
               <label className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.3em] mb-3 block opacity-60">Nature de l'Anomalie</label>
               <input 
                 value={analysis?.nature} 
                 onChange={(e) => setAnalysis({...analysis, nature: e.target.value})} 
+                placeholder="Ex: Caniveau bouché, décharge sauvage..."
                 className="text-4xl font-serif font-bold text-gray-950 bg-transparent outline-none w-full border-b-2 border-emerald-100 pb-3 focus:border-emerald-500 transition-all" 
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Ville</label>
+                <input 
+                  value={analysis?.city} 
+                  onChange={(e) => setAnalysis({...analysis, city: e.target.value})} 
+                  className="w-full bg-gray-50 p-4 rounded-xl font-bold outline-none border border-gray-100 focus:border-emerald-500 focus:bg-white transition-all" 
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Quartier</label>
+                <input 
+                  value={analysis?.sector} 
+                  onChange={(e) => setAnalysis({...analysis, sector: e.target.value})} 
+                  className="w-full bg-gray-50 p-4 rounded-xl font-bold outline-none border border-gray-100 focus:border-emerald-500 focus:bg-white transition-all" 
+                />
+              </div>
             </div>
             
             <div className="space-y-8">
@@ -478,7 +515,15 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                  {analysis?.actionPlan?.map((step: string, i: number) => (
                    <div key={i} className="flex gap-6 items-center bg-gray-50/50 p-6 rounded-3xl border border-gray-100 text-[15px] font-bold text-gray-800 group hover:bg-white hover:shadow-xl transition-all cursor-default">
                       <span className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-black shrink-0 group-hover:scale-110 transition-transform shadow-sm">{i+1}</span>
-                      {step}
+                      <input 
+                        value={step}
+                        onChange={(e) => {
+                          const newPlan = [...analysis.actionPlan];
+                          newPlan[i] = e.target.value;
+                          setAnalysis({...analysis, actionPlan: newPlan});
+                        }}
+                        className="bg-transparent outline-none w-full"
+                      />
                    </div>
                  ))}
                </div>
