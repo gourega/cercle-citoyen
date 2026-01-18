@@ -8,7 +8,8 @@ import {
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
-  Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save
+  Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
+  Image as ImageIcon
 } from 'lucide-react';
 import { User, CircleType, Role, Post } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -65,12 +66,29 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; acti
 const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void, onPublish: (post: any) => void }> = ({ user, isOpen, onClose, onPublish }) => {
   const [content, setContent] = useState('');
   const [circleType, setCircleType] = useState<CircleType>(CircleType.IDEAS);
+  const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { addToast } = useToast();
 
   if (!isOpen) return null;
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        addToast("Image trop lourde (max 5Mo)", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const insertText = (before: string, after: string = '') => {
     if (!textareaRef.current) return;
@@ -89,12 +107,13 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   };
 
   const handlePost = async () => {
-    if (!content.trim()) return;
+    if (!content.trim() && !image) return;
     setLoading(true);
     const postData = {
       author_id: user.id,
       circle_type: circleType,
       content,
+      image_url: image,
       created_at: new Date().toISOString(),
       reactions: { useful: 0, relevant: 0, inspiring: 0 }
     };
@@ -108,6 +127,7 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
         onPublish({ ...postData, id: Date.now().toString() });
       }
       setContent('');
+      setImage(null);
       onClose();
       addToast("Votre onde a été diffusée", "success");
     } catch (e) {
@@ -143,7 +163,11 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
             <button onClick={() => insertText('*', '*')} title="Italique" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><Italic size={18} /></button>
             <button onClick={() => insertText('\n* ', '')} title="Liste" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><List size={18} /></button>
             <div className="w-px h-6 bg-gray-100 mx-1"></div>
+            <button onClick={() => fileInputRef.current?.click()} title="Ajouter une photo" className={`p-2.5 rounded-xl transition-all active:scale-90 ${image ? 'bg-emerald-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}>
+              <ImageIcon size={18} />
+            </button>
             <button onClick={() => setShowEmojis(!showEmojis)} title="Émojis" className={`p-2.5 rounded-xl transition-all active:scale-90 ${showEmojis ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}><Smile size={18} /></button>
+            <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
           </div>
 
           {showEmojis && (
@@ -154,17 +178,29 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
             </div>
           )}
 
+          {image && (
+            <div className="relative rounded-[2rem] overflow-hidden group animate-in zoom-in duration-300">
+              <img src={image} className="w-full h-auto max-h-[300px] object-cover" />
+              <button 
+                onClick={() => setImage(null)}
+                className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-black transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
           <textarea 
             ref={textareaRef}
             autoFocus
             value={content}
             onChange={e => setContent(e.target.value)}
             placeholder="Quelle réflexion souhaitez-vous partager ?"
-            className="w-full min-h-[220px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
+            className="w-full min-h-[150px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
           />
         </div>
         <div className="p-6 border-t border-gray-50 flex justify-end bg-gray-50/20">
-          <button onClick={handlePost} disabled={loading || !content.trim()} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3">
+          <button onClick={handlePost} disabled={loading || (!content.trim() && !image)} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3">
             {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier l'Onde
           </button>
         </div>
@@ -258,7 +294,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
   const TRUNCATE_LIMIT = 280;
-  const shouldTruncate = post.content.length > TRUNCATE_LIMIT && !isMajestic;
+  const shouldTruncate = post.content && post.content.length > TRUNCATE_LIMIT && !isMajestic;
   const displayContent = isExpanded || !shouldTruncate ? post.content : post.content.slice(0, TRUNCATE_LIMIT).trim() + "...";
 
   return (
@@ -292,9 +328,16 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
           </div>
         ) : (
           <>
-            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-2'}`}>
+            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-4'}`}>
               {formatContent(displayContent)}
             </div>
+            
+            {(post.image_url || post.clean_vision_url) && (
+              <div className="mb-6 rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm animate-in zoom-in duration-500">
+                <img src={post.image_url || post.clean_vision_url} className="w-full h-auto object-cover" alt="Illustration citoyenne" />
+              </div>
+            )}
+
             {shouldTruncate && (
               <button onClick={() => setIsExpanded(!isExpanded)} className="mb-5 flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:text-blue-700 transition-colors">
                 {isExpanded ? <><ChevronUp size={14} /> Voir moins</> : <><ChevronDown size={14} /> Lire la suite</>}
