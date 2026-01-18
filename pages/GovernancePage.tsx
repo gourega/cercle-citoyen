@@ -17,11 +17,18 @@ import {
   ArrowRight,
   Landmark,
   Shield,
-  FileText
+  FileText,
+  PenLine,
+  History,
+  Scale,
+  BrainCircuit,
+  CornerDownRight,
+  Check
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { Edict, User } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
+import { GoogleGenAI, Type } from "@google/genai";
 
 // On étend localement le type Edict pour inclure la catégorie du RIC
 interface RIC extends Edict {
@@ -140,7 +147,7 @@ const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, 
         <button 
           onClick={handleVote}
           disabled={hasVoted || voting}
-          className={`w-full mt-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${hasVoted ? 'bg-emerald-500 text-white shadow-lg' : 'bg-gray-900 text-white hover:bg-black shadow-xl active:scale-95'}`}
+          className={`w-full mt-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${hasVoted ? 'bg-emerald-50 text-white shadow-lg' : 'bg-gray-900 text-white hover:bg-black shadow-xl active:scale-95'}`}
         >
           {voting ? <Loader2 className="animate-spin" /> : hasVoted ? <CheckCircle2 className="w-5 h-5" /> : <PenTool className="w-5 h-5 text-amber-500" />}
           {hasVoted ? 'Signature Apposée' : 'Signer le RIC'}
@@ -160,6 +167,12 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
   const { addToast } = useToast();
   const [rics, setRics] = useState<RIC[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // États de la Forge
+  const [newRicType, setNewRicType] = useState<'internal' | 'national'>('national');
+  const [rawContent, setRawContent] = useState('');
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [suggestion, setSuggestion] = useState<{title: string, content: string} | null>(null);
 
   const fetchRics = async () => {
     setLoading(true);
@@ -185,6 +198,47 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
   useEffect(() => {
     fetchRics();
   }, []);
+
+  const handleGuardianRewrite = async () => {
+    if (!rawContent.trim() || isRewriting) return;
+    setIsRewriting(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Tu es le Gardien du Cercle Citoyen. Ta mission est de réécrire une proposition citoyenne (RIC) pour lui donner une forme structurée, solennelle et juridique, tout en restant accessible.
+        Type de RIC: ${newRicType === 'internal' ? 'Interne (Règles du réseau)' : 'National (Plaidoyer pays)'}.
+        Proposition brute: "${rawContent}".
+        Réponds uniquement en JSON avec les champs 'title' (un titre percutant et noble) et 'content' (le corps de l'édit structuré).`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              content: { type: Type.STRING }
+            },
+            required: ['title', 'content']
+          }
+        }
+      });
+      
+      const res = JSON.parse(response.text || '{}');
+      setSuggestion(res);
+      addToast("Le Gardien a structuré votre vision.", "success");
+    } catch (e) {
+      addToast("La sagesse du Gardien est momentanément indisponible.", "error");
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  const handleSubmitRic = async (finalTitle: string, finalContent: string) => {
+    addToast("Initiative scellée ! Récolte de signatures ouverte.", "success");
+    // Logique d'insertion réelle ici
+    setRawContent('');
+    setSuggestion(null);
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
@@ -227,6 +281,98 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
           color="border-emerald-100 bg-emerald-50/20"
         />
       </div>
+
+      {/* FORGE DE L'INITIATIVE */}
+      <section className="mb-24">
+        <div className="bg-white rounded-[4rem] border border-gray-100 shadow-xl overflow-hidden relative group">
+           <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform"><Scale size={200} /></div>
+           
+           <div className="p-10 md:p-14">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
+                 <div>
+                    <h2 className="text-3xl font-serif font-bold text-gray-950 mb-2">Forge de l'Initiative</h2>
+                    <p className="text-gray-400 font-medium italic">Façonnez ici votre proposition pour la Cité.</p>
+                 </div>
+                 
+                 <div className="flex bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                    <button 
+                      onClick={() => setNewRicType('internal')}
+                      className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${newRicType === 'internal' ? 'bg-white text-indigo-600 shadow-md border border-indigo-50' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      RIC Interne
+                    </button>
+                    <button 
+                      onClick={() => setNewRicType('national')}
+                      className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${newRicType === 'national' ? 'bg-white text-orange-600 shadow-md border border-orange-50' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      RIC National
+                    </button>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                 <div className="space-y-6">
+                    <div className="relative">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-4 block">Ma proposition brute</label>
+                       <textarea 
+                         value={rawContent}
+                         onChange={(e) => setRawContent(e.target.value)}
+                         placeholder="Ex: Je propose que chaque quartier ait une bibliothèque citoyenne auto-gérée..."
+                         className="w-full h-72 bg-[#fdfaf5] border-2 border-amber-50 p-8 rounded-[2.5rem] text-lg font-medium text-gray-800 outline-none focus:bg-white focus:border-amber-100 transition-all shadow-inner leading-relaxed placeholder:text-gray-300"
+                       />
+                       <div className="absolute bottom-6 right-6 flex gap-2">
+                          <button 
+                            onClick={handleGuardianRewrite}
+                            disabled={!rawContent.trim() || isRewriting}
+                            className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center gap-3 shadow-xl disabled:opacity-30"
+                          >
+                            {isRewriting ? <Loader2 className="animate-spin" size={16} /> : <BrainCircuit size={16} className="text-amber-500" />}
+                            Plume du Gardien
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="relative">
+                    {suggestion ? (
+                      <div className="bg-white border-2 border-amber-100 rounded-[2.5rem] p-10 h-full animate-in slide-in-from-right-4 flex flex-col">
+                         <div className="flex items-center gap-3 mb-8">
+                            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600"><Sparkles size={18} /></div>
+                            <h4 className="text-[10px] font-black uppercase text-amber-600 tracking-widest">Écho du Gardien</h4>
+                         </div>
+                         <h3 className="text-2xl font-serif font-bold text-gray-900 mb-6">{suggestion.title}</h3>
+                         <div className="text-gray-600 leading-relaxed font-medium text-sm flex-1 overflow-y-auto pr-4 mb-8 custom-scrollbar">
+                            {suggestion.content}
+                         </div>
+                         <div className="flex gap-4">
+                            <button 
+                              onClick={() => handleSubmitRic(suggestion.title, suggestion.content)}
+                              className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-lg"
+                            >
+                              <CheckCircle2 size={18} /> Adopter l'Écho
+                            </button>
+                            <button 
+                              onClick={() => setSuggestion(null)}
+                              className="px-6 py-5 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all"
+                            >
+                              <X size={18} />
+                            </button>
+                         </div>
+                      </div>
+                    ) : (
+                      <div className="h-full border-4 border-dashed border-gray-50 rounded-[2.5rem] flex flex-col items-center justify-center text-center p-12 group-hover:border-amber-100 transition-colors">
+                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-6 text-gray-200 group-hover:text-amber-200 transition-colors">
+                            <FileText size={32} />
+                         </div>
+                         <h4 className="text-gray-400 font-bold mb-2">Prêt à sceller votre vision</h4>
+                         <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest max-w-[200px]">Invoquez le Gardien pour structurer votre initiative</p>
+                      </div>
+                    )}
+                 </div>
+              </div>
+           </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         <div className="p-8 rounded-[3rem] bg-indigo-50/50 border border-indigo-100 flex items-center gap-6">
