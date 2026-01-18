@@ -6,15 +6,57 @@ import {
   Users, Zap, Target, Landmark, Search, Check, 
   X, UserX, ShieldCheck, CheckCircle2, ShieldAlert, Shield,
   Database, Code, Lock, ShieldQuestion, Fingerprint,
-  ChevronLeft
+  ChevronLeft, AlertCircle, HardDrive
 } from 'lucide-react';
 import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
 import { Role, UserCategory } from '../types.ts';
 
+const REPAIR_SQL = `-- SCRIPT DE RÉPARATION DU CERCLE
+-- Exécutez ce script dans l'éditeur SQL de Supabase
+
+CREATE TABLE IF NOT EXISTS public.edicts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    title TEXT NOT NULL,
+    proposer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    status TEXT CHECK (status IN ('voting', 'enacted')) DEFAULT 'voting',
+    votes_count INTEGER DEFAULT 0,
+    threshold INTEGER DEFAULT 1000,
+    ends_at TIMESTAMPTZ NOT NULL
+);
+
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='edicts' AND column_name='category') THEN
+        ALTER TABLE public.edicts ADD COLUMN category TEXT CHECK (category IN ('internal', 'national')) DEFAULT 'national';
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    edict_id UUID REFERENCES public.edicts(id) ON DELETE CASCADE,
+    UNIQUE(user_id, edict_id)
+);
+
+ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Tout le monde peut lire les édits" ON public.edicts;
+CREATE POLICY "Tout le monde peut lire les édits" ON public.edicts FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Les citoyens authentifiés peuvent proposer" ON public.edicts;
+CREATE POLICY "Les citoyens authentifiés peuvent proposer" ON public.edicts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Les citoyens peuvent voter" ON public.votes;
+CREATE POLICY "Les citoyens peuvent voter" ON public.votes FOR INSERT WITH CHECK (auth.uid() = user_id);`;
+
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests' | 'security'>('stats');
+  const [activeTab, setActiveTab] = useState<'system' | 'stats' | 'citizens' | 'quests' | 'security' | 'sql'>('stats');
   const [profiles, setProfiles] = useState<any[]>([]);
   const [pendingQuests, setPendingQuests] = useState<any[]>([]);
   const [recoveryRequests, setRecoveryRequests] = useState<any[]>([]);
@@ -34,11 +76,14 @@ const AdminDashboard: React.FC = () => {
         if (profs) {
           setProfiles(profs);
           setRecoveryRequests(profs.filter(p => p.status === 'recovery_requested'));
+          
+          const { count: ricCount } = await supabase.from('edicts').select('*', { count: 'exact', head: true });
+          
           setStats({ 
             totalUsers: profs.length, 
             totalPosts: 0, 
             totalPoints: profs.reduce((acc, p) => acc + (p.impact_score || 0), 0), 
-            activeRICs: 0 
+            activeRICs: ricCount || 0 
           });
         }
         const { data: qData } = await supabase.from('quests').select('*').eq('status', 'pending');
@@ -56,15 +101,18 @@ const AdminDashboard: React.FC = () => {
     const tempPass = `CERCLE-${Math.floor(1000 + Math.random() * 9000)}`;
     const sqlCommand = `UPDATE auth.users SET encrypted_password = crypt('${tempPass}', gen_salt('bf')) WHERE id = '${userId}';`;
     
-    // On copie le SQL pour l'admin
     navigator.clipboard.writeText(sqlCommand);
     addToast(`Commande SQL copiée ! MDP Provisoire : ${tempPass}`, "success");
 
-    // On marque la requête comme traitée dans les profils
     if (isRealSupabase && supabase) {
       await supabase.from('profiles').update({ status: 'active' }).eq('id', userId);
       fetchData();
     }
+  };
+
+  const copySql = () => {
+    navigator.clipboard.writeText(REPAIR_SQL);
+    addToast("Script SQL de réparation copié !", "success");
   };
 
   const displayCitizens = profiles.filter(p => 
@@ -75,7 +123,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
       <div className="mb-8">
-        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-white transition-colors text-sm font-bold group">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
           <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Quitter le Conseil
         </Link>
       </div>
@@ -96,7 +144,7 @@ const AdminDashboard: React.FC = () => {
           {[
             { id: 'stats', label: 'Impact', icon: Zap },
             { id: 'citizens', label: 'Membres', icon: Users },
-            { id: 'quests', label: 'Sentiers', icon: Target },
+            { id: 'sql', label: 'Sagesse SQL', icon: Database },
             { id: 'security', label: 'Sécurité', icon: ShieldAlert },
             { id: 'system', label: 'Système', icon: Wifi }
           ].map(tab => (
@@ -118,11 +166,40 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
+      {activeTab === 'sql' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+           <div className="bg-blue-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-10 opacity-10"><Database size={120} /></div>
+              <h3 className="text-3xl font-serif font-bold mb-4">Maintenance Souveraine</h3>
+              <p className="text-blue-100 max-w-2xl font-medium leading-relaxed mb-8">
+                Si vous rencontrez des erreurs de type "relation already exists" ou si des colonnes manquent dans votre base Supabase, utilisez le script de réparation ci-dessous. Il est conçu pour être exécuté en toute sécurité.
+              </p>
+              <button onClick={copySql} className="bg-white text-blue-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-blue-50 transition-all">
+                <Copy size={18} /> Copier le script complet
+              </button>
+           </div>
+
+           <div className="bg-slate-900 rounded-[3rem] p-8 md:p-12 shadow-2xl relative group">
+              <div className="flex justify-between items-center mb-8">
+                 <div className="flex items-center gap-4">
+                    <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                 </div>
+                 <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">repair_schema.sql</span>
+              </div>
+              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-blue-300 leading-relaxed overflow-x-auto max-h-[400px] custom-scrollbar">
+                 <pre>{REPAIR_SQL}</pre>
+              </div>
+           </div>
+        </div>
+      )}
+
       {activeTab === 'security' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="mb-12">
-            <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Requêtes d'Accès de Secours</h3>
-            <p className="text-gray-400 font-medium">Les citoyens ci-dessous ne peuvent plus accéder au Cercle. Attribuez-leur un accès provisoire après vérification.</p>
+          <div className="mb-12 text-center md:text-left px-4">
+            <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Requêtes de Secours</h3>
+            <p className="text-gray-400 font-medium">Récupération des comptes citoyens après vérification d'identité.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-8">
@@ -147,7 +224,7 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => handleProcessRecovery(p.id, p.email)}
                     className="bg-gray-900 text-white px-8 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center gap-3 shadow-xl"
                   >
-                    <Fingerprint size={18} className="text-amber-400" /> Attribuer MDP Provisoire
+                    <Fingerprint size={18} className="text-amber-400" /> Attribuer Accès Provisoire
                   </button>
                   <button 
                     onClick={async () => {
@@ -188,8 +265,8 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'citizens' && (
-        <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm">
-           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
+        <div className="bg-white p-10 md:p-14 rounded-[4rem] border border-gray-100 shadow-sm overflow-hidden">
+           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16 px-4">
               <div>
                 <h3 className="text-3xl font-serif font-bold text-gray-900">Registre Citoyen</h3>
                 <p className="text-gray-400 text-sm mt-2 italic">Monitoring des acteurs clés du territoire.</p>
@@ -205,20 +282,20 @@ const AdminDashboard: React.FC = () => {
               </div>
            </div>
            
-           <div className="overflow-x-auto">
+           <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-gray-50">
-                    <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest">Acteur</th>
+                    <th className="pb-8 pl-4 text-[11px] font-black uppercase text-gray-400 tracking-widest">Acteur</th>
                     <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest">Rôle</th>
                     <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest">Statut</th>
-                    <th className="pb-8 text-[11px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</th>
+                    <th className="pb-8 pr-4 text-[11px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {displayCitizens.map(p => (
                     <tr key={p.id} className="group hover:bg-gray-50/50 transition-all">
-                      <td className="py-8 flex items-center gap-5">
+                      <td className="py-8 pl-4 flex items-center gap-5">
                         <img src={p.avatar_url || p.avatar} className="w-14 h-14 rounded-2xl object-cover shadow-sm ring-2 ring-white" alt="" />
                         <div>
                           <div className="font-bold text-gray-900 text-lg">{p.name}</div>
@@ -236,51 +313,16 @@ const AdminDashboard: React.FC = () => {
                           {p.status === 'recovery_requested' ? 'Aide requise' : (p.status || 'Actif')}
                         </span>
                       </td>
-                      <td className="py-8 text-right">
+                      <td className="py-8 pr-4 text-right">
                          <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <button className="p-4 bg-white border border-gray-100 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"><UserX size={20} /></button>
-                           <button className="p-4 bg-white border border-gray-100 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all"><ShieldCheck size={20} /></button>
+                           <button className="p-4 bg-white border border-gray-100 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all shadow-sm"><UserX size={20} /></button>
+                           <button className="p-4 bg-white border border-gray-100 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm"><ShieldCheck size={20} /></button>
                          </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-           </div>
-        </div>
-      )}
-
-      {activeTab === 'quests' && (
-        <div className="space-y-8">
-           <div className="mb-10">
-              <h3 className="text-3xl font-serif font-bold text-gray-900">Validation des Sentiers</h3>
-              <p className="text-gray-400 mt-2">Approuvez les initiatives citoyennes réelles.</p>
-           </div>
-           
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             {pendingQuests.length > 0 ? pendingQuests.map(q => (
-               <div key={q.id} className="bg-white p-10 rounded-[3.5rem] border border-gray-100 shadow-sm flex flex-col">
-                  <div className="flex justify-between items-start mb-6">
-                    <span className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">{q.circle_type}</span>
-                    <span className="text-xs font-bold text-amber-600">+{q.reward_xp} XP</span>
-                  </div>
-                  <h4 className="text-2xl font-serif font-bold text-gray-900 mb-4">{q.title}</h4>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-10 flex-grow">{q.description}</p>
-                  <div className="flex gap-4">
-                    <button className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
-                       <Check size={18} /> Approuver
-                    </button>
-                    <button className="flex-1 bg-rose-50 text-rose-600 py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-rose-100 transition-all flex items-center justify-center gap-3">
-                       <X size={18} /> Écarter
-                    </button>
-                  </div>
-               </div>
-             )) : (
-              <div className="col-span-full py-24 bg-white border-2 border-dashed border-gray-200 rounded-[4rem] text-center">
-                 <CheckCircle2 className="w-16 h-16 text-emerald-100 mx-auto mb-6" />
-                 <p className="text-gray-400 font-bold italic">Aucune requête en attente.</p>
-              </div>
-             )}
            </div>
         </div>
       )}
@@ -301,18 +343,20 @@ const AdminDashboard: React.FC = () => {
              </div>
           </section>
 
-          <section className="bg-slate-900 p-12 rounded-[4rem] text-white shadow-2xl overflow-hidden flex flex-col">
+          <section className="bg-slate-900 p-12 rounded-[4rem] text-white shadow-2xl overflow-hidden flex flex-col min-h-[400px]">
              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-4 text-blue-400"><Terminal /> Registre Systèmes</h3>
+                <h3 className="text-2xl font-serif font-bold flex items-center gap-4 text-blue-400"><Terminal /> Moniteur Systèmes</h3>
                 <button className="p-4 bg-white/10 rounded-2xl hover:bg-white/20 transition-all"><Copy size={20} /></button>
              </div>
-             <div className="bg-black/40 p-8 rounded-[2rem] border border-white/10 font-mono text-[11px] leading-relaxed flex-1">
-                <pre className="text-blue-300 overflow-x-auto whitespace-pre-wrap">
+             <div className="bg-black/40 p-8 rounded-[2rem] border border-white/10 font-mono text-[11px] leading-relaxed flex-1 overflow-y-auto custom-scrollbar">
+                <pre className="text-blue-300 whitespace-pre-wrap">
                   {`-- MONITORING SOUVERAIN --
-> system_check: live
-> database_integrity: 100%
-> api_responses: stable
-> active_sessions: ${stats.totalUsers}`}
+> node_env: production
+> database_status: ${connStatus?.ok ? 'online' : 'error'}
+> population: ${stats.totalUsers}
+> active_ric: ${stats.activeRICs}
+> api_gemini_v3: connected
+> pulse: nominal`}
                 </pre>
              </div>
           </section>

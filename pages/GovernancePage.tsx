@@ -139,7 +139,7 @@ const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, 
           <span>Seuil : {ric.threshold.toLocaleString()}</span>
         </div>
         <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
-          <div className={`h-full transition-all duration-1000 ${ric.status === 'enacted' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-blue-600'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+          <div className={`h-full transition-all duration-1000 ${ric.status === 'enacted' ? 'bg-emerald-50 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-blue-600'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
         </div>
       </div>
 
@@ -167,6 +167,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
   const { addToast } = useToast();
   const [rics, setRics] = useState<RIC[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   
   // États de la Forge
   const [newRicType, setNewRicType] = useState<'internal' | 'national'>('national');
@@ -234,10 +235,48 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
   };
 
   const handleSubmitRic = async (finalTitle: string, finalContent: string) => {
-    addToast("Initiative scellée ! Récolte de signatures ouverte.", "success");
-    // Logique d'insertion réelle ici
-    setRawContent('');
-    setSuggestion(null);
+    if (submitting) return;
+    setSubmitting(true);
+    
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('edicts').insert([{
+          title: finalTitle,
+          description: finalContent,
+          proposer_id: user.id,
+          category: newRicType,
+          status: 'voting',
+          votes_count: 0,
+          threshold: newRicType === 'internal' ? 1000 : 10000,
+          ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 jours
+        }]);
+
+        if (error) throw error;
+        await fetchRics();
+      } else {
+        // Mode simulation
+        const newRic: RIC = {
+          id: Date.now().toString(),
+          title: finalTitle,
+          description: finalContent,
+          proposer_id: user.id,
+          status: 'voting',
+          category: newRicType,
+          votes_count: 1,
+          threshold: newRicType === 'internal' ? 1000 : 10000,
+          ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        };
+        setRics(prev => [newRic, ...prev]);
+      }
+
+      addToast("Initiative scellée ! Récolte de signatures ouverte.", "success");
+      setRawContent('');
+      setSuggestion(null);
+    } catch (e: any) {
+      addToast("Erreur lors du scellage de l'initiative.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -347,9 +386,11 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
                          <div className="flex gap-4">
                             <button 
                               onClick={() => handleSubmitRic(suggestion.title, suggestion.content)}
-                              className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-lg"
+                              disabled={submitting}
+                              className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
                             >
-                              <CheckCircle2 size={18} /> Adopter l'Écho
+                              {submitting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                              Adopter l'Écho
                             </button>
                             <button 
                               onClick={() => setSuggestion(null)}
