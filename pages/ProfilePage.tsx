@@ -3,9 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Role } from '../types.ts';
 import { 
-  LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
-  Flame, Heart, Sparkles, Medal, Shield, Pencil, UserPlus, UserCheck, Users, 
-  MessageSquare, Lock, Eye, EyeOff, ShieldAlert, ChevronLeft
+  LogOut, Loader2, Save, Pencil, Crown, AtSign, ShieldCheck, Zap, Camera, 
+  Flame, Heart, Sparkles, Medal, Shield, UserPlus, UserCheck, MessageSquare, 
+  Lock, Eye, EyeOff, ChevronLeft
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -45,17 +45,10 @@ const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; class
 
 const Badge: React.FC<{ icon: React.ReactNode, label: string, color: string, description: string }> = ({ icon, label, color, description }) => (
   <div className="group relative flex flex-col items-center">
-    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 border-4 border-white shadow-lg ${color} group-hover:scale-110 group-hover:-rotate-12`}>
+    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all border-4 border-white shadow-lg ${color} group-hover:scale-110`}>
       {icon}
     </div>
-    <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 transition-colors text-center">{label}</span>
-    
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-40 opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50">
-      <div className="bg-gray-900 text-white p-3 rounded-xl text-[9px] font-bold text-center leading-relaxed shadow-2xl">
-        {description}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
-      </div>
-    </div>
+    <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 text-center">{label}</span>
   </div>
 );
 
@@ -75,12 +68,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [editData, setEditData] = useState({
-    name: '',
-    pseudonym: '',
-    bio: '',
-    avatar: ''
-  });
+  const [editData, setEditData] = useState({ name: '', pseudonym: '', bio: '', avatar: '' });
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -90,9 +78,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
         if (data) {
-          let score = data.impact_score ?? data.impactScore ?? 0;
-          if (targetId === ADMIN_ID && score === 0) score = 19740;
-
+          const score = data.impact_score ?? 0;
           const fetchedProfile = { ...data, avatar: data.avatar_url || data.avatar, impact_score: score };
           setProfile(fetchedProfile);
           if (targetId === currentUser.id) {
@@ -128,28 +114,19 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   const handleUpdatePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      addToast("Le mot de passe doit faire au moins 6 caractères.", "error");
+      addToast("Mot de passe trop court (min. 6).", "error");
       return;
     }
     setPwdLoading(true);
     try {
       if (isRealSupabase && supabase) {
-        const { error } = await (supabase.auth as any).updateUser({ password: newPassword });
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
-        addToast("Mot de passe mis à jour avec succès !", "success");
+        addToast("Mot de passe mis à jour !", "success");
         setNewPassword('');
         setShowPwdFields(false);
       }
-    } catch (e: any) {
-      addToast("Échec de la mise à jour.", "error");
-    } finally {
-      setPwdLoading(false);
-    }
-  };
-
-  const toggleFollow = () => {
-    setIsFollowing(!isFollowing);
-    addToast(isFollowing ? `Soutien retiré à ${profile.name}` : `Vous soutenez désormais ${profile.name}`, "success");
+    } catch (e: any) { addToast("Échec de la mise à jour.", "error"); } finally { setPwdLoading(false); }
   };
 
   useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
@@ -160,19 +137,11 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isGuardian = profile?.role === Role.SUPER_ADMIN;
   const impactScoreValue = profile?.id === ADMIN_ID ? 19740 : (profile?.impact_score || 0);
 
-  const badges = [
-    { icon: <ShieldCheck size={24} />, label: "Pionnier", color: "bg-emerald-500 text-white", description: "Fait partie des fondateurs du Cercle." },
-    { icon: <Medal size={24} />, label: "Acteur", color: "bg-blue-500 text-white", description: "Engagé sur le terrain pour la cité." },
-    ...(impactScoreValue >= 5000 ? [{ icon: <Flame size={24} />, label: "Impactant", color: "bg-orange-500 text-white", description: "Impact social certifié majeur." }] : []),
-    ...(isGuardian ? [{ icon: <Crown size={24} />, label: "Gardien", color: "bg-amber-500 text-white", description: "Garant de la cohésion citoyenne." }] : []),
-    { icon: <Heart size={24} />, label: "Solidaire", color: "bg-rose-500 text-white", description: "Acteur du Marché de Solidarité." }
-  ];
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className="mb-8">
-        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
-          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour à l'Agora
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 font-bold text-sm group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour Agora
         </Link>
       </div>
 
@@ -188,7 +157,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         
         <div className={`h-64 relative overflow-hidden ${isGuardian ? 'bg-gradient-to-r from-amber-600 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>
-           {isGuardian && <div className="absolute inset-0 flex items-center justify-center opacity-10"><Shield size={300} className="text-white" /></div>}
         </div>
 
         <div className="px-10 pb-12 -mt-24 relative z-10">
@@ -198,8 +166,8 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
               <div className="pb-4 flex-1">
                 {isEditing ? (
                   <div className="space-y-4 max-w-sm">
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="text-4xl font-serif font-bold text-gray-900 bg-gray-50 border-b-2 border-blue-600 w-full outline-none p-2" placeholder="Votre nom" />
-                    <div className="flex items-center gap-2 text-blue-600"><AtSign size={16} /><input value={editData.pseudonym} onChange={e => setEditData({...editData, pseudonym: e.target.value})} className="font-bold text-base outline-none bg-transparent border-b border-blue-200" placeholder="Pseudo" /></div>
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="text-4xl font-serif font-bold text-gray-900 bg-gray-50 border-b-2 border-blue-600 w-full outline-none p-2" />
+                    <div className="flex items-center gap-2 text-blue-600"><AtSign size={16} /><input value={editData.pseudonym} onChange={e => setEditData({...editData, pseudonym: e.target.value})} className="font-bold outline-none bg-transparent" /></div>
                   </div>
                 ) : (
                   <>
@@ -207,12 +175,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                       <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
                       {profile.isVerifiedEntity && <ShieldCheck size={24} className="text-blue-500" />}
                     </div>
-                    <p className="text-gray-400 font-bold text-base tracking-wide flex items-center justify-center md:justify-start gap-2"><AtSign size={16} /> {profile.pseudonym}</p>
-                    <div className="flex items-center justify-center md:justify-start gap-8 mt-6">
-                       <div className="text-center md:text-left"><p className="text-xl font-bold text-gray-900">{isGuardian ? "1.2k" : "142"}</p><p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Soutiens</p></div>
-                       <div className="text-center md:text-left"><p className="text-xl font-bold text-gray-900">{isGuardian ? "340" : "89"}</p><p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Suivis</p></div>
-                       <div className="text-center md:text-left"><p className="text-xl font-bold text-gray-900">24</p><p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Sentiers</p></div>
-                    </div>
+                    <p className="text-gray-400 font-bold flex items-center justify-center md:justify-start gap-2"><AtSign size={16} /> {profile.pseudonym}</p>
                   </>
                 )}
               </div>
@@ -222,9 +185,9 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
               {isOwnProfile ? (
                 isEditing ? (
                   <><button onClick={handleSave} disabled={syncing} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl">{syncing ? <Loader2 className="animate-spin" /> : <Save size={16} />} Enregistrer</button><button onClick={() => setIsEditing(false)} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Annuler</button></>
-                ) : <><button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><Pencil size={16} /> Modifier</button><button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100" title="Déconnexion"><LogOut size={16} /></button></>
+                ) : <><button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><Pencil size={16} /> Modifier</button><button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100"><LogOut size={16} /></button></>
               ) : (
-                <><button onClick={toggleFollow} className={`px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl ${isFollowing ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{isFollowing ? <><UserCheck size={18} /> Soutenu</> : <><UserPlus size={18} /> Soutenir</>}</button><button className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><MessageSquare size={16} /> Palabrer</button></>
+                <button onClick={() => setIsFollowing(!isFollowing)} className={`px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl ${isFollowing ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{isFollowing ? <><UserCheck size={18} /> Soutenu</> : <><UserPlus size={18} /> Soutenir</>}</button>
               )}
             </div>
           </div>
@@ -232,56 +195,23 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-3 gap-16">
             <div className="lg:col-span-2 space-y-12">
                 <section>
-                  <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6 px-1">Présentation</h3>
-                  {isEditing ? <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all shadow-inner" placeholder="Décrivez votre vision..." /> : <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-10 rounded-[3rem] border border-gray-100/50 min-h-[300px] shadow-sm">{profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}</p>}
+                  <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6">Présentation</h3>
+                  {isEditing ? <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all shadow-inner" /> : <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-10 rounded-[3rem] border border-gray-100/50 min-h-[300px] shadow-sm">{profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}</p>}
                 </section>
 
                 {isOwnProfile && (
                   <section className="bg-gray-50 rounded-[3rem] p-10 border border-gray-100">
                     <div className="flex items-center justify-between mb-8">
-                       <h3 className="font-serif font-bold text-2xl text-gray-900 flex items-center gap-3">
-                         <Lock size={20} className="text-blue-600" /> Sécurité du Compte
-                       </h3>
-                       <button 
-                         onClick={() => setShowPwdFields(!showPwdFields)}
-                         className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline"
-                       >
-                         {showPwdFields ? "Réduire" : "Changer mot de passe"}
-                       </button>
+                       <h3 className="font-serif font-bold text-2xl text-gray-900 flex items-center gap-3"><Lock size={20} className="text-blue-600" /> Sécurité</h3>
+                       <button onClick={() => setShowPwdFields(!showPwdFields)} className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">{showPwdFields ? "Réduire" : "Changer mot de passe"}</button>
                     </div>
-
-                    {showPwdFields ? (
-                      <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-                        <div className="relative group">
-                          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" size={20} />
-                          <input 
-                            type={showPwd ? "text" : "password"}
-                            value={newPassword}
-                            onChange={e => setNewPassword(e.target.value)}
-                            placeholder="Nouveau mot de passe (min. 6 car.)"
-                            className="w-full bg-white py-6 pl-16 pr-16 rounded-2xl outline-none shadow-sm focus:ring-4 focus:ring-blue-100 transition-all font-bold"
-                          />
-                          <button 
-                            type="button" 
-                            onClick={() => setShowPwd(!showPwd)}
-                            className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
-                          >
-                            {showPwd ? <EyeOff size={20} /> : <Eye size={20} />}
-                          </button>
+                    {showPwdFields && (
+                      <div className="space-y-6">
+                        <div className="relative">
+                          <input type={showPwd ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" className="w-full bg-white py-6 pl-6 pr-16 rounded-2xl outline-none shadow-sm focus:ring-4 focus:ring-blue-100 font-bold" />
+                          <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300">{showPwd ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                         </div>
-                        <button 
-                          onClick={handleUpdatePassword}
-                          disabled={pwdLoading}
-                          className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3"
-                        >
-                          {pwdLoading ? <Loader2 className="animate-spin" /> : <Shield size={16} />}
-                          Confirmer le nouveau mot de passe
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-4 text-gray-400">
-                         <ShieldCheck size={40} className="opacity-20" />
-                         <p className="text-sm font-medium italic">Votre accès est protégé par l'infrastructure souveraine du Cercle.</p>
+                        <button onClick={handleUpdatePassword} disabled={pwdLoading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3">{pwdLoading ? <Loader2 className="animate-spin" /> : <Shield size={16} />} Confirmer</button>
                       </div>
                     )}
                   </section>
@@ -290,17 +220,9 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
             <aside className="lg:sticky lg:top-24 space-y-10 self-start">
               <div className={`p-10 rounded-[3rem] text-center shadow-2xl relative overflow-hidden group border transition-all duration-700 ${isGuardian ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 text-white border-amber-400/30' : 'bg-gray-950 text-white border-white/5'}`}>
-                {isGuardian && <div className="absolute inset-0 pointer-events-none"><div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(251,191,36,0.3)_0%,_transparent_70%)] animate-pulse"></div></div>}
-                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-125 transition-transform duration-700">{isGuardian ? <Crown size={100} /> : <Zap size={80} />}</div>
                 <h3 className={`font-black text-[10px] uppercase tracking-[0.4em] mb-6 relative z-10 ${isGuardian ? 'text-amber-200' : 'text-blue-400'}`}>{isGuardian ? "Autorité Fondatrice" : "INDICE D'IMPACT"}</h3>
-                <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white animate-in zoom-in">{impactScoreValue.toLocaleString()}</div>
+                <div className="text-7xl font-serif font-bold mb-4 relative z-10 text-white">{impactScoreValue.toLocaleString()}</div>
                 <p className={`text-[9px] font-black uppercase tracking-[0.3em] relative z-10 ${isGuardian ? 'text-white/60' : 'text-gray-500'}`}>POINTS CITOYENS</p>
-                {isGuardian && <div className="mt-8 pt-6 border-t border-white/10 relative z-10"><div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20"><Sparkles size={12} className="text-amber-300" /><span className="text-[8px] font-black uppercase tracking-widest">Impact Historique Certifié</span></div></div>}
-              </div>
-
-              <div className="bg-white border border-gray-100 p-10 rounded-[3rem] shadow-sm">
-                <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-gray-400 mb-10 text-center px-1">DÉCORATIONS CITOYENNES</h3>
-                <div className="grid grid-cols-3 gap-y-10 gap-x-2">{badges.map((b, i) => <Badge key={i} {...b} />)}</div>
               </div>
             </aside>
           </div>

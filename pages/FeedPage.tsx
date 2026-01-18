@@ -7,10 +7,10 @@ import {
   Pencil, Crown, Share2, Volume2, Trash2, 
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
-  Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, BookText,
+  Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save
 } from 'lucide-react';
-import { User, CircleType, Role, Post, Comment } from '../types.ts';
+import { User, CircleType, Role, Post } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { MOCK_POSTS, ADMIN_ID } from '../lib/mocks.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -92,21 +92,29 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
     if (!content.trim()) return;
     setLoading(true);
     const postData = {
-      id: Date.now().toString(),
       author_id: user.id,
       circle_type: circleType,
       content,
       created_at: new Date().toISOString(),
-      reactions: { useful: 0, relevant: 0, inspiring: 0 },
-      comments: []
+      reactions: { useful: 0, relevant: 0, inspiring: 0 }
     };
 
-    if (isRealSupabase && supabase) await supabase.from('posts').insert([postData]);
-    onPublish(postData);
-    setContent('');
-    setLoading(false);
-    onClose();
-    addToast("Votre onde a été diffusée", "success");
+    try {
+      if (isRealSupabase && supabase) {
+        const { data, error } = await supabase.from('posts').insert([postData]).select();
+        if (error) throw error;
+        onPublish(data[0]);
+      } else {
+        onPublish({ ...postData, id: Date.now().toString() });
+      }
+      setContent('');
+      onClose();
+      addToast("Votre onde a été diffusée", "success");
+    } catch (e) {
+      addToast("Échec de la publication", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -130,49 +138,18 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
             </div>
           </div>
 
-          {/* BARRE D'OUTILS DE MISE EN PAGE */}
           <div className="flex items-center gap-2 border-b border-gray-50 pb-4">
-            <button 
-              onClick={() => insertText('**', '**')} 
-              title="Gras"
-              className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"
-            >
-              <Bold size={18} />
-            </button>
-            <button 
-              onClick={() => insertText('*', '*')} 
-              title="Italique"
-              className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"
-            >
-              <Italic size={18} />
-            </button>
-            <button 
-              onClick={() => insertText('\n* ', '')} 
-              title="Liste"
-              className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"
-            >
-              <List size={18} />
-            </button>
+            <button onClick={() => insertText('**', '**')} title="Gras" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><Bold size={18} /></button>
+            <button onClick={() => insertText('*', '*')} title="Italique" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><Italic size={18} /></button>
+            <button onClick={() => insertText('\n* ', '')} title="Liste" className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"><List size={18} /></button>
             <div className="w-px h-6 bg-gray-100 mx-1"></div>
-            <button 
-              onClick={() => setShowEmojis(!showEmojis)} 
-              title="Émojis"
-              className={`p-2.5 rounded-xl transition-all active:scale-90 ${showEmojis ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}
-            >
-              <Smile size={18} />
-            </button>
+            <button onClick={() => setShowEmojis(!showEmojis)} title="Émojis" className={`p-2.5 rounded-xl transition-all active:scale-90 ${showEmojis ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}><Smile size={18} /></button>
           </div>
 
           {showEmojis && (
             <div className="grid grid-cols-8 gap-2 p-4 bg-gray-50 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
               {['✨', '🇨🇮', '🔥', '🤝', '💡', '⚖️', '🌱', '🌍', '🧡', '🤍', '💚', '✊', '🏛️', '🛡️', '📢', '🚀'].map(emoji => (
-                <button 
-                  key={emoji} 
-                  onClick={() => { setContent(prev => prev + emoji); setShowEmojis(false); }} 
-                  className="text-xl p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all transform hover:scale-125"
-                >
-                  {emoji}
-                </button>
+                <button key={emoji} onClick={() => { setContent(prev => prev + emoji); setShowEmojis(false); }} className="text-xl p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all transform hover:scale-125">{emoji}</button>
               ))}
             </div>
           )}
@@ -187,11 +164,7 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
           />
         </div>
         <div className="p-6 border-t border-gray-50 flex justify-end bg-gray-50/20">
-          <button 
-            onClick={handlePost} 
-            disabled={loading || !content.trim()} 
-            className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3"
-          >
+          <button onClick={handlePost} disabled={loading || !content.trim()} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3">
             {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier l'Onde
           </button>
         </div>
@@ -252,14 +225,8 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
     const shareText = `${post.content}\n\nRejoignez le Cercle Citoyen pour participer au progrès social.`;
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: 'Cercle Citoyen - Onde',
-          text: shareText,
-          url: window.location.href,
-        });
-      } catch (e) {
-        console.debug('Share cancelled');
-      }
+        await navigator.share({ title: 'Cercle Citoyen - Onde', text: shareText, url: window.location.href });
+      } catch (e) { console.debug('Share cancelled'); }
     } else {
       navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
       addToast("Lien et contenu copiés !", "success");
@@ -267,33 +234,23 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Souhaitez-vous vraiment effacer cette onde de la mémoire collective ?")) return;
+    if (!window.confirm("Souhaitez-vous vraiment effacer cette onde ?")) return;
     try {
-      if (isRealSupabase && supabase) {
-        await supabase.from('posts').delete().eq('id', post.id);
-      }
+      if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
       onUpdate();
       addToast("Onde effacée", "success");
-    } catch (e) {
-      addToast("Échec de la suppression", "error");
-    }
+    } catch (e) { addToast("Échec de la suppression", "error"); }
   };
 
   const handleSaveEdit = async () => {
     if (!editContent.trim()) return;
     setIsSaving(true);
     try {
-      if (isRealSupabase && supabase) {
-        await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
-      }
+      if (isRealSupabase && supabase) await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
       setIsEditing(false);
       onUpdate();
       addToast("Onde rectifiée", "success");
-    } catch (e) {
-      addToast("Erreur lors de la mise à jour", "error");
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (e) { addToast("Erreur lors de la mise à jour", "error"); } finally { setIsSaving(false); }
   };
 
   if (!author) return <PostSkeleton />;
@@ -315,39 +272,27 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             </Link>
             <div>
               <div className="flex items-center gap-1.5">
-                <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-[13px] leading-none hover:text-blue-600 transition-colors">
-                  {author.name}
-                </Link>
+                <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-[13px] hover:text-blue-600 transition-colors">{author.name}</Link>
                 {author.role === Role.SUPER_ADMIN && <ShieldCheck size={12} className="text-amber-600" />}
               </div>
-              <p className="text-[7px] font-black uppercase tracking-widest text-gray-300 mt-1.5">
-                {getRelativeTime(post.created_at)} • {post.circle_type}
-              </p>
+              <p className="text-[7px] font-black uppercase tracking-widest text-gray-300 mt-1.5">{getRelativeTime(post.created_at)} • {post.circle_type}</p>
             </div>
           </div>
         </div>
 
         {isEditing ? (
-          <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
-            <textarea 
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="w-full min-h-[120px] bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none text-sm font-medium text-gray-800 leading-relaxed focus:bg-white focus:border-blue-200 transition-all resize-none"
-            />
+          <div className="mb-4">
+            <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full min-h-[120px] bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none text-sm font-medium resize-none focus:bg-white transition-all" />
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600">Annuler</button>
-              <button 
-                onClick={handleSaveEdit} 
-                disabled={isSaving || !editContent.trim()}
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 disabled:opacity-50"
-              >
+              <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Annuler</button>
+              <button onClick={handleSaveEdit} disabled={isSaving || !editContent.trim()} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg disabled:opacity-50">
                 {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Sauvegarder
               </button>
             </div>
           </div>
         ) : (
           <>
-            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-2'}`}>
+            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-2'}`}>
               {formatContent(displayContent)}
             </div>
             {shouldTruncate && (
@@ -363,23 +308,16 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><ThumbsUp size={14} /> <span className="text-[10px] font-bold">{post.reactions.useful}</span></button>
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all"><Lightbulb size={14} /> <span className="text-[10px] font-bold">{post.reactions.relevant}</span></button>
             <div className="w-px h-4 bg-gray-100 mx-1"></div>
-            <button onClick={handleShare} className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-all">
-              <Share2 size={14} /> <span className="text-[10px] font-bold">PARTAGER</span>
-            </button>
+            <button onClick={handleShare} className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-all"><Share2 size={14} /> <span className="text-[10px] font-bold">PARTAGER</span></button>
           </div>
-          
           <div className="flex items-center gap-2">
             {isOwner && !isEditing && (
-              <div className="flex gap-1 animate-in fade-in slide-in-from-right-2 duration-300">
-                <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all">
-                  <Pencil size={13} /> <span className="text-[9px] font-black tracking-widest uppercase">Modifier</span>
-                </button>
-                <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all">
-                  <Trash2 size={13} /> <span className="text-[9px] font-black tracking-widest uppercase">Supprimer</span>
-                </button>
+              <div className="flex gap-1">
+                <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><Pencil size={13} /> <span className="text-[9px] font-black uppercase">Modifier</span></button>
+                <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all"><Trash2 size={13} /> <span className="text-[9px] font-black uppercase">Supprimer</span></button>
               </div>
             )}
-            <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase tracking-widest transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400 hover:text-amber-600'}`}>
+            <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400'}`}>
               <Volume2 size={12} /> {isReading ? "LECTURE..." : "ÉCOUTER"}
             </button>
           </div>
@@ -391,14 +329,10 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
 
 const MissionItem = ({ icon: Icon, label, link, color }: any) => (
   <Link to={link} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-blue-100 hover:shadow-md transition-all group">
-    <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform`}>
-      {Icon && <Icon size={18} />}
-    </div>
+    <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform`}>{Icon && <Icon size={18} />}</div>
     <div className="flex-1">
       <p className="text-[10px] font-black uppercase tracking-widest text-gray-900">{label}</p>
-      <div className="flex items-center gap-1 text-[8px] font-bold text-gray-400 uppercase mt-0.5">
-         Prêt à agir <ArrowRight size={8} className="group-hover:translate-x-1 transition-transform" />
-      </div>
+      <div className="flex items-center gap-1 text-[8px] font-bold text-gray-400 uppercase mt-0.5">Prêt à agir <ArrowRight size={8} className="group-hover:translate-x-1 transition-transform" /></div>
     </div>
   </Link>
 );
@@ -410,7 +344,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const { addToast } = user ? useToast() : { addToast: () => {} };
+  const { addToast } = useToast();
 
   const fetchPosts = async () => {
     setIsRefreshing(true);
@@ -429,9 +363,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Navigation</div>
         <NavLink to="/feed" active icon={<Home size={18} />} label="Agora" onClick={onLinkClick} />
-        {user.role === Role.SUPER_ADMIN && (
-          <NavLink to="/admin" icon={<Crown size={18} />} label="Conseil" color="text-amber-600" onClick={onLinkClick} />
-        )}
+        {user.role === Role.SUPER_ADMIN && <NavLink to="/admin" icon={<Crown size={18} />} label="Conseil" color="text-amber-600" onClick={onLinkClick} />}
         <NavLink to="/sentinel" icon={<Camera size={18} />} label="Sentinelle" color="text-emerald-600" onClick={onLinkClick} />
         <NavLink to="/map" icon={<MapIcon size={18} />} label="Empreinte" color="text-blue-600" onClick={onLinkClick} />
         <NavLink to="/assembly" icon={<Mic2 size={18} />} label="Assemblée" color="text-indigo-600" onClick={onLinkClick} />
@@ -449,12 +381,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
 
   return (
     <div className="min-h-screen bg-[#fafafa] pb-24 lg:pb-0">
-      <PublishModal 
-        user={user} 
-        isOpen={isPublishModalOpen} 
-        onClose={() => setIsPublishModalOpen(false)} 
-        onPublish={(p) => setPosts(prev => [p, ...prev])} 
-      />
+      <PublishModal user={user} isOpen={isPublishModalOpen} onClose={() => setIsPublishModalOpen(false)} onPublish={(p) => setPosts(prev => [p, ...prev])} />
 
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden">
@@ -466,9 +393,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
             </div>
             <div className="flex-1 p-5 overflow-y-auto no-scrollbar"><NavSections onLinkClick={() => setIsMobileMenuOpen(false)} /></div>
             <div className="p-6 border-t border-gray-100 space-y-3">
-               <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-4 text-rose-600 bg-rose-50 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                 <LogOut size={16} /> Déconnexion
-               </button>
+               <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-4 text-rose-600 bg-rose-50 rounded-xl font-black text-[10px] uppercase tracking-widest"><LogOut size={16} /> Déconnexion</button>
             </div>
           </div>
         </div>
@@ -487,7 +412,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-3">Impact</p>
              <p className="text-xl font-serif font-bold mb-4">{user.impactScore || 0} XP</p>
              <div className="space-y-2">
-               <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/5">Registre</button>
+               <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest border border-white/5">Registre</button>
              </div>
           </div>
         </aside>
@@ -498,15 +423,10 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
             <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
           </header>
 
-          <button 
-            onClick={() => setIsPublishModalOpen(true)}
-            className="w-full bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm mb-10 flex items-center gap-6 hover:shadow-md hover:border-blue-100 transition-all group"
-          >
+          <button onClick={() => setIsPublishModalOpen(true)} className="w-full bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm mb-10 flex items-center gap-6 hover:shadow-md transition-all group">
             <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm" />
             <span className="text-gray-400 font-medium text-lg flex-1 text-left group-hover:text-gray-600">Quelle est votre onde ?</span>
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-              <Plus size={24} />
-            </div>
+            <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Plus size={24} /></div>
           </button>
 
           <div className="space-y-4">
@@ -516,9 +436,9 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                 {index === 0 && (
                   <div className="bg-blue-600 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden mb-6 group">
                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform"><Smartphone size={100} /></div>
-                     <h3 className="text-2xl font-serif font-bold mb-4 leading-tight">Devenez Pilier <br/>du Cercle</h3>
-                     <p className="text-blue-100 text-sm mb-8 leading-relaxed font-medium">Votre soutien direct via Wave finance l'intelligence souveraine de la Cité. Pas de pub, juste nous.</p>
-                     <button onClick={() => navigate('/transparency')} className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-50 transition-all">Soutenir maintenant</button>
+                     <h3 className="text-2xl font-serif font-bold mb-4 leading-tight">Devenez Pilier du Cercle</h3>
+                     <p className="text-blue-100 text-sm mb-8 font-medium">Votre soutien direct via Wave finance l'intelligence souveraine de la Cité.</p>
+                     <button onClick={() => navigate('/transparency')} className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">Soutenir maintenant</button>
                   </div>
                 )}
               </React.Fragment>
@@ -528,9 +448,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
 
         <aside className="hidden xl:block w-72 sticky top-12 self-start space-y-8">
            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8 px-2 flex items-center gap-2">
-                <Target size={14} className="text-blue-600" /> Missions du Citoyen
-              </h3>
+              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8 px-2 flex items-center gap-2"><Target size={14} className="text-blue-600" /> Missions du Citoyen</h3>
               <div className="space-y-4">
                  <MissionItem icon={Camera} label="Signaler une anomalie" link="/sentinel" color="bg-emerald-500" />
                  <MissionItem icon={Gavel} label="Lancer un RIC national" link="/governance" color="bg-orange-500" />
@@ -538,23 +456,14 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                  <MissionItem icon={Video} label="Tisser une vision" link="/griot" color="bg-amber-500" />
               </div>
            </div>
-
-           <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden group">
-              <div className="absolute -bottom-4 -right-4 opacity-10 group-hover:scale-110 transition-transform"><ShieldCheck size={120} className="text-emerald-900" /></div>
-              <h4 className="text-emerald-900 font-serif font-bold text-xl mb-3">La Cité est <br/>vigilante.</h4>
-              <p className="text-emerald-800/60 text-xs font-medium leading-relaxed mb-6">Chaque signalement via la Sentinelle Verte contribue à la salubrité de notre territoire.</p>
-              <Link to="/sentinel" className="flex items-center gap-2 text-[10px] font-black uppercase text-emerald-700 hover:underline">
-                Ouvrir le Scrutateur <ArrowRight size={12} />
-              </Link>
-           </div>
         </aside>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-3xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-[0_-10px_30px_rgba(0,0,0,0.02)] rounded-t-[1.5rem]">
-        <Link to="/feed" className="flex flex-col items-center gap-1 text-blue-600"><Home size={20} /><span className="text-[6px] font-black uppercase tracking-widest">Agora</span></Link>
-        <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-300"><Camera size={20} /><span className="text-[6px] font-black uppercase tracking-widest">Sentinelle</span></Link>
-        <Link to="/map" className="flex flex-col items-center gap-1 text-gray-300"><MapIcon size={20} /><span className="text-[6px] font-black uppercase tracking-widest">Empreinte</span></Link>
-        <button onClick={() => setIsMobileMenuOpen(true)} className="flex flex-col items-center gap-1 text-gray-300"><Menu size={20} /><span className="text-[6px] font-black uppercase tracking-widest">Menu</span></button>
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-3xl border-t border-gray-100 px-6 py-4 flex justify-between items-center z-[110] shadow-lg rounded-t-[1.5rem]">
+        <Link to="/feed" className="flex flex-col items-center gap-1 text-blue-600"><Home size={20} /><span className="text-[6px] font-black uppercase">Agora</span></Link>
+        <Link to="/sentinel" className="flex flex-col items-center gap-1 text-gray-300"><Camera size={20} /><span className="text-[6px] font-black uppercase">Sentinelle</span></Link>
+        <Link to="/map" className="flex flex-col items-center gap-1 text-gray-300"><MapIcon size={20} /><span className="text-[6px] font-black uppercase">Empreinte</span></Link>
+        <button onClick={() => setIsMobileMenuOpen(true)} className="flex flex-col items-center gap-1 text-gray-300"><Menu size={20} /><span className="text-[6px] font-black uppercase">Menu</span></button>
       </nav>
     </div>
   );
