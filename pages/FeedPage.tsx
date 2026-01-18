@@ -346,6 +346,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
         <NavLink to="/sentinel" icon={<Camera size={18} />} label="Sentinelle" color="text-emerald-600" onClick={onLinkClick} />
         <NavLink to="/map" icon={<MapIcon size={18} />} label="Empreinte" color="text-blue-600" onClick={onLinkClick} />
         <NavLink to="/assembly" icon={<Mic2 size={18} />} label="Assemblée" color="text-indigo-600" onClick={onLinkClick} />
+        <NavLink to="/compass" icon={<Compass size={18} />} label="Boussole" color="text-teal-600" onClick={onLinkClick} />
       </section>
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Action</div>
