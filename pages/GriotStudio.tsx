@@ -1,9 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Video, Loader2, Play, Sparkles, Send, ChevronLeft, X, CheckCircle, Smartphone as PhoneIcon } from 'lucide-react';
+import { Video, Loader2, Play, Sparkles, Send, ChevronLeft, X, CheckCircle, Smartphone as PhoneIcon, PenTool, Tv, Rocket, ArrowRight } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { useToast } from '../ToastContext.tsx';
+
+const StepCard: React.FC<{ icon: React.ReactNode, title: string, text: string, color: string }> = ({ icon, title, text, color }) => (
+  <div className={`p-6 rounded-[2rem] border ${color} bg-white/50 flex flex-col items-center text-center shadow-sm`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm bg-white text-gray-900`}>
+      {icon}
+    </div>
+    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2">{title}</h4>
+    <p className="text-xs text-gray-500 font-medium leading-relaxed">{text}</p>
+  </div>
+);
 
 const ContributionModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { addToast } = useToast();
@@ -100,35 +110,83 @@ const GriotStudio: React.FC = () => {
       </Link>
       {showContrib && <ContributionModal onClose={() => setShowContrib(false)} />}
 
-      <div className="text-center mb-12">
+      <div className="text-center mb-16">
         <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-amber-200">
            <Video className="w-8 h-8" />
         </div>
         <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Le Griot Numérique</h1>
-        <p className="text-gray-500 font-bold italic text-sm">Racontez l'avenir de votre cité en images animées.</p>
+        <p className="text-gray-500 max-w-2xl mx-auto text-lg font-medium leading-relaxed italic">
+          "Donner un visage à nos rêves pour mieux les bâtir." <br/>
+          Le Griot utilise l'IA pour transformer vos ambitions citoyennes en récits visuels inspirants.
+        </p>
+      </div>
+
+      {/* SECTION EXPLICATIVE : LE CYCLE DE LA VISION */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        <StepCard 
+          icon={<PenTool className="text-amber-600" />}
+          title="1. Pensez"
+          text="Imaginez une scène d'impact social positif pour votre quartier ou la Nation."
+          color="border-amber-100 bg-amber-50/20"
+        />
+        <StepCard 
+          icon={<Tv className="text-blue-500" />}
+          title="2. Visualisez"
+          text="Décrivez votre idée. Le Griot tissera un clip vidéo pour illustrer cette vision."
+          color="border-blue-100 bg-blue-50/20"
+        />
+        <StepCard 
+          icon={<Rocket className="text-emerald-500" />}
+          title="3. Mobilisez"
+          text="Partagez la vidéo pour rallier vos concitoyens autour de vos projets réels."
+          color="border-emerald-100 bg-emerald-50/20"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
           <div className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-gray-100 shadow-sm relative">
             <div className="flex items-center justify-between mb-8">
-              <span className="text-[10px] font-black uppercase text-amber-600 tracking-widest flex items-center gap-2"><Sparkles size={12}/> Création Libre</span>
+              <span className="text-[10px] font-black uppercase text-amber-600 tracking-widest flex items-center gap-2"><Sparkles size={12}/> Script de l'avenir</span>
               <span className="px-3 py-1 bg-gray-50 rounded-full text-[9px] font-black uppercase text-gray-400">{dailyCount}/2 essais</span>
             </div>
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Décrivez une scène d'impact social..." className="w-full h-40 bg-gray-50 rounded-[1.5rem] p-6 text-gray-800 outline-none border border-transparent focus:border-amber-100 focus:bg-white transition-all resize-none mb-6 font-medium placeholder:text-gray-300" />
-            <button onClick={handleGenerate} disabled={loading || dailyCount >= 2 || !prompt.trim()} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-30 flex items-center justify-center gap-3">
-              {loading ? <Loader2 className="animate-spin" /> : <Send size={16} />} {loading ? "Tissage IA..." : "Éveiller le Griot"}
+            <textarea 
+              value={prompt} 
+              onChange={(e) => setPrompt(e.target.value)} 
+              placeholder="Décrivez une scène d'impact social (ex: un marché propre, une école solaire, une entraide entre quartiers)..." 
+              className="w-full h-40 bg-gray-50 rounded-[1.5rem] p-6 text-gray-800 outline-none border border-transparent focus:border-amber-100 focus:bg-white transition-all resize-none mb-6 font-medium placeholder:text-gray-300" 
+            />
+            <button 
+              onClick={handleGenerate} 
+              disabled={loading || dailyCount >= 2 || !prompt.trim()} 
+              className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-30 flex items-center justify-center gap-3"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Send size={16} />} {loading ? "Le Griot tisse..." : "Éveiller le Griot"}
             </button>
           </div>
-          <button onClick={() => setShowContrib(true)} className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-100">Aider à financer l'infrastructure</button>
+          <button onClick={() => setShowContrib(true)} className="w-full py-4 bg-blue-50 text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-100">Aider à financer l'infrastructure</button>
         </div>
 
         <div className="relative">
           {videoUrl ? (
-            <div className="rounded-[2.5rem] overflow-hidden shadow-2xl bg-black aspect-video border-[8px] border-white ring-1 ring-gray-100"><video src={videoUrl} controls autoPlay loop className="w-full h-full object-cover" /></div>
+            <div className="rounded-[2.5rem] overflow-hidden shadow-2xl bg-black aspect-video border-[8px] border-white ring-1 ring-gray-100 animate-in zoom-in duration-700">
+              <video src={videoUrl} controls autoPlay loop className="w-full h-full object-cover" />
+            </div>
           ) : (
-            <div className="aspect-video bg-white rounded-[2.5rem] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-gray-100 shadow-sm">
-              {loading ? <div className="space-y-4"><Loader2 className="w-12 h-12 text-amber-500 animate-spin mx-auto" /><p className="text-gray-400 font-bold italic">{loadingStage}</p></div> : <div className="space-y-6"><Play className="w-12 h-12 text-gray-100 mx-auto" /><p className="text-gray-300 font-black text-[10px] uppercase tracking-[0.2em]">La vision apparaîtra ici</p></div>}
+            <div className="aspect-video bg-white rounded-[2.5rem] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-gray-100 shadow-sm transition-all hover:bg-gray-50/50 group">
+              {loading ? (
+                <div className="space-y-4">
+                  <Loader2 className="w-12 h-12 text-amber-500 animate-spin mx-auto" />
+                  <p className="text-gray-400 font-bold italic">{loadingStage}</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-200 group-hover:text-amber-200 transition-colors">
+                    <Play className="w-8 h-8" />
+                  </div>
+                  <p className="text-gray-300 font-black text-[10px] uppercase tracking-[0.2em]">Votre vision sera révélée ici</p>
+                </div>
+              )}
             </div>
           )}
         </div>
