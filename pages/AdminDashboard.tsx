@@ -12,27 +12,38 @@ import { supabase, isRealSupabase, db } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
 import { Role, UserCategory } from '../types.ts';
 
-const REPAIR_SQL = `-- SCRIPT DE RÉPARATION DU CERCLE
--- Exécutez ce script dans l'éditeur SQL de Supabase
+const REPAIR_SQL = `-- ==========================================
+-- SCRIPT DE RESTAURATION TOTALE DU CERCLE
+-- ==========================================
 
+-- 1. PROFILS & IDENTITÉS
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    name TEXT NOT NULL,
+    pseudonym TEXT UNIQUE NOT NULL,
+    email TEXT,
+    bio TEXT,
+    avatar_url TEXT,
+    role TEXT DEFAULT 'Membre',
+    category TEXT DEFAULT 'Citoyen',
+    impact_score INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active'
+);
+
+-- 2. ÉDITS & RÉFÉRENDUMS (RIC)
 CREATE TABLE IF NOT EXISTS public.edicts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT now(),
     title TEXT NOT NULL,
     proposer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
+    category TEXT CHECK (category IN ('internal', 'national')) DEFAULT 'national',
     status TEXT CHECK (status IN ('voting', 'enacted')) DEFAULT 'voting',
     votes_count INTEGER DEFAULT 0,
     threshold INTEGER DEFAULT 1000,
     ends_at TIMESTAMPTZ NOT NULL
 );
-
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='edicts' AND column_name='category') THEN
-        ALTER TABLE public.edicts ADD COLUMN category TEXT CHECK (category IN ('internal', 'national')) DEFAULT 'national';
-    END IF;
-END $$;
 
 CREATE TABLE IF NOT EXISTS public.votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,17 +53,122 @@ CREATE TABLE IF NOT EXISTS public.votes (
     UNIQUE(user_id, edict_id)
 );
 
+-- 3. SENTIERS D'IMPACT (QUÊTES)
+CREATE TABLE IF NOT EXISTS public.quests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    circle_type TEXT NOT NULL,
+    difficulty TEXT DEFAULT 'Initié',
+    reward_xp INTEGER DEFAULT 100,
+    target_goal INTEGER DEFAULT 100,
+    participants_count INTEGER DEFAULT 0,
+    location TEXT,
+    proposer_id UUID REFERENCES public.profiles(id),
+    certifier_id UUID REFERENCES public.profiles(id),
+    status TEXT DEFAULT 'pending'
+);
+
+-- 4. BANQUE DES IDÉES
+CREATE TABLE IF NOT EXISTS public.ideas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    circle_type TEXT NOT NULL,
+    needs TEXT[],
+    status TEXT DEFAULT 'spark',
+    vouch_count INTEGER DEFAULT 0
+);
+
+-- 5. SENTINELLE VERTE (SIGNALEMENTS)
+CREATE TABLE IF NOT EXISTS public.waste_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    timestamp TIMESTAMPTZ DEFAULT now(),
+    author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    image TEXT NOT NULL,
+    clean_vision TEXT,
+    city TEXT,
+    sector TEXT,
+    nature TEXT,
+    description TEXT,
+    action_plan TEXT[],
+    insight TEXT,
+    status TEXT DEFAULT 'reported',
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION
+);
+
+-- 6. CONTRIBUTIONS (WAVE)
+CREATE TABLE IF NOT EXISTS public.contributions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    user_id UUID REFERENCES public.profiles(id),
+    amount INTEGER NOT NULL,
+    provider TEXT DEFAULT 'Wave',
+    status TEXT DEFAULT 'pending'
+);
+
+-- 7. MESSAGERIE SOUVERAINE
+CREATE TABLE IF NOT EXISTS public.conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    participant_ids UUID[] NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    is_ai BOOLEAN DEFAULT false
+);
+
+-- 8. ONDES (POSTS)
+CREATE TABLE IF NOT EXISTS public.posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    circle_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    image_url TEXT,
+    clean_vision_url TEXT,
+    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
+    is_majestic BOOLEAN DEFAULT false
+);
+
+-- SÉCURITÉ : ACTIVER RLS SUR TOUT
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.waste_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contributions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Tout le monde peut lire les édits" ON public.edicts;
-CREATE POLICY "Tout le monde peut lire les édits" ON public.edicts FOR SELECT USING (true);
+-- POLITIQUES DE LECTURE (TOUT LE MONDE)
+DROP POLICY IF EXISTS "Lecture publique" ON public.profiles;
+CREATE POLICY "Lecture publique" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Lecture publique" ON public.edicts;
+CREATE POLICY "Lecture publique" ON public.edicts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Lecture publique" ON public.posts;
+CREATE POLICY "Lecture publique" ON public.posts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Lecture publique" ON public.waste_reports;
+CREATE POLICY "Lecture publique" ON public.waste_reports FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Les citoyens authentifiés peuvent proposer" ON public.edicts;
-CREATE POLICY "Les citoyens authentifiés peuvent proposer" ON public.edicts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-
-DROP POLICY IF EXISTS "Les citoyens peuvent voter" ON public.votes;
-CREATE POLICY "Les citoyens peuvent voter" ON public.votes FOR INSERT WITH CHECK (auth.uid() = user_id);`;
+-- POLITIQUES D'ÉCRITURE (AUTHENTIFIÉS)
+DROP POLICY IF EXISTS "Modif Profil" ON public.profiles;
+CREATE POLICY "Modif Profil" ON public.profiles FOR UPDATE WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Insertion Ondes" ON public.posts;
+CREATE POLICY "Insertion Ondes" ON public.posts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);`;
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
@@ -132,7 +248,7 @@ const AdminDashboard: React.FC = () => {
 
   const copySql = () => {
     navigator.clipboard.writeText(REPAIR_SQL);
-    addToast("Script SQL de réparation copié !", "success");
+    addToast("Script SQL de restauration complète copié !", "success");
   };
 
   const displayCitizens = profiles.filter(p => 
@@ -190,12 +306,12 @@ const AdminDashboard: React.FC = () => {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
            <div className="bg-blue-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-10 opacity-10"><Database size={120} /></div>
-              <h3 className="text-3xl font-serif font-bold mb-4">Maintenance Souveraine</h3>
+              <h3 className="text-3xl font-serif font-bold mb-4">Restauration de la Cité</h3>
               <p className="text-blue-100 max-w-2xl font-medium leading-relaxed mb-8">
-                Si vous rencontrez des erreurs de type "relation already exists" ou si des colonnes manquent dans votre base Supabase, utilisez le script de réparation ci-dessous. Il est conçu pour être exécuté en toute sécurité.
+                Ce script complet crée l'intégralité des infrastructures nécessaires : Profils, RIC, Sentinelle, Quêtes, Messagerie et Archivage. Exécutez-le dans l'éditeur SQL de Supabase pour une souveraineté totale.
               </p>
               <button onClick={copySql} className="bg-white text-blue-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-blue-50 transition-all">
-                <Copy size={18} /> Copier le script complet
+                <Copy size={18} /> Copier le script intégral
               </button>
            </div>
 
@@ -206,9 +322,9 @@ const AdminDashboard: React.FC = () => {
                     <div className="w-3 h-3 rounded-full bg-amber-500"></div>
                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
                  </div>
-                 <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">repair_schema.sql</span>
+                 <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">full_infrastructure_restore.sql</span>
               </div>
-              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-blue-300 leading-relaxed overflow-x-auto max-h-[400px] custom-scrollbar">
+              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-blue-300 leading-relaxed overflow-x-auto max-h-[500px] custom-scrollbar">
                  <pre>{REPAIR_SQL}</pre>
               </div>
            </div>
