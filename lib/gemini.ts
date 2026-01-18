@@ -2,9 +2,9 @@
 // @google/genai utility functions for CERCLE CITOYEN
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-// Always use a named parameter and process.env.API_KEY directly
+// Récupération dynamique pour éviter le remplacement statique au build
 const getAI = () => {
-  const key = process.env.API_KEY;
+  const key = (window as any).process?.env?.['API_KEY'] || (process as any)["env"]?.['API_KEY'];
   if (!key) return null;
   return new GoogleGenAI({ apiKey: key });
 };
@@ -38,7 +38,6 @@ export async function decodeAudioData(
   return buffer;
 }
 
-// Fix: Standardize contents structure and use responseSchema for JSON output
 export async function analyzePollutionImage(base64Image: string) {
   try {
     const ai = getAI();
@@ -48,7 +47,6 @@ export async function analyzePollutionImage(base64Image: string) {
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      // Fix: Simplified contents structure following guidelines
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
@@ -77,24 +75,14 @@ export async function analyzePollutionImage(base64Image: string) {
       }
     });
 
-    // Fix: Access text property directly (not as a method)
     if (!response.text) throw new Error("Réponse vide");
     return JSON.parse(response.text.trim());
   } catch (e) { 
     console.error("Erreur Analyse Pollution:", e);
-    return {
-      city: "Localité à préciser",
-      sector: "Secteur à préciser",
-      nature: "Encombrant / Nuisance identifiée",
-      description: "L'image présente une anomalie urbaine nécessitant une intervention de salubrité.",
-      actionPlan: ["Identifier le propriétaire s'il s'agit d'un véhicule", "Alerter les services municipaux", "Dégager l'espace public"],
-      insight: "La propreté de la cité commence au pas de notre porte.",
-      status: "reported"
-    };
+    return null;
   }
 }
 
-// Fix: Use generateContent for nano-banana image models as per guidelines
 export async function generateCleanVision(base64Image: string) {
   try {
     const ai = getAI();
@@ -112,7 +100,6 @@ export async function generateCleanVision(base64Image: string) {
       }
     });
     
-    // Fix: Correct iteration through parts to find image data
     const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
     return part ? `data:image/png;base64,${part.inlineData.data}` : null;
   } catch (e) { 
@@ -121,7 +108,6 @@ export async function generateCleanVision(base64Image: string) {
   }
 }
 
-// Fix: Correct TTS model name and modalities
 export async function getGriotReading(content: string) {
   try {
     const ai = getAI();
@@ -136,7 +122,6 @@ export async function getGriotReading(content: string) {
         },
       },
     });
-    // Fix: Extract audio from candidates structure correctly
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   } catch (e) { return null; }
 }
@@ -153,7 +138,6 @@ export async function summarizeCircleDiscussions(circleType: string, posts: stri
   } catch (e) { return "Synthèse indisponible."; }
 }
 
-// Fix: Proper grounding processing using googleMaps tool
 export async function findInitiatives(query: string, lat?: number, lng?: number) {
   try {
     const ai = getAI();
@@ -180,7 +164,6 @@ export async function findInitiatives(query: string, lat?: number, lng?: number)
   } catch (e) { return { text: "Erreur localisation.", places: [] }; }
 }
 
-// Fix: Add responseSchema for structured JSON output
 export async function analyzeIdeaImpact(title: string, description: string) {
   try {
     const ai = getAI();
@@ -204,7 +187,6 @@ export async function analyzeIdeaImpact(title: string, description: string) {
   } catch (e) { return { potentialImpact: "Inconnu", neededExpertises: [] }; }
 }
 
-// Fix: Add responseSchema for structured JSON output
 export async function analyzeCommunityReputation(entityName: string, vouches: string[]) {
   try {
     const ai = getAI();
@@ -253,7 +235,6 @@ export async function getConsensusSummary(messages: {sender: string, text: strin
   } catch (e) { return "Consensus indisponible."; }
 }
 
-// Fix: Add responseSchema for structured JSON output
 export async function simplifyLegalText(text: string) {
   try {
     const ai = getAI();
