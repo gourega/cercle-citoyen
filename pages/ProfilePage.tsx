@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { User, Role } from '../types.ts';
 import { 
   LogOut, Loader2, Save, PenLine, Crown, AtSign, ShieldCheck, Zap, Camera, 
   Flame, Heart, Sparkles, Medal, Shield, Pencil, UserPlus, UserCheck, Users, 
-  MessageSquare, Lock, Eye, EyeOff, ShieldAlert
+  MessageSquare, Lock, Eye, EyeOff, ShieldAlert, ChevronLeft
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -170,6 +170,12 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <div className="mb-8">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour à l'Agora
+        </Link>
+      </div>
+
       <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
         <input type="file" ref={fileInputRef} onChange={(e) => {
           const file = e.target.files?.[0];
@@ -216,7 +222,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
               {isOwnProfile ? (
                 isEditing ? (
                   <><button onClick={handleSave} disabled={syncing} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl">{syncing ? <Loader2 className="animate-spin" /> : <Save size={16} />} Enregistrer</button><button onClick={() => setIsEditing(false)} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Annuler</button></>
-                ) : <><button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><Pencil size={16} /> Modifier</button><button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100"><LogOut size={16} /></button></>
+                ) : <><button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><Pencil size={16} /> Modifier</button><button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100" title="Déconnexion"><LogOut size={16} /></button></>
               ) : (
                 <><button onClick={toggleFollow} className={`px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl ${isFollowing ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{isFollowing ? <><UserCheck size={18} /> Soutenu</> : <><UserPlus size={18} /> Soutenir</>}</button><button className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><MessageSquare size={16} /> Palabrer</button></>
               )}
