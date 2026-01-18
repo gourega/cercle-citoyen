@@ -39,17 +39,30 @@ const QuestsPage: React.FC = () => {
   }, []);
 
   const fetchQuests = async () => {
+    setLoading(true);
     if (isRealSupabase && supabase) {
-      const { data } = await supabase
-        .from('quests')
-        .select(`
-          *, 
-          proposer:proposer_id(name, avatar_url), 
-          certifier:certifier_id(name, category),
-          validator:validator_id(name)
-        `)
-        .order('created_at', { ascending: false });
-      if (data) setQuests(data);
+      try {
+        const { data, error } = await supabase
+          .from('quests')
+          .select(`
+            *, 
+            proposer:proposer_id(name, avatar_url), 
+            certifier:certifier_id(name, category),
+            validator:validator_id(name)
+          `)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          if (error.code === 'PGRST116' || error.message.includes('not found')) {
+            console.warn("Table 'quests' manquante dans Supabase.");
+          } else {
+            throw error;
+          }
+        }
+        if (data) setQuests(data);
+      } catch (e) {
+        console.error("Fetch Quests Error:", e);
+      }
     }
     setLoading(false);
   };
@@ -57,7 +70,7 @@ const QuestsPage: React.FC = () => {
   const handleInvokeVision = async () => {
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: (window as any).process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: "Génère une proposition d'action citoyenne concrète pour la Côte d'Ivoire. Format JSON: title, description, rewardXP, targetGoal, location, circleType.",
@@ -116,6 +129,8 @@ const QuestsPage: React.FC = () => {
         addToast("Proposition soumise pour validation.", "success");
         setIsModalOpen(false);
         fetchQuests();
+      } else {
+        addToast("Erreur de soumission : table peut-être absente.", "error");
       }
     }
   };
@@ -143,13 +158,12 @@ const QuestsPage: React.FC = () => {
           <button onClick={handleInvokeVision} disabled={isGenerating} className="bg-blue-600 text-white px-8 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl flex items-center justify-center gap-3">
             {isGenerating ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />} Invoquer Vision IA
           </button>
-          <button onClick={() => setIsModalOpen(true)} className="bg-gray-900 text-white px-8 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3">
+          <button onClick={() => setIsModalOpen(true)} className="bg-gray-900 text-white px-8 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl items-center justify-center gap-3 flex">
             <Plus size={18} /> Proposer un Sentier
           </button>
         </div>
       </div>
 
-      {/* Guide des Sentiers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
         <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex gap-5 items-start">
           <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-200">
@@ -160,7 +174,7 @@ const QuestsPage: React.FC = () => {
               Invoquer Vision IA
             </h3>
             <p className="text-xs text-blue-900/60 leading-relaxed font-medium">
-              L'intelligence du Cercle analyse les besoins de la Nation pour vous suggérer une action inspirante et structurée, prête à être lancée.
+              L'intelligence du Cercle analyse les besoins de la Nation pour vous suggérer une action inspirante.
             </p>
           </div>
         </div>
@@ -173,7 +187,7 @@ const QuestsPage: React.FC = () => {
               Proposer un Sentier
             </h3>
             <p className="text-xs text-gray-900/40 leading-relaxed font-medium">
-              Devenez architecte du changement en créant votre propre initiative locale. Elle sera soumise au conseil pour validation communautaire.
+              Devenez architecte du changement en créant votre propre initiative locale.
             </p>
           </div>
         </div>
@@ -195,9 +209,14 @@ const QuestsPage: React.FC = () => {
         <main className="lg:col-span-9">
           {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div> : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {quests.filter(q => filter === 'all' || q.circle_type === filter).map(q => (
+              {quests.length > 0 ? quests.filter(q => filter === 'all' || q.circle_type === filter).map(q => (
                 <QuestCard key={q.id} quest={q} currentUser={user} onCertify={() => handleCertify(q.id)} />
-              ))}
+              )) : (
+                <div className="col-span-full py-32 bg-white border-2 border-dashed border-gray-200 rounded-[4rem] text-center">
+                  <Target className="w-16 h-16 text-gray-100 mx-auto mb-6" />
+                  <p className="text-gray-400 font-bold italic">Aucun sentier trouvé. Les tables SQL ont-elles été créées ?</p>
+                </div>
+              )}
             </div>
           )}
         </main>
