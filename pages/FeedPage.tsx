@@ -121,7 +121,6 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
 
     try {
       if (isRealSupabase && supabase) {
-        // Tentative d'insertion
         const { data, error } = await supabase.from('posts').insert([postData]).select();
         
         if (error) {
@@ -133,9 +132,8 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
         }
         
         onPublish(data[0]);
-        addToast("Votre onde a été diffusée", "success");
+        addToast("Votre onde positive a été diffusée", "success");
       } else {
-        // Mode démo
         onPublish({ ...postData, id: Date.now().toString() });
         addToast("Diffusé (Mode Démo)", "success");
       }
@@ -155,7 +153,7 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
     <div className="fixed inset-0 z-[500] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-          <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde</h3>
+          <h3 className="font-serif font-bold text-xl text-gray-900">Nouvelle Onde Positive</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -209,13 +207,13 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
             autoFocus
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder="Quelle réflexion souhaitez-vous partager ?"
+            placeholder="Quelle réflexion positive souhaitez-vous partager ?"
             className="w-full min-h-[150px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
           />
         </div>
         <div className="p-6 border-t border-gray-50 flex justify-end bg-gray-50/20">
           <button onClick={handlePost} disabled={loading || (!content.trim() && !image)} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3">
-            {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier l'Onde
+            {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Diffuser l'Onde
           </button>
         </div>
       </div>
@@ -394,8 +392,9 @@ const MissionItem = ({ icon: Icon, label, link, color }: any) => (
   </Link>
 );
 
-const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ user, onLogout }) => {
+const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ user: initialUser, onLogout }) => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<User>(initialUser);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -409,6 +408,14 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       if (isRealSupabase && supabase) {
         const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
         if (data && data.length > 0) setPosts(data); else setPosts(MOCK_POSTS);
+        
+        // Rafraîchir aussi le profil de l'utilisateur courant pour l'avatar
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        if (profile) {
+          const updatedUser = { ...user, ...profile, avatar: profile.avatar_url || profile.avatar };
+          setUser(updatedUser);
+          localStorage.setItem('cercle_user_v4', JSON.stringify(updatedUser));
+        }
       } else setPosts(MOCK_POSTS);
     } catch (e) { setPosts(MOCK_POSTS); } finally { setLoading(false); setIsRefreshing(false); }
   };
@@ -467,7 +474,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
           <div className="bg-gray-950 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform"><Sparkles size={40} /></div>
              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-3">Impact</p>
-             <p className="text-xl font-serif font-bold mb-4">{user.impactScore || 0} XP</p>
+             <p className="text-xl font-serif font-bold mb-4">{user.impactScore || user.impact_score || 0} XP</p>
              <div className="space-y-2">
                <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest border border-white/5">Registre</button>
              </div>
@@ -480,11 +487,23 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
             <button onClick={fetchPosts} className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-300 hover:text-blue-600 transition-colors"><RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} /></button>
           </header>
 
-          <button onClick={() => setIsPublishModalOpen(true)} className="w-full bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm mb-10 flex items-center gap-6 hover:shadow-md transition-all group">
-            <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm" />
-            <span className="text-gray-400 font-medium text-lg flex-1 text-left group-hover:text-gray-600">Quelle est votre onde ?</span>
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Plus size={24} /></div>
-          </button>
+          <div className="w-full bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm mb-10 flex items-center gap-6 hover:shadow-md transition-all group">
+            <Link to="/profile" className="shrink-0" title="Voir mon profil">
+              <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm hover:scale-110 transition-transform active:scale-95" />
+            </Link>
+            <button 
+              onClick={() => setIsPublishModalOpen(true)} 
+              className="flex-1 text-left text-gray-400 font-medium text-lg group-hover:text-gray-600"
+            >
+              Quelle est votre onde positive ?
+            </button>
+            <button 
+              onClick={() => setIsPublishModalOpen(true)}
+              className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"
+            >
+              <Plus size={24} />
+            </button>
+          </div>
 
           <div className="space-y-4">
             {posts.map((post, index) => (
