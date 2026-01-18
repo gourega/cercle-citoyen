@@ -41,7 +41,7 @@ export async function decodeAudioData(
 export async function analyzePollutionImage(base64Image: string) {
   try {
     const ai = getAI();
-    if (!ai) return null;
+    if (!ai) throw new Error("Client IA non configuré");
     
     const dataOnly = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
 
@@ -50,7 +50,7 @@ export async function analyzePollutionImage(base64Image: string) {
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
-          { text: "Tu es le système expert 'Sentinelle Verte' pour la Côte d'Ivoire. Analyse cette image de dégradation urbaine. Cela peut être des ordures, des eaux usées, ou des encombrants comme des véhicules vétustes abandonnés (épaves). Si la localisation exacte n'est pas visible, utilise 'Localité à préciser'. Identifie la nature exacte (ex: Véhicule hors d'usage et dépôts sauvages) et propose un plan d'action pour libérer l'espace public." }
+          { text: "Tu es le système expert 'Sentinelle Verte' pour la Côte d'Ivoire. Analyse cette image de dégradation urbaine. Cela peut être des ordures, des eaux usées, ou des encombrants comme des véhicules vétustes abandonnés (épaves). Si la localisation exacte n'est pas visible, utilise 'Localité à préciser'. Identifie la nature exacte (ex: Véhicule hors d'usage et dépôts sauvages) et propose un plan d'action pour libérer l'espace public. Réponds UNIQUEMENT en JSON valide selon le schéma fourni." }
         ]
       },
       config: { 
@@ -75,10 +75,17 @@ export async function analyzePollutionImage(base64Image: string) {
       }
     });
 
-    if (!response.text) throw new Error("Réponse vide");
-    return JSON.parse(response.text.trim());
+    if (!response.text) throw new Error("Réponse vide de l'IA");
+    
+    // Nettoyage au cas où le modèle renverrait du markdown autour du JSON
+    let cleanJson = response.text.trim();
+    if (cleanJson.startsWith('```')) {
+      cleanJson = cleanJson.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    }
+    
+    return JSON.parse(cleanJson);
   } catch (e) { 
-    console.error("Erreur Analyse Pollution:", e);
+    console.error("Erreur Analyse Pollution détaillée:", e);
     return null;
   }
 }

@@ -25,8 +25,8 @@ import {
   ArrowRight,
   Focus,
   Scan,
-  // Fix: Add missing History icon import from lucide-react to avoid conflict with global History interface
-  History
+  History,
+  Layers
 } from 'lucide-react';
 import { User, WasteReport, CircleType } from '../types.ts';
 import { analyzePollutionImage, generateCleanVision } from '../lib/gemini.ts';
@@ -47,6 +47,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [zoom, setZoom] = useState(1);
   const [simulatedDistance, setSimulatedDistance] = useState("2.5m");
+  const [simulatedDepth, setSimulatedDepth] = useState("F/1.8");
   const [isFlashing, setIsFlashing] = useState(false);
   
   const [editingReport, setEditingReport] = useState<WasteReport | null>(null);
@@ -67,7 +68,9 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
       const interval = setInterval(() => {
         const d = (Math.random() * 2 + 1.5).toFixed(1);
         setSimulatedDistance(`${d}m`);
-      }, 1200);
+        const f = (Math.random() * 0.4 + 1.6).toFixed(1);
+        setSimulatedDepth(`F/${f}`);
+      }, 1500);
       return () => clearInterval(interval);
     }
   }, [view]);
@@ -107,7 +110,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     setView('camera');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -116,32 +119,31 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
       }
     } catch (e) {
       console.error("Camera Error:", e);
-      addToast("Caméra inaccessible", "error");
+      addToast("Caméra inaccessible. Vérifiez les permissions.", "error");
       setView('hub');
     }
   };
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      // Effet Flash
       setIsFlashing(true);
       
       const canvas = canvasRef.current;
-      canvas.width = videoRef.current.videoWidth || 640;
-      canvas.height = videoRef.current.videoHeight || 480;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
       const ctx = canvas.getContext('2d');
       
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const data = canvas.toDataURL('image/jpeg', 0.8);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL('image/jpeg', 0.9);
         setCapturedImage(data);
         
-        // Délai court pour le flash avant de changer de vue
         setTimeout(() => {
           setIsFlashing(false);
           stopCamera();
           processImage(data);
-        }, 150);
+        }, 200);
       }
     }
   };
@@ -149,23 +151,27 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   const processImage = async (img: string) => {
     setView('processing');
     try {
-      // On lance les deux analyses en parallèle
       const analysisPromise = analyzePollutionImage(img);
-      const visionPromise = generateCleanVision(img).catch(() => null);
+      const visionPromise = generateCleanVision(img).catch(err => {
+        console.warn("Vision Propre échouée:", err);
+        return null;
+      });
 
       const [res, clean] = await Promise.all([analysisPromise, visionPromise]);
       
-      if (!res) throw new Error("Échec d'analyse.");
+      if (!res) {
+        throw new Error("L'IA n'a pas pu identifier la nuisance.");
+      }
       
       setAnalysis({
         ...res,
-        actionPlan: res.actionPlan || ["Identifier", "Nettoyer", "Prévenir"]
+        actionPlan: res.actionPlan || ["Sécuriser la zone", "Organiser le ramassage", "Sensibiliser le voisinage"]
       });
       setCleanVision(clean);
       setView('result');
     } catch (e: any) {
       console.error("Processing error:", e);
-      addToast("Analyse impossible. Réessayez.", "error");
+      addToast(e.message || "Analyse impossible. Réessayez avec une photo plus claire.", "error");
       setView('hub');
     }
   };
@@ -231,10 +237,10 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
 
   if (view === 'instructions') {
     return (
-      <div className="fixed inset-0 z-[300] bg-gray-950/80 backdrop-blur-xl flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[300] bg-gray-950/90 backdrop-blur-xl flex items-center justify-center p-4">
         <div className="bg-white w-full max-w-lg rounded-[4rem] shadow-3xl overflow-hidden animate-in zoom-in duration-500">
            <div className="bg-emerald-600 p-10 text-white relative">
-              <button onClick={() => setView('hub')} className="absolute top-8 right-8 text-white/50 hover:text-white transition-all"><X size={28} /></button>
+              <button onClick={() => setView('hub')} className="absolute top-8 right-8 text-white/50 hover:text-white transition-all p-2"><X size={28} /></button>
               <ShieldCheck size={56} className="mb-6" />
               <h2 className="text-4xl font-serif font-bold leading-tight">Protocole<br/>Sentinelle</h2>
               <p className="text-emerald-100 text-[10px] mt-2 uppercase tracking-[0.3em] font-black opacity-80">Souveraineté Territoriale Active</p>
@@ -257,7 +263,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
               </div>
               <button 
                 onClick={startCamera} 
-                className="w-full mt-10 bg-gray-950 text-white py-6 rounded-3xl font-black text-xs uppercase tracking-[0.3em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-4"
+                className="w-full mt-10 bg-gray-950 text-white py-6 rounded-3xl font-black text-xs uppercase tracking-[0.3em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-4 active:scale-95"
               >
                 Lancer le Scrutateur <ArrowRight size={20} />
               </button>
@@ -283,13 +289,19 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
         <div className={`absolute inset-0 bg-white z-[600] pointer-events-none transition-opacity duration-150 ${isFlashing ? 'opacity-100' : 'opacity-0'}`}></div>
 
         {/* HUD UI - Futuriste & Surélevée */}
-        <div className="absolute inset-0 z-[510] pointer-events-none flex flex-col justify-between p-8 md:p-12">
+        <div className="absolute inset-0 z-[510] pointer-events-none flex flex-col justify-between p-8 md:p-12 select-none">
           
           {/* Header HUD */}
           <div className="flex justify-between items-start w-full">
-            <div className="bg-black/60 backdrop-blur-xl px-6 py-3 rounded-full border border-emerald-500/50 flex items-center gap-4 shadow-2xl">
-               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></div>
-               <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Distance : <span className="text-white font-mono text-base ml-2">{simulatedDistance}</span></span>
+            <div className="flex flex-col gap-3">
+              <div className="bg-black/60 backdrop-blur-xl px-6 py-3 rounded-full border border-emerald-500/50 flex items-center gap-4 shadow-2xl">
+                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></div>
+                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Distance : <span className="text-white font-mono text-base ml-2">{simulatedDistance}</span></span>
+              </div>
+              <div className="bg-black/40 backdrop-blur-md px-5 py-2 rounded-full border border-white/10 flex items-center gap-3 w-fit">
+                 <Layers size={12} className="text-blue-400" />
+                 <span className="text-[9px] font-black text-white uppercase tracking-widest">Focus : {simulatedDepth}</span>
+              </div>
             </div>
             <button 
               onClick={() => { stopCamera(); setView('hub'); }} 
@@ -300,36 +312,37 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           </div>
 
           {/* Réticule de visée Central */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 flex items-center justify-center">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 flex items-center justify-center">
             <div className="absolute inset-0 border border-emerald-500/20 rounded-full animate-[spin_10s_linear_infinite]"></div>
-            <div className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_10px_#34d399]"></div>
+            <div className="absolute inset-4 border border-blue-500/10 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
+            <div className="w-3 h-3 bg-emerald-400 rounded-full shadow-[0_0_15px_#34d399]"></div>
+            
             {/* Coins du réticule */}
-            <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-emerald-400 rounded-tl-xl shadow-[-4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
-            <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-emerald-400 rounded-tr-xl shadow-[4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
-            <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-emerald-400 rounded-bl-xl shadow-[-4px_4px_10px_rgba(52,211,153,0.3)]"></div>
-            <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-emerald-400 rounded-br-xl shadow-[4px_4px_10px_rgba(52,211,153,0.3)]"></div>
+            <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-emerald-400 rounded-tl-2xl shadow-[-4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
+            <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-emerald-400 rounded-tr-2xl shadow-[4px_-4px_10px_rgba(52,211,153,0.3)]"></div>
+            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-2 border-l-2 border-emerald-400 rounded-bl-2xl shadow-[-4px_4px_10px_rgba(52,211,153,0.3)]"></div>
+            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-emerald-400 rounded-br-2xl shadow-[4px_4px_10px_rgba(52,211,153,0.3)]"></div>
+            
+            {/* Animation de scan latérale */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent w-1 h-full animate-[scanline_2s_ease-in-out_infinite] left-0"></div>
           </div>
 
-          {/* Stats HUD Gauche */}
-          <div className="flex flex-col gap-8 items-start mb-24">
-             <div className="space-y-1">
-                <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Capteur</p>
+          {/* Stats HUD Bas Gauche */}
+          <div className="flex flex-col gap-6 items-start mb-24 md:mb-12">
+             <div className="space-y-1 bg-black/30 p-3 rounded-xl border-l-2 border-emerald-500">
+                <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Capteur Souverain</p>
                 <p className="text-xs text-white font-mono font-bold">SENTINELLE-X{user.id.slice(0,4)}</p>
              </div>
              <div className="space-y-1">
-                <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Résolution</p>
-                <p className="text-xs text-white font-mono font-bold">4K CITOYEN</p>
-             </div>
-             <div className="space-y-1">
-                <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">GPS LOCK</p>
-                <p className="text-[10px] text-emerald-400 font-mono italic">{location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'RECHERCHE...'}</p>
+                <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Localisation</p>
+                <p className="text-[10px] text-white font-mono">{location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'ACQUISITION...'}</p>
              </div>
           </div>
 
           {/* Contrôles HUD Droite (Slider Zoom) */}
-          <div className="absolute right-12 top-1/2 -translate-y-1/2 h-80 flex flex-col items-center gap-4 pointer-events-auto">
-             <div className="flex-1 w-1 bg-white/10 rounded-full relative overflow-hidden">
-                <div className="absolute bottom-0 inset-x-0 bg-emerald-500/40" style={{ height: `${zoom * 20}%` }}></div>
+          <div className="absolute right-8 md:right-12 top-1/2 -translate-y-1/2 h-80 flex flex-col items-center gap-4 pointer-events-auto">
+             <div className="flex-1 w-1.5 bg-white/10 rounded-full relative overflow-hidden shadow-inner">
+                <div className="absolute bottom-0 inset-x-0 bg-emerald-500/60" style={{ height: `${zoom * 20}%` }}></div>
                 <input 
                   type="range" 
                   min="1" max="5" step="0.1" 
@@ -338,30 +351,35 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                   className="absolute inset-y-0 w-full opacity-0 cursor-pointer -rotate-180" 
                   style={{ appearance: 'slider-vertical' as any }}
                 />
-                <div className="absolute w-6 h-6 bg-white rounded-full -left-[10px] border-4 border-emerald-500 shadow-2xl transition-all" style={{ bottom: `${(zoom - 1) * 25}%` }}></div>
+                <div className="absolute w-8 h-8 bg-white rounded-full -left-[13px] border-4 border-emerald-500 shadow-2xl transition-all flex items-center justify-center" style={{ bottom: `${(zoom - 1) * 25}%` }}>
+                   <Maximize size={12} className="text-emerald-600" />
+                </div>
              </div>
              <Focus className="text-emerald-400" size={20} />
-             <span className="text-[8px] text-white font-black uppercase tracking-widest rotate-90 mt-4 whitespace-nowrap">OPTICAL DEPTH</span>
+             <span className="text-[8px] text-white font-black uppercase tracking-widest rotate-90 mt-4 whitespace-nowrap opacity-60">OPTICAL DEPTH</span>
           </div>
         </div>
 
         {/* Bouton de Capture (Bas) */}
-        <div className="absolute bottom-16 inset-x-0 z-[520] flex justify-center items-center gap-16">
-           <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40"><RotateCcw size={24}/></div>
+        <div className="absolute bottom-16 inset-x-0 z-[520] flex justify-center items-center gap-12 md:gap-20">
+           <button onClick={() => setZoom(1)} className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 pointer-events-auto hover:bg-white/10 transition-all"><RotateCcw size={24}/></button>
            
            <button 
             onClick={capturePhoto} 
-            className="w-28 h-28 bg-white rounded-full flex items-center justify-center border-[10px] border-white/20 active:scale-95 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] group pointer-events-auto"
+            className="w-28 h-28 bg-white rounded-full flex items-center justify-center border-[10px] border-white/20 active:scale-95 transition-all shadow-[0_0_50px_rgba(16,185,129,0.4)] group pointer-events-auto"
            >
-              <div className="w-18 h-18 bg-emerald-500 rounded-full flex items-center justify-center transition-transform group-hover:scale-105">
-                 <Camera className="text-white" size={38} />
+              <div className="w-18 h-18 bg-emerald-500 rounded-full flex items-center justify-center transition-transform group-hover:scale-110">
+                 <Camera className="text-white" size={42} />
               </div>
            </button>
            
-           <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40"><Maximize size={24}/></div>
+           <button className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 pointer-events-auto hover:bg-white/10 transition-all"><Maximize size={24}/></button>
         </div>
 
         <canvas ref={canvasRef} className="hidden" />
+        <style>{`
+          @keyframes scanline { 0% { left: 0%; opacity: 0; } 50% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+        `}</style>
       </div>
     );
   }
@@ -369,23 +387,26 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   if (view === 'processing') {
     return (
       <div className="min-h-screen bg-[#fcfcfc] flex flex-col items-center justify-center p-8 text-center text-gray-900">
-        <div className="relative w-full max-w-sm aspect-square rounded-[3rem] overflow-hidden border-8 border-white shadow-3xl mb-16 group">
-          <img src={capturedImage!} className="w-full h-full object-cover opacity-70 blur-sm group-hover:blur-0 transition-all duration-1000" alt="Process" />
-          <div className="absolute inset-x-0 top-0 h-1.5 bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,1)] animate-[scan_2.5s_ease-in-out_infinite] z-20"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-950/60 to-transparent flex items-end p-8">
-             <div className="w-full space-y-2">
-                <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
-                   <div className="h-full bg-emerald-400 animate-[progress_3s_ease-in-out_infinite]"></div>
+        <div className="relative w-full max-w-sm aspect-square rounded-[3rem] overflow-hidden border-[12px] border-white shadow-3xl mb-16 group">
+          <img src={capturedImage!} className="w-full h-full object-cover opacity-60 blur-sm scale-110 transition-all duration-[3000ms]" alt="Process" />
+          <div className="absolute inset-x-0 top-0 h-2 bg-emerald-500 shadow-[0_0_25px_rgba(16,185,129,1)] animate-[scan_2.5s_ease-in-out_infinite] z-20"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 to-transparent flex items-end p-10">
+             <div className="w-full space-y-4">
+                <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden shadow-inner">
+                   <div className="h-full bg-emerald-400 shadow-[0_0_15px_#34d399] animate-[progress_4s_ease-in-out_infinite]"></div>
                 </div>
-                <p className="text-[10px] text-white font-black uppercase tracking-widest">Décryptage des nuages de points...</p>
+                <div className="flex justify-between items-center text-[10px] text-white font-black uppercase tracking-[0.2em]">
+                   <span>Analyse Neurale</span>
+                   <span className="animate-pulse">Calcul...</span>
+                </div>
              </div>
           </div>
         </div>
-        <h2 className="text-3xl font-serif font-bold mb-4 flex items-center gap-4 justify-center text-gray-950">
-          <Sparkles className="text-emerald-500 animate-pulse" size={28} /> Intelligence en Action
+        <h2 className="text-4xl font-serif font-bold mb-6 flex items-center gap-5 justify-center text-gray-950">
+          <Sparkles className="text-emerald-500 animate-pulse" size={32} /> Intelligence en Action
         </h2>
-        <p className="text-gray-400 max-w-xs mx-auto text-[11px] font-black uppercase tracking-[0.2em] leading-relaxed">
-          Le Gardien génère la Vision Propre et le protocole de salubrité territoriale...
+        <p className="text-gray-400 max-w-sm mx-auto text-[12px] font-black uppercase tracking-[0.25em] leading-relaxed">
+          Le Gardien décrypte les données territoriales et tisse la Vision Propre...
         </p>
         <style>{`
           @keyframes scan { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
@@ -399,67 +420,77 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     return (
       <div className="max-w-6xl mx-auto px-4 py-16 animate-in fade-in duration-700 text-gray-900 bg-[#fcfcfc] min-h-screen">
         <div className="flex justify-between items-center mb-12">
-          <button onClick={() => setView('hub')} className="flex items-center gap-3 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-900 transition-all">
-            <ChevronLeft size={20}/> Abandonner le signalement
+          <button onClick={() => setView('hub')} className="flex items-center gap-4 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-900 transition-all group p-2">
+            <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" /> Abandonner le signalement
           </button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <div className="space-y-8">
-            <div className="relative rounded-[4rem] overflow-hidden shadow-3xl border-8 border-white aspect-square bg-gray-50 group">
+          <div className="space-y-10">
+            <div className="relative rounded-[4rem] overflow-hidden shadow-3xl border-[16px] border-white aspect-square bg-gray-100 group">
               <img 
                 src={showClean ? (cleanVision || capturedImage!) : capturedImage!} 
-                className="w-full h-full object-cover transition-all duration-700 ease-in-out" 
+                className="w-full h-full object-cover transition-all duration-1000 ease-in-out" 
                 alt="Résultat" 
               />
               <button 
                 onClick={() => setShowClean(!showClean)} 
-                className={`absolute bottom-10 inset-x-10 py-6 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center justify-center gap-4 ${
+                className={`absolute bottom-10 inset-x-10 py-7 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-5 active:scale-95 ${
                   showClean ? 'bg-emerald-600 text-white' : 'bg-white/95 text-gray-900 hover:bg-white'
                 }`}
               >
-                {showClean ? <><Sparkles size={18} /> Vision Propre Active</> : <><Zap size={18} className="text-emerald-500" /> Révéler le Futur Propre</>}
+                {showClean ? <><Sparkles size={20} /> Vision Propre Active</> : <><Zap size={20} className="text-emerald-500" /> Révéler le Futur Propre</>}
               </button>
               {showClean && !cleanVision && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 p-4 rounded-xl text-white text-[10px] font-black uppercase">Génération en cours...</div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-500">
+                   <div className="text-center space-y-4">
+                      <Loader2 size={40} className="text-white animate-spin mx-auto" />
+                      <p className="text-white text-[10px] font-black uppercase tracking-widest">Génération en cours...</p>
+                   </div>
+                </div>
               )}
             </div>
-            <div className="p-8 bg-blue-50/50 rounded-[3rem] border border-blue-100 italic font-medium text-blue-900 text-sm leading-relaxed">
+            <div className="p-10 bg-blue-50/50 rounded-[3rem] border-2 border-blue-100 italic font-medium text-blue-900 text-base leading-relaxed shadow-sm">
               "{analysis?.insight || "La propreté est le premier visage de notre dignité commune."}"
             </div>
           </div>
 
-          <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-10 flex flex-col border border-gray-100">
+          <div className="bg-white p-12 md:p-16 rounded-[4.5rem] shadow-sm space-y-12 flex flex-col border border-gray-100 relative">
+            <div className="absolute top-10 right-10">
+               <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 shadow-inner">
+                  <ShieldCheck size={32} />
+               </div>
+            </div>
             <div>
-              <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-2 block">Nature de l'Anomalie</label>
+              <label className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.3em] mb-3 block opacity-60">Nature de l'Anomalie</label>
               <input 
                 value={analysis?.nature} 
                 onChange={(e) => setAnalysis({...analysis, nature: e.target.value})} 
-                className="text-3xl font-serif font-bold text-gray-950 bg-transparent outline-none w-full border-b-2 border-emerald-100 pb-2 focus:border-emerald-500 transition-all" 
+                className="text-4xl font-serif font-bold text-gray-950 bg-transparent outline-none w-full border-b-2 border-emerald-100 pb-3 focus:border-emerald-500 transition-all" 
               />
             </div>
             
-            <div className="space-y-6">
-               <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-3">
-                 <FileText size={16} className="text-emerald-500"/> Plan d'Action Recommandé
+            <div className="space-y-8">
+               <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-gray-400 flex items-center gap-4">
+                 <FileText size={18} className="text-emerald-500"/> Plan d'Action Souverain
                </h4>
-               <div className="space-y-3">
+               <div className="space-y-4">
                  {analysis?.actionPlan?.map((step: string, i: number) => (
-                   <div key={i} className="flex gap-5 items-center bg-gray-50/80 p-5 rounded-2xl border border-gray-100 text-[14px] font-bold text-gray-800 group hover:bg-white hover:shadow-md transition-all">
-                      <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-black shrink-0 group-hover:scale-110 transition-transform">{i+1}</span>
+                   <div key={i} className="flex gap-6 items-center bg-gray-50/50 p-6 rounded-3xl border border-gray-100 text-[15px] font-bold text-gray-800 group hover:bg-white hover:shadow-xl transition-all cursor-default">
+                      <span className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-black shrink-0 group-hover:scale-110 transition-transform shadow-sm">{i+1}</span>
                       {step}
                    </div>
                  ))}
                </div>
             </div>
 
-            <div className="pt-8 mt-auto">
+            <div className="pt-10 mt-auto">
               <button 
                 onClick={handlePublish} 
                 disabled={loading} 
-                className="w-full bg-gray-950 text-white py-7 rounded-3xl font-black text-sm uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-black transition-all shadow-2xl disabled:opacity-50"
+                className="w-full bg-gray-950 text-white py-8 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.35em] flex items-center justify-center gap-5 hover:bg-black transition-all shadow-3xl active:scale-95 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={24} className="text-emerald-400" />} Sceller et Diffuser
+                {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={28} className="text-emerald-400" />} Sceller et Diffuser l'Onde
               </button>
             </div>
           </div>
@@ -472,99 +503,98 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-16 bg-[#fcfcfc] min-h-screen text-gray-900">
       <div className="mb-12">
-        <button onClick={() => navigate('/feed')} className="flex items-center gap-3 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-900 transition-all group">
-          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Retour à l'Agora
+        <button onClick={() => navigate('/feed')} className="flex items-center gap-3 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-900 transition-all group p-2">
+          <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" /> Retour à l'Agora
         </button>
       </div>
 
       {editingReport && (
         <div className="fixed inset-0 z-[300] bg-gray-950/60 backdrop-blur-md flex items-center justify-center p-4">
-           <div className="bg-white w-full max-w-md rounded-[3rem] shadow-3xl p-10 animate-in zoom-in">
-              <h3 className="text-2xl font-serif font-bold mb-8">Rectifier la position</h3>
-              <div className="space-y-4 mb-8">
-                <input value={editingReport.city} onChange={e => setEditingReport({...editingReport, city: e.target.value})} className="w-full bg-gray-50 p-5 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-500 focus:bg-white transition-all" placeholder="Ville" />
-                <input value={editingReport.sector} onChange={e => setEditingReport({...editingReport, sector: e.target.value})} className="w-full bg-gray-50 p-5 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-500 focus:bg-white transition-all" placeholder="Quartier" />
+           <div className="bg-white w-full max-w-md rounded-[3.5rem] shadow-3xl p-12 animate-in zoom-in">
+              <h3 className="text-3xl font-serif font-bold mb-10">Rectifier la position</h3>
+              <div className="space-y-5 mb-10">
+                <input value={editingReport.city} onChange={e => setEditingReport({...editingReport, city: e.target.value})} className="w-full bg-gray-50 p-6 rounded-3xl font-bold outline-none border-2 border-transparent focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="Ville" />
+                <input value={editingReport.sector} onChange={e => setEditingReport({...editingReport, sector: e.target.value})} className="w-full bg-gray-50 p-6 rounded-3xl font-bold outline-none border-2 border-transparent focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="Quartier" />
               </div>
-              <button onClick={handleUpdateReport} disabled={editLoading} className="w-full bg-gray-950 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl">Sauvegarder les modifications</button>
+              <button onClick={handleUpdateReport} disabled={editLoading} className="w-full bg-gray-950 text-white py-6 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-95">Sauvegarder</button>
            </div>
         </div>
       )}
 
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-12 mb-24">
         <div className="max-w-xl">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 tracking-tight">Sentinelle <span className="text-emerald-500 italic">Verte</span></h1>
-          <p className="text-gray-500 text-xl font-medium leading-relaxed">
+          <h1 className="text-5xl md:text-8xl font-serif font-bold mb-8 tracking-tighter leading-tight">Sentinelle <span className="text-emerald-500 italic">Verte</span></h1>
+          <p className="text-gray-500 text-xl md:text-2xl font-medium leading-relaxed">
             Veillez sur votre territoire. Détectez les nuisances, générez des plans d'action et partagez la vision d'une cité propre.
           </p>
         </div>
         <button 
           onClick={() => setView('instructions')} 
-          className="w-full lg:w-auto px-12 py-7 bg-emerald-600 text-white rounded-3xl font-black text-sm uppercase tracking-[0.2em] shadow-3xl shadow-emerald-200/50 flex items-center justify-center gap-5 hover:bg-emerald-700 transition-all hover:scale-105"
+          className="w-full lg:w-auto px-16 py-8 bg-emerald-600 text-white rounded-[3rem] font-black text-sm uppercase tracking-[0.3em] shadow-3xl shadow-emerald-200/60 flex items-center justify-center gap-6 hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95"
         >
-          <Camera size={28} /> Scanner l'Anomalie
+          <Camera size={32} /> Scanner l'Anomalie
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-         <div className="lg:col-span-2 space-y-12">
-            <h3 className="text-3xl font-serif font-bold flex items-center gap-5">
-              {/* Fix: Use History icon from lucide-react instead of global History constructor */}
-              <History className="text-gray-300" /> Vos Signalements Archivés
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-20">
+         <div className="lg:col-span-2 space-y-16">
+            <h3 className="text-4xl font-serif font-bold flex items-center gap-6 tracking-tight">
+              <History className="text-gray-300" size={32} /> Vos Signalements Archivés
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               {reports.length > 0 ? reports.map(r => (
-                  <div key={r.id} className="bg-white border border-gray-100 rounded-[3.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all group flex flex-col">
-                    <div className="h-64 relative overflow-hidden bg-gray-100">
-                       <img src={r.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                       <button onClick={() => setEditingReport(r)} className="absolute top-6 right-6 w-12 h-12 bg-white/90 backdrop-blur-md text-emerald-600 rounded-2xl flex items-center justify-center shadow-xl hover:bg-white transition-all transform hover:rotate-12">
-                         <Pencil size={20} />
+                  <div key={r.id} className="bg-white border border-gray-100 rounded-[4rem] overflow-hidden shadow-sm hover:shadow-3xl transition-all duration-500 group flex flex-col relative">
+                    <div className="h-72 relative overflow-hidden bg-gray-100">
+                       <img src={r.image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                       <button onClick={() => setEditingReport(r)} className="absolute top-8 right-8 w-14 h-14 bg-white/95 backdrop-blur-md text-emerald-600 rounded-3xl flex items-center justify-center shadow-2xl hover:bg-white transition-all transform hover:rotate-12 pointer-events-auto">
+                         <Pencil size={24} />
                        </button>
                     </div>
-                    <div className="p-8">
-                       <h4 className="font-serif font-bold text-2xl text-gray-950 mb-1">{r.city}</h4>
-                       <div className="flex items-center gap-2 mb-4">
-                         <MapPin size={12} className="text-blue-500" />
-                         <p className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em]">{r.sector}</p>
+                    <div className="p-10">
+                       <div className="flex items-center gap-3 mb-2">
+                          <MapPin size={14} className="text-blue-500" />
+                          <p className="text-[11px] font-black uppercase text-blue-500 tracking-[0.25em]">{r.sector}</p>
                        </div>
-                       <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed font-medium mb-6">"{r.description}"</p>
-                       <div className="flex justify-between items-center pt-6 border-t border-gray-50">
-                          <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">Archivé</span>
-                          <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest font-mono">#{r.id.slice(0,8)}</span>
+                       <h4 className="font-serif font-bold text-3xl text-gray-950 mb-4">{r.city}</h4>
+                       <p className="text-gray-500 text-sm line-clamp-3 leading-relaxed font-medium mb-8">"{r.description}"</p>
+                       <div className="flex justify-between items-center pt-8 border-t border-gray-50">
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 shadow-sm">Scellé</span>
+                          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{r.id.slice(0,8)}</span>
                        </div>
                     </div>
                   </div>
               )) : (
-                <div className="col-span-full py-40 text-center bg-gray-50 border-2 border-dashed border-gray-200 rounded-[4rem] flex flex-col items-center">
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
-                    <Scan className="text-gray-200" size={40} />
+                <div className="col-span-full py-48 text-center bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-[4rem] flex flex-col items-center shadow-inner">
+                  <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-sm">
+                    <Scan className="text-gray-200" size={48} />
                   </div>
-                  <p className="text-gray-400 font-black uppercase text-[11px] tracking-[0.3em]">Aucun signalement scellé sur ce profil.</p>
+                  <p className="text-gray-400 font-black uppercase text-[12px] tracking-[0.4em]">Aucun signalement scellé.</p>
                 </div>
               )}
             </div>
          </div>
 
-         <aside className="space-y-10">
-            <div className="bg-gray-950 text-white p-12 rounded-[4rem] shadow-3xl relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform"><ShieldCheck size={100} /></div>
-               <h3 className="font-serif font-bold text-3xl mb-6 flex items-center gap-4"><Info size={28} className="text-emerald-500" /> Guide Citoyen</h3>
-               <div className="space-y-6">
-                 <p className="text-base text-gray-400 leading-relaxed font-medium italic">
-                   "Chaque anomalie capturée est une donnée souveraine qui permet de bâtir un plan d'action certifié par l'intelligence du Cercle."
+         <aside className="space-y-12">
+            <div className="bg-gray-950 text-white p-14 rounded-[4.5rem] shadow-4xl relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000"><ShieldCheck size={180} /></div>
+               <h3 className="font-serif font-bold text-3xl mb-8 flex items-center gap-5 text-emerald-400"><Info size={32} /> Guide Citoyen</h3>
+               <div className="space-y-8 relative z-10">
+                 <p className="text-lg text-gray-400 leading-relaxed font-medium italic border-l-4 border-emerald-500/30 pl-6">
+                   "Chaque anomalie capturée est une donnée souveraine qui permet de bâtir un plan d'action certifié."
                  </p>
-                 <div className="w-12 h-1 bg-emerald-500"></div>
-                 <p className="text-sm text-gray-300 leading-relaxed">
-                   Votre action directe est le premier levier de changement. Une fois le signalement scellé, il est partagé avec la communauté et les institutions partenaires pour déclencher une Quête de nettoyage.
+                 <div className="w-20 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981]"></div>
+                 <p className="text-base text-gray-300 leading-relaxed font-medium">
+                   Votre action directe est le premier levier. Une fois le signalement scellé, il est partagé pour déclencher une Quête de nettoyage collective.
                  </p>
                </div>
             </div>
             
-            <div className="p-10 bg-emerald-50/50 rounded-[3rem] border border-emerald-100 shadow-sm flex flex-col items-center text-center">
-               <Target size={32} className="text-emerald-600 mb-4" />
-               <h4 className="font-bold text-emerald-950 text-sm uppercase tracking-widest mb-2">Objectif National</h4>
-               <p className="text-xs text-emerald-800 font-medium">Zéro décharge sauvage d'ici 2030 grâce à la vigilance souveraine.</p>
+            <div className="p-12 bg-emerald-50/30 rounded-[3.5rem] border border-emerald-100 shadow-sm flex flex-col items-center text-center group hover:bg-emerald-50 transition-all duration-500">
+               <Target size={44} className="text-emerald-600 mb-6 group-hover:scale-110 transition-transform" />
+               <h4 className="font-black text-emerald-950 text-[11px] uppercase tracking-[0.4em] mb-3">Objectif 2030</h4>
+               <p className="text-sm text-emerald-800 font-bold leading-relaxed">Zéro décharge sauvage grâce à la vigilance souveraine.</p>
             </div>
          </aside>
       </div>
