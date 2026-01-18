@@ -9,7 +9,7 @@ import {
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
-  Image as ImageIcon
+  Image as ImageIcon, Zap
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -177,6 +177,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const [commentInput, setCommentInput] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
   const [comments, setComments] = useState<Comment[]>(post.comments || []);
+  const [reactions, setReactions] = useState(post.reactions);
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -203,6 +204,28 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
       fetchComments();
     }
   }, [post.author_id, showComments]);
+
+  const handleReaction = async (type: 'useful' | 'relevant' | 'inspiring') => {
+    if (!currentUser) return;
+    
+    // Animation locale immédiate
+    const newReactions = { ...reactions, [type]: reactions[type] + 1 };
+    setReactions(newReactions);
+
+    const labels = { useful: "Action Utile", relevant: "Réflexion Pertinente", inspiring: "Vision Inspirante" };
+    addToast(`${labels[type]} scellée ! Impact +10 XP`, "success");
+
+    try {
+      if (isRealSupabase && supabase) {
+        // En prod, on utilise une fonction RPC pour incrémenter de manière sécurisée
+        await supabase.rpc('increment_post_reaction', { post_id: post.id, reaction_type: type });
+        // On incrémente aussi l'impact de l'auteur
+        await supabase.rpc('increment_impact_score', { profile_id: post.author_id, amount: 10 });
+      }
+    } catch (e) {
+      console.warn("Échec de synchronisation de la réaction.");
+    }
+  };
 
   const fetchComments = async () => {
     if (!isRealSupabase || !supabase) return;
@@ -347,13 +370,41 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
 
         <div className="flex flex-wrap items-center justify-between pt-4 border-t border-gray-50 gap-y-3">
           <div className="flex gap-1 items-center">
-            <button className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><ThumbsUp size={14} /> <span className="text-[10px] font-bold">{post.reactions.useful}</span></button>
-            <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-1.5 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all ${showComments ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}>
+            {/* RÉACTIONS CITOYENNES SOUVERAINES */}
+            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 gap-1 mr-2">
+              <button 
+                onClick={() => handleReaction('useful')}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 hover:bg-white px-2 py-1 rounded-lg transition-all group/react"
+                title="Marquer comme Utile"
+              >
+                <ThumbsUp size={13} className="group-hover/react:scale-125 transition-transform" /> 
+                <span className="text-[9px] font-black">{reactions.useful}</span>
+              </button>
+              <button 
+                onClick={() => handleReaction('relevant')}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-amber-600 hover:bg-white px-2 py-1 rounded-lg transition-all group/react"
+                title="Marquer comme Pertinent"
+              >
+                <Lightbulb size={13} className="group-hover/react:scale-125 transition-transform" /> 
+                <span className="text-[9px] font-black">{reactions.relevant}</span>
+              </button>
+              <button 
+                onClick={() => handleReaction('inspiring')}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-600 hover:bg-white px-2 py-1 rounded-lg transition-all group/react"
+                title="Marquer comme Inspirant"
+              >
+                <Sparkles size={13} className="group-hover/react:scale-125 transition-transform" /> 
+                <span className="text-[9px] font-black">{reactions.inspiring}</span>
+              </button>
+            </div>
+
+            <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-1.5 hover:bg-blue-50 px-2.5 py-2 rounded-lg transition-all ${showComments ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}>
               <MessageCircle size={14} /> <span className="text-[10px] font-bold">{comments.length}</span>
             </button>
-            <div className="w-px h-4 bg-gray-100 mx-1"></div>
-            <button onClick={handleShare} className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-all"><Share2 size={14} /> <span className="text-[10px] font-bold">PARTAGER</span></button>
+            
+            <button onClick={handleShare} className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-2.5 py-2 rounded-lg transition-all"><Share2 size={14} /> <span className="text-[10px] font-bold uppercase tracking-widest">Partager</span></button>
           </div>
+          
           <div className="flex items-center gap-2">
             {isOwner && !isEditing && (
               <div className="flex gap-1">
@@ -361,7 +412,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
                 <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all"><Trash2 size={13} /></button>
               </div>
             )}
-            <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400'}`}>
+            <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase transition-all ${isReading ? 'bg-amber-100 text-amber-600 shadow-inner' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
               <Volume2 size={12} /> {isReading ? "LECTURE..." : "ÉCOUTER"}
             </button>
           </div>
