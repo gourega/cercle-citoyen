@@ -1,11 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Download, Loader2, Image as ImageIcon, ArrowRight, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, ExternalLink, QrCode, Copy, ChevronLeft } from 'lucide-react';
+import { Sparkles, Download, Loader2, Image as ImageIcon, ArrowRight, ShieldAlert, Smartphone, History, AlertCircle, X, CheckCircle, ExternalLink, QrCode, Copy, ChevronLeft, PenTool, Rocket, Users } from 'lucide-react';
 import { generateImpactVisual } from '../lib/gemini.ts';
 import { supabase } from '../lib/supabase.ts';
 import { User } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
+
+const StepCard: React.FC<{ icon: React.ReactNode, title: string, text: string, color: string }> = ({ icon, title, text, color }) => (
+  <div className={`p-6 rounded-[2rem] border ${color} bg-white/50 flex flex-col items-center text-center shadow-sm`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm bg-white text-gray-900`}>
+      {icon}
+    </div>
+    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2">{title}</h4>
+    <p className="text-xs text-gray-500 font-medium leading-relaxed">{text}</p>
+  </div>
+);
 
 const ContributionModal: React.FC<{ onClose: () => void, user: User }> = ({ onClose, user }) => {
   const { addToast } = useToast();
@@ -120,16 +130,43 @@ const ImpactStudio: React.FC<{ user: User }> = ({ user }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700 bg-[#fcfcfc] min-h-screen text-gray-900">
       <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 mb-8 transition-colors text-sm font-bold group">
         <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour au fil citoyen
       </Link>
       {showContrib && <ContributionModal onClose={() => setShowContrib(false)} user={user} />}
+      
       <div className="text-center mb-16">
-        <h1 className="text-5xl font-serif font-bold text-gray-900 mb-4">Studio d'Impact</h1>
-        <p className="text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed font-medium">
-          Générez des visuels puissants pour vos campagnes citoyennes et mobilisez votre territoire.
+        <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-blue-200">
+           <Sparkles className="w-8 h-8" />
+        </div>
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Studio d'Impact</h1>
+        <p className="text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed font-medium italic">
+          "Une image vaut mille mots pour convaincre la Cité." <br/>
+          Transformez vos projets citoyens en visuels professionnels pour mobiliser vos voisins et les institutions.
         </p>
+      </div>
+
+      {/* SECTION EXPLICATIVE : LE PARCOURS DE L'IMPACT */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        <StepCard 
+          icon={<PenTool className="text-blue-600" />}
+          title="1. Concevez"
+          text="Définissez une action concrète pour votre quartier (ex: rénovation, jardin partagé, éclairage)."
+          color="border-blue-100 bg-blue-50/20"
+        />
+        <StepCard 
+          icon={<ImageIcon className="text-indigo-500" />}
+          title="2. Illustrez"
+          text="Générez un visuel haute fidélité pour montrer le résultat final espéré de votre initiative."
+          color="border-indigo-100 bg-indigo-50/20"
+        />
+        <StepCard 
+          icon={<Users className="text-teal-500" />}
+          title="3. Convainquez"
+          text="Partagez le visuel pour obtenir des soutiens massifs et lancer une Quête officielle."
+          color="border-teal-100 bg-teal-50/20"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -142,15 +179,15 @@ const ImpactStudio: React.FC<{ user: User }> = ({ user }) => {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Ex: 'Une coopérative de femmes transformant le cacao à l'aide d'énergie solaire, style cinématographique...'"
-            className="w-full h-48 bg-gray-50 rounded-[2rem] p-8 text-gray-800 outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all resize-none mb-8 text-lg font-medium leading-relaxed"
+            className="w-full h-48 bg-gray-50 rounded-[2rem] p-8 text-gray-800 outline-none border border-transparent focus:border-blue-100 focus:bg-white transition-all resize-none mb-8 text-lg font-medium leading-relaxed placeholder:text-gray-300"
           />
           <div className="flex flex-col gap-4">
             <button 
               onClick={handleGenerate}
               disabled={loading || !prompt.trim()}
-              className="w-full bg-gray-900 text-white py-6 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-4 disabled:opacity-50 shadow-xl shadow-gray-200"
+              className="w-full bg-gray-900 text-white py-6 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-4 disabled:opacity-50 shadow-xl"
             >
-              {loading ? <Loader2 className="animate-spin w-6 h-6" /> : <Sparkles className="w-6 h-6 text-blue-400" />}
+              {loading ? <Loader2 className="animate-spin w-6 h-6" /> : <Rocket className="w-6 h-6 text-blue-400" />}
               Générer le visuel IA
             </button>
             <button 
@@ -173,11 +210,20 @@ const ImpactStudio: React.FC<{ user: User }> = ({ user }) => {
                </div>
             </div>
           ) : (
-            <div className="aspect-video bg-gray-50 rounded-[3.5rem] border-4 border-dashed border-gray-100 flex flex-col items-center justify-center text-center p-12 transition-all group-hover:bg-white group-hover:border-blue-100">
-              <div className="w-20 h-20 bg-white rounded-[2rem] shadow-inner flex items-center justify-center mb-6 text-gray-200 group-hover:text-blue-200 transition-colors">
-                 <ImageIcon size={40} />
-              </div>
-              <p className="text-gray-400 text-sm font-bold uppercase tracking-widest max-w-[200px]">Votre vision territoriale apparaîtra ici</p>
+            <div className="aspect-video bg-white rounded-[3.5rem] border-4 border-dashed border-gray-100 flex flex-col items-center justify-center text-center p-12 transition-all group-hover:bg-gray-50/50 group-hover:border-blue-100 shadow-sm">
+              {loading ? (
+                <div className="space-y-4">
+                  <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto" />
+                  <p className="text-gray-400 font-bold italic">L'IA dessine votre futur...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="w-20 h-20 bg-gray-50 rounded-[2rem] shadow-inner flex items-center justify-center mb-6 text-gray-200 group-hover:text-blue-200 transition-colors">
+                     <ImageIcon size={40} />
+                  </div>
+                  <p className="text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] max-w-[200px]">Votre vision territoriale sera révélée ici</p>
+                </>
+              )}
             </div>
           )}
         </div>
