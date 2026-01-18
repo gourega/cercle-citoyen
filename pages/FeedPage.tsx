@@ -129,17 +129,69 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
               </select>
             </div>
           </div>
+
+          {/* BARRE D'OUTILS DE MISE EN PAGE */}
+          <div className="flex items-center gap-2 border-b border-gray-50 pb-4">
+            <button 
+              onClick={() => insertText('**', '**')} 
+              title="Gras"
+              className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"
+            >
+              <Bold size={18} />
+            </button>
+            <button 
+              onClick={() => insertText('*', '*')} 
+              title="Italique"
+              className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"
+            >
+              <Italic size={18} />
+            </button>
+            <button 
+              onClick={() => insertText('\n* ', '')} 
+              title="Liste"
+              className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-all active:scale-90"
+            >
+              <List size={18} />
+            </button>
+            <div className="w-px h-6 bg-gray-100 mx-1"></div>
+            <button 
+              onClick={() => setShowEmojis(!showEmojis)} 
+              title="Émojis"
+              className={`p-2.5 rounded-xl transition-all active:scale-90 ${showEmojis ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-600'}`}
+            >
+              <Smile size={18} />
+            </button>
+          </div>
+
+          {showEmojis && (
+            <div className="grid grid-cols-8 gap-2 p-4 bg-gray-50 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+              {['✨', '🇨🇮', '🔥', '🤝', '💡', '⚖️', '🌱', '🌍', '🧡', '🤍', '💚', '✊', '🏛️', '🛡️', '📢', '🚀'].map(emoji => (
+                <button 
+                  key={emoji} 
+                  onClick={() => { setContent(prev => prev + emoji); setShowEmojis(false); }} 
+                  className="text-xl p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all transform hover:scale-125"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+
           <textarea 
             ref={textareaRef}
             autoFocus
             value={content}
             onChange={e => setContent(e.target.value)}
             placeholder="Quelle réflexion souhaitez-vous partager ?"
-            className="w-full min-h-[180px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
+            className="w-full min-h-[220px] text-lg font-medium text-gray-800 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
           />
         </div>
-        <div className="p-6 border-t border-gray-50 flex justify-end">
-          <button onClick={handlePost} disabled={loading || !content.trim()} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg disabled:opacity-50">
+        <div className="p-6 border-t border-gray-50 flex justify-end bg-gray-50/20">
+          <button 
+            onClick={handlePost} 
+            disabled={loading || !content.trim()} 
+            className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-3"
+          >
             {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={16} />} Publier l'Onde
           </button>
         </div>
@@ -266,7 +318,6 @@ const MissionItem = ({ icon: Icon, label, link, color }: any) => (
 );
 
 const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ user, onLogout }) => {
-  // Added useNavigate hook to fix navigate errors
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,7 +396,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform"><Sparkles size={40} /></div>
              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-3">Impact</p>
              <p className="text-xl font-serif font-bold mb-4">{user.impactScore || 0} XP</p>
-             {/* Use initialized navigate */}
              <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/5">Registre</button>
           </div>
         </aside>
@@ -371,13 +421,11 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
             {posts.map((post, index) => (
               <React.Fragment key={post.id}>
                 <PostCard post={post} currentUser={user} onUpdate={fetchPosts} />
-                {/* INSERTION CTA STRATEGIQUE AU MILIEU DU FIL */}
                 {index === 0 && (
                   <div className="bg-blue-600 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden mb-6 group">
                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform"><Smartphone size={100} /></div>
                      <h3 className="text-2xl font-serif font-bold mb-4 leading-tight">Devenez Pilier <br/>du Cercle</h3>
                      <p className="text-blue-100 text-sm mb-8 leading-relaxed font-medium">Votre soutien direct via Wave finance l'intelligence souveraine de la Cité. Pas de pub, juste nous.</p>
-                     {/* Use initialized navigate */}
                      <button onClick={() => navigate('/transparency')} className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-50 transition-all">Soutenir maintenant</button>
                   </div>
                 )}
@@ -386,7 +434,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
           </div>
         </main>
 
-        {/* SIDEBAR DROITE : MISSIONS CITOYENNES (POINTS STRATEGIQUES) */}
         <aside className="hidden xl:block w-72 sticky top-12 self-start space-y-8">
            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8 px-2 flex items-center gap-2">
