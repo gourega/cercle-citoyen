@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { 
   BookText, 
   Smartphone, 
@@ -11,7 +12,8 @@ import {
   Info,
   ShieldCheck,
   TrendingUp,
-  History
+  History,
+  ChevronLeft
 } from 'lucide-react';
 
 const TransparencyLedger: React.FC = () => {
@@ -30,7 +32,13 @@ const TransparencyLedger: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 lg:py-20 animate-in fade-in duration-700">
+    <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <div className="mb-8">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour Agora
+        </Link>
+      </div>
+
       <div className="text-center mb-16">
         <div className="inline-flex w-16 h-16 bg-amber-50 rounded-[1.5rem] items-center justify-center mb-6 border border-amber-100">
           <BookText className="w-8 h-8 text-amber-600" />
