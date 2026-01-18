@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Play, Square, Loader2, Sparkles, AlertCircle, Info, Volume2, Waves, Crown, Fingerprint, X } from 'lucide-react';
+import { Mic, MicOff, Play, Square, Loader2, Sparkles, AlertCircle, Info, Volume2, Waves, Crown, Fingerprint, X, MessageCircle } from 'lucide-react';
 import { GoogleGenAI, Modality, LiveServerMessage, Blob } from '@google/genai';
 
 // Implement required manual encode/decode functions
@@ -84,7 +84,6 @@ const LiveAssembly: React.FC = () => {
     setStatus('Appel à la Sagesse du Cercle...');
     
     try {
-      // Create new instance right before use
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -115,7 +114,6 @@ const LiveAssembly: React.FC = () => {
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createBlob(inputData);
-              // Solely rely on sessionPromise
               sessionPromise.then(s => s.sendRealtimeInput({ media: pcmBlob }));
             };
             
@@ -140,9 +138,6 @@ const LiveAssembly: React.FC = () => {
 
             if (msg.serverContent?.outputTranscription) {
               setTranscription(prev => prev + msg.serverContent!.outputTranscription!.text);
-            }
-            if (msg.serverContent?.inputTranscription) {
-              // Optionnel: On pourrait aussi afficher la transcription utilisateur
             }
             if (msg.serverContent?.turnComplete) {
               setTranscription('');
@@ -176,9 +171,16 @@ const LiveAssembly: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-serif font-bold text-gray-900 mb-4">L'Assemblée Directe</h1>
-        <p className="text-gray-500 max-w-xl mx-auto font-medium">
+        <p className="text-gray-500 max-w-xl mx-auto font-medium mb-8">
           Confiez votre vision à la Sagesse du Cercle. Un dialogue authentique pour bâtir la Cité de demain.
         </p>
+        
+        <div className="max-w-2xl mx-auto bg-blue-50/40 p-8 rounded-[2.5rem] border border-blue-100 shadow-sm mb-12">
+          <div className="flex justify-center mb-4"><MessageCircle className="text-blue-600 w-6 h-6" /></div>
+          <p className="text-sm text-blue-900 leading-relaxed font-medium italic">
+            "L'Assemblée Directe est un espace de parole souveraine unique. Contrairement à un simple chat, vous entrez ici en résonance vocale avec l'intelligence collective du Cercle. Invoquez la Sagesse pour confronter vos idées, obtenir des conseils stratégiques sur vos projets locaux ou simplement partager une réflexion profonde sur l'avenir de notre Nation."
+          </p>
+        </div>
       </div>
 
       <div className="bg-white rounded-[3rem] border border-gray-100 shadow-2xl overflow-hidden p-12 text-center relative group">
