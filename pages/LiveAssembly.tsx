@@ -1,6 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Play, Square, Loader2, Sparkles, AlertCircle, Info, Volume2, Waves, Crown, Fingerprint, X, MessageCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { 
+  Mic, MicOff, Play, Square, Loader2, Sparkles, AlertCircle, 
+  Info, Volume2, Waves, Crown, Fingerprint, X, MessageCircle,
+  ChevronLeft
+} from 'lucide-react';
 import { GoogleGenAI, Modality, LiveServerMessage, Blob } from '@google/genai';
 
 // Implement required manual encode/decode functions
@@ -169,6 +174,12 @@ const LiveAssembly: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
+      <div className="mb-8">
+        <Link to="/feed" className="inline-flex items-center text-gray-400 hover:text-gray-900 transition-colors text-sm font-bold group">
+          <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Retour Agora
+        </Link>
+      </div>
+
       <div className="text-center mb-12">
         <h1 className="text-4xl font-serif font-bold text-gray-900 mb-4">L'Assemblée Directe</h1>
         <p className="text-gray-500 max-w-xl mx-auto font-medium mb-8">
