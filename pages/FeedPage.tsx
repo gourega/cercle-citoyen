@@ -8,7 +8,7 @@ import {
   Home, Camera, Handshake, Target, Landmark, 
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, BookText,
-  Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone
+  Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -204,8 +204,10 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [isReading, setIsReading] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -246,17 +248,58 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
     } catch (e) { setIsReading(false); }
   };
 
+  const handleShare = async () => {
+    const shareText = `${post.content}\n\nRejoignez le Cercle Citoyen pour participer au progrès social.`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Cercle Citoyen - Onde',
+          text: shareText,
+          url: window.location.href,
+        });
+      } catch (e) {
+        console.debug('Share cancelled');
+      }
+    } else {
+      navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
+      addToast("Lien et contenu copiés !", "success");
+    }
+  };
+
   const handleDelete = async () => {
-    setShowMenu(false);
-    if (!window.confirm("Supprimer cette réflexion ?")) return;
-    if (isRealSupabase && supabase) await supabase.from('posts').delete().eq('id', post.id);
-    onUpdate();
-    addToast("Réflexion effacée", "success");
+    if (!window.confirm("Souhaitez-vous vraiment effacer cette onde de la mémoire collective ?")) return;
+    try {
+      if (isRealSupabase && supabase) {
+        await supabase.from('posts').delete().eq('id', post.id);
+      }
+      onUpdate();
+      addToast("Onde effacée", "success");
+    } catch (e) {
+      addToast("Échec de la suppression", "error");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editContent.trim()) return;
+    setIsSaving(true);
+    try {
+      if (isRealSupabase && supabase) {
+        await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
+      }
+      setIsEditing(false);
+      onUpdate();
+      addToast("Onde rectifiée", "success");
+    } catch (e) {
+      addToast("Erreur lors de la mise à jour", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!author) return <PostSkeleton />;
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
+  const isOwner = currentUser?.id === post.author_id;
   const TRUNCATE_LIMIT = 280;
   const shouldTruncate = post.content.length > TRUNCATE_LIMIT && !isMajestic;
   const displayContent = isExpanded || !shouldTruncate ? post.content : post.content.slice(0, TRUNCATE_LIMIT).trim() + "...";
@@ -283,22 +326,63 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
             </div>
           </div>
         </div>
-        <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-2'}`}>
-          {formatContent(displayContent)}
-        </div>
-        {shouldTruncate && (
-          <button onClick={() => setIsExpanded(!isExpanded)} className="mb-5 flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:text-blue-700 transition-colors">
-            {isExpanded ? <><ChevronUp size={14} /> Voir moins</> : <><ChevronDown size={14} /> Lire la suite</>}
-          </button>
+
+        {isEditing ? (
+          <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
+            <textarea 
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full min-h-[120px] bg-gray-50 p-4 rounded-xl border border-gray-100 outline-none text-sm font-medium text-gray-800 leading-relaxed focus:bg-white focus:border-blue-200 transition-all resize-none"
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600">Annuler</button>
+              <button 
+                onClick={handleSaveEdit} 
+                disabled={isSaving || !editContent.trim()}
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Sauvegarder
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif font-medium italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-2'}`}>
+              {formatContent(displayContent)}
+            </div>
+            {shouldTruncate && (
+              <button onClick={() => setIsExpanded(!isExpanded)} className="mb-5 flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:text-blue-700 transition-colors">
+                {isExpanded ? <><ChevronUp size={14} /> Voir moins</> : <><ChevronDown size={14} /> Lire la suite</>}
+              </button>
+            )}
+          </>
         )}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-          <div className="flex gap-1">
+
+        <div className="flex flex-wrap items-center justify-between pt-4 border-t border-gray-50 gap-y-3">
+          <div className="flex gap-1 items-center">
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"><ThumbsUp size={14} /> <span className="text-[10px] font-bold">{post.reactions.useful}</span></button>
             <button className="flex items-center gap-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all"><Lightbulb size={14} /> <span className="text-[10px] font-bold">{post.reactions.relevant}</span></button>
+            <div className="w-px h-4 bg-gray-100 mx-1"></div>
+            <button onClick={handleShare} className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-all">
+              <Share2 size={14} /> <span className="text-[10px] font-bold">PARTAGER</span>
+            </button>
           </div>
-          <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase tracking-widest transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400 hover:text-amber-600'}`}>
-            <Volume2 size={12} /> {isReading ? "LECTURE..." : "ÉCOUTER"}
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {isOwner && !isEditing && (
+              <div className="flex gap-1 animate-in fade-in slide-in-from-right-2 duration-300">
+                <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all">
+                  <Pencil size={13} /> <span className="text-[9px] font-black tracking-widest uppercase">Modifier</span>
+                </button>
+                <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all">
+                  <Trash2 size={13} /> <span className="text-[9px] font-black tracking-widest uppercase">Supprimer</span>
+                </button>
+              </div>
+            )}
+            <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase tracking-widest transition-all ${isReading ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400 hover:text-amber-600'}`}>
+              <Volume2 size={12} /> {isReading ? "LECTURE..." : "ÉCOUTER"}
+            </button>
+          </div>
         </div>
       </div>
     </article>
