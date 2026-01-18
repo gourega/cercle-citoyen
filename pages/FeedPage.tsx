@@ -305,7 +305,10 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   
   const isMajestic = post.is_majestic || author.role === Role.SUPER_ADMIN;
   const isOwner = currentUser?.id === post.author_id;
-  const TRUNCATE_LIMIT = 280;
+  
+  // LIMITE DE TRONCATURE À 120 CARACTÈRES
+  const TRUNCATE_LIMIT = 120;
+  
   const shouldTruncate = post.content && post.content.length > TRUNCATE_LIMIT && !isMajestic;
   const displayContent = isExpanded || !shouldTruncate ? post.content : post.content.slice(0, TRUNCATE_LIMIT).trim() + "...";
 
