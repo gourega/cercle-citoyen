@@ -33,22 +33,20 @@ export const supabase = isRealSupabase
 
 export const db = {
   async checkConnection() {
-    if (!supabase) return { ok: false, message: "Client non initialisé (Vérifiez index.html)" };
+    if (!supabase) return { ok: false, message: "Client non initialisé" };
     try {
-      // Test de la table profiles
-      const { error: profileError } = await supabase.from('profiles').select('id').limit(1);
-      if (profileError) throw new Error("Table 'profiles' manquante");
-
-      // Test de la table posts (pour les Ondes)
-      const { error: postError } = await supabase.from('posts').select('id').limit(1);
-      if (postError && postError.code !== 'PGRST116') {
-        return { ok: true, message: "Liaison OK (Attention: Table 'posts' manquante)" };
+      // Test simple pour voir si la table répond
+      const { error } = await supabase.from('profiles').select('id').limit(1);
+      
+      // Si on a une erreur de type "PGRST116" (pas de données) c'est OK.
+      // Si on a une erreur de type "42P01" c'est que la table n'existe pas.
+      if (error && error.code === '42P01') {
+        return { ok: false, message: "Tables manquantes (Exécutez le SQL)" };
       }
 
       return { ok: true, message: "Liaison Établie" };
     } catch (e: any) {
-      console.error("Supabase Connection Error:", e);
-      return { ok: false, message: e.message || "Erreur de liaison" };
+      return { ok: false, message: "Erreur de liaison" };
     }
   }
 };

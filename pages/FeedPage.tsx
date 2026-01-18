@@ -78,8 +78,8 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        addToast("Image trop lourde (max 5Mo)", "error");
+      if (file.size > 2 * 1024 * 1024) {
+        addToast("Image trop lourde (max 2Mo pour le prototype)", "error");
         return;
       }
       const reader = new FileReader();
@@ -109,10 +109,11 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   const handlePost = async () => {
     if (!content.trim() && !image) return;
     setLoading(true);
+    
     const postData = {
       author_id: user.id,
       circle_type: circleType,
-      content,
+      content: content.trim() || "Image partagée",
       image_url: image,
       created_at: new Date().toISOString(),
       reactions: { useful: 0, relevant: 0, inspiring: 0 }
@@ -120,18 +121,31 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
 
     try {
       if (isRealSupabase && supabase) {
+        // Tentative d'insertion
         const { data, error } = await supabase.from('posts').insert([postData]).select();
-        if (error) throw error;
+        
+        if (error) {
+          console.error("Supabase Error:", error);
+          if (error.code === '42501' || error.message.includes('Unauthorized')) {
+            throw new Error("Erreur de permission. Vérifiez vos règles RLS (exécutez le script SQL d'assouplissement).");
+          }
+          throw error;
+        }
+        
         onPublish(data[0]);
+        addToast("Votre onde a été diffusée", "success");
       } else {
+        // Mode démo
         onPublish({ ...postData, id: Date.now().toString() });
+        addToast("Diffusé (Mode Démo)", "success");
       }
+      
       setContent('');
       setImage(null);
       onClose();
-      addToast("Votre onde a été diffusée", "success");
-    } catch (e) {
-      addToast("Échec de la publication", "error");
+    } catch (e: any) {
+      console.error("Publishing fail:", e);
+      addToast(e.message || "Échec de la publication", "error");
     } finally {
       setLoading(false);
     }
