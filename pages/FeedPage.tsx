@@ -429,6 +429,9 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       <section className="space-y-1">
         <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest px-3 mb-2">Navigation</div>
         <NavLink to="/feed" active icon={<Home size={18} />} label="Agora" onClick={onLinkClick} />
+        {user.role === Role.SUPER_ADMIN && (
+          <NavLink to="/admin" icon={<Crown size={18} />} label="Conseil" color="text-amber-600" onClick={onLinkClick} />
+        )}
         <NavLink to="/sentinel" icon={<Camera size={18} />} label="Sentinelle" color="text-emerald-600" onClick={onLinkClick} />
         <NavLink to="/map" icon={<MapIcon size={18} />} label="Empreinte" color="text-blue-600" onClick={onLinkClick} />
         <NavLink to="/assembly" icon={<Mic2 size={18} />} label="Assemblée" color="text-indigo-600" onClick={onLinkClick} />
@@ -463,11 +466,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
             </div>
             <div className="flex-1 p-5 overflow-y-auto no-scrollbar"><NavSections onLinkClick={() => setIsMobileMenuOpen(false)} /></div>
             <div className="p-6 border-t border-gray-100 space-y-3">
-               {user.role === Role.SUPER_ADMIN && (
-                 <button onClick={() => { navigate('/admin'); setIsMobileMenuOpen(false); }} className="w-full flex items-center justify-center gap-3 py-4 text-blue-600 bg-blue-50 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                   <Crown size={16} /> Conseil du Gardien
-                 </button>
-               )}
                <button onClick={onLogout} className="w-full flex items-center justify-center gap-3 py-4 text-rose-600 bg-rose-50 rounded-xl font-black text-[10px] uppercase tracking-widest">
                  <LogOut size={16} /> Déconnexion
                </button>
@@ -489,9 +487,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-3">Impact</p>
              <p className="text-xl font-serif font-bold mb-4">{user.impactScore || 0} XP</p>
              <div className="space-y-2">
-               {user.role === Role.SUPER_ADMIN && (
-                 <button onClick={() => navigate('/admin')} className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/20">Conseil</button>
-               )}
                <button onClick={() => navigate('/transparency')} className="w-full py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/5">Registre</button>
              </div>
           </div>
