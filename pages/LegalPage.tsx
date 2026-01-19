@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ShieldCheck, Lock, FileText, Mail, Phone, Globe, Scale } from 'lucide-react';
 import Logo from '../Logo';
+import Footer from '../components/Footer.tsx';
 
 const LegalPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cgu' | 'privacy' | 'mentions'>('cgu');
@@ -12,7 +13,7 @@ const LegalPage: React.FC = () => {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <Link to="/" className="flex items-center text-gray-400 hover:text-gray-900 transition-colors font-bold text-sm group">
@@ -22,7 +23,7 @@ const LegalPage: React.FC = () => {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-6 pt-16">
+      <div className="max-w-4xl mx-auto px-6 pt-16 pb-20">
         <header className="mb-12 text-center">
           <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Cadre de Confiance</h1>
           <p className="text-gray-500 font-medium italic">Règles, éthique et souveraineté des données.</p>
@@ -47,7 +48,7 @@ const LegalPage: React.FC = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-[3rem] p-8 md:p-16 border border-gray-100 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white rounded-[3rem] p-8 md:p-16 border border-gray-100 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500 mb-16">
           {activeTab === 'cgu' && (
             <article className="prose prose-blue max-w-none text-gray-700">
               <h2 className="font-serif text-3xl font-bold text-gray-900 mb-8">Conditions Générales d'Utilisation</h2>
@@ -75,7 +76,7 @@ const LegalPage: React.FC = () => {
               
               <h4 className="text-gray-900 font-bold mt-8 mb-4">2. Non-Revente des Données</h4>
               <p className="p-6 bg-blue-50 rounded-2xl border border-blue-100 font-bold text-blue-900 italic">
-                Engagement Souverain : Le Cercle Citoyen s'interdit formellement de vendre, louer ou céder vos données personnelles à des tiers, qu'ils soient commerciaux ou politiques.
+                Engagement Souverain : Le Cercle Citoyen s'interdid formellement de vendre, louer ou céder vos données personnelles à des tiers, qu'ils soient commerciaux ou politiques.
               </p>
               
               <h4 className="text-gray-900 font-bold mt-8 mb-4">3. Sécurité</h4>
@@ -123,6 +124,7 @@ const LegalPage: React.FC = () => {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -17,6 +17,7 @@ import { MOCK_POSTS, ADMIN_ID } from '../lib/mocks.ts';
 import { useToast } from '../ToastContext.tsx';
 import { getGriotReading, decode, decodeAudioData } from '../lib/gemini.ts';
 import Logo from '../Logo.tsx';
+import Footer from '../components/Footer.tsx';
 
 const getRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
@@ -575,6 +576,10 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                 )}
               </React.Fragment>
             ))}
+          </div>
+          
+          <div className="mt-20">
+            <Footer />
           </div>
         </main>
         <aside className="hidden xl:block w-72 sticky top-12 self-start space-y-8">

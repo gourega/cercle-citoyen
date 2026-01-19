@@ -9,6 +9,7 @@ import {
 import { User, Role, UserCategory } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
 import Logo from '../Logo.tsx';
+import Footer from '../components/Footer.tsx';
 
 const GUARDIAN_UUID = '00000000-0000-0000-0000-000000000001';
 
@@ -192,14 +193,16 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         </div>
       </section>
 
-      {/* FOOTER CTA */}
-      <footer className="bg-gray-950 text-white py-24 px-6 text-center">
+      {/* FOOTER CTA & FORMAL FOOTER */}
+      <section className="bg-gray-950 text-white py-24 px-6 text-center border-b border-white/5">
          <h2 className="text-4xl font-serif font-bold mb-8">Penser. Relier. Agir.</h2>
          <p className="text-gray-400 mb-12 max-w-xl mx-auto font-medium">Le destin de notre Nation est entre les mains de ses citoyens conscients.</p>
          <Link to="/manifesto" className="text-blue-400 font-black text-[10px] uppercase tracking-[0.4em] hover:text-blue-300 transition-all flex items-center justify-center gap-2">
             Consulter le Manifeste <ArrowRight size={14} />
          </Link>
-      </footer>
+      </section>
+      
+      <Footer />
     </div>
   );
 };
