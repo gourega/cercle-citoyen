@@ -9,7 +9,7 @@ import {
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
-  Image as ImageIcon, Zap
+  Image as ImageIcon, Zap, BookText
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -590,6 +590,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                  <MissionItem icon={Gavel} label="Lancer un RIC national" link="/governance" color="bg-orange-500" />
                  <MissionItem icon={Lightbulb} label="Déposer une étincelle" link="/ideas" color="bg-yellow-500" />
                  <MissionItem icon={Video} label="Tisser une vision" link="/griot" color="bg-amber-500" />
+                 <MissionItem icon={BookText} label="Manifeste Fondateur" link="/manifesto" color="bg-blue-900" />
               </div>
            </div>
         </aside>
