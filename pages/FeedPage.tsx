@@ -9,7 +9,7 @@ import {
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
-  Image as ImageIcon, Zap, BookText
+  Image as ImageIcon, Zap, BookText, Waves, Square
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -69,7 +69,6 @@ const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void,
   const [circleType, setCircleType] = useState<CircleType>(CircleType.IDEAS);
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showEmojis, setShowEmojis] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addToast } = useToast();
@@ -169,6 +168,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const { addToast } = useToast();
   const [author, setAuthor] = useState<any>(null);
   const [isReading, setIsReading] = useState(false);
+  const [isPreparingAudio, setIsPreparingAudio] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -181,6 +181,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const [reactions, setReactions] = useState(post.reactions);
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -208,24 +209,16 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
 
   const handleReaction = async (type: 'useful' | 'relevant' | 'inspiring') => {
     if (!currentUser) return;
-    
-    // Animation locale immédiate
     const newReactions = { ...reactions, [type]: reactions[type] + 1 };
     setReactions(newReactions);
-
     const labels = { useful: "Action Utile", relevant: "Réflexion Pertinente", inspiring: "Vision Inspirante" };
     addToast(`${labels[type]} scellée ! Impact +10 XP`, "success");
-
     try {
       if (isRealSupabase && supabase) {
-        // En prod, on utilise une fonction RPC pour incrémenter de manière sécurisée
         await supabase.rpc('increment_post_reaction', { post_id: post.id, reaction_type: type });
-        // On incrémente aussi l'impact de l'auteur
         await supabase.rpc('increment_impact_score', { profile_id: post.author_id, amount: 10 });
       }
-    } catch (e) {
-      console.warn("Échec de synchronisation de la réaction.");
-    }
+    } catch (e) { console.warn("Échec de synchronisation de la réaction."); }
   };
 
   const fetchComments = async () => {
@@ -238,7 +231,6 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
     e.preventDefault();
     if (!commentInput.trim() || !currentUser || isCommenting) return;
     setIsCommenting(true);
-    
     const newComment: Comment = {
       id: crypto.randomUUID(),
       author: currentUser.name,
@@ -246,7 +238,6 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
       content: commentInput.trim(),
       created_at: new Date().toISOString()
     };
-
     try {
       if (isRealSupabase && supabase) {
         await supabase.from('comments').insert([{
@@ -260,16 +251,23 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
       setComments([...comments, newComment]);
       setCommentInput('');
       addToast("Pensée ajoutée au dialogue", "success");
-    } catch (e) {
-      addToast("Erreur lors du commentaire", "error");
-    } finally {
-      setIsCommenting(false);
+    } catch (e) { addToast("Erreur lors du commentaire", "error"); } finally { setIsCommenting(false); }
+  };
+
+  const handleStopReading = () => {
+    if (currentSourceRef.current) {
+      currentSourceRef.current.stop();
+      currentSourceRef.current = null;
     }
+    setIsReading(false);
   };
 
   const handleListen = async () => {
-    if (isReading) return;
-    setIsReading(true);
+    if (isReading) {
+      handleStopReading();
+      return;
+    }
+    setIsPreparingAudio(true);
     try {
       const base64Audio = await getGriotReading(post.content);
       if (base64Audio) {
@@ -279,10 +277,19 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
         const source = audioContextRef.current.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContextRef.current.destination);
-        source.onended = () => setIsReading(false);
+        source.onended = () => {
+          setIsReading(false);
+          currentSourceRef.current = null;
+        };
+        currentSourceRef.current = source;
+        setIsReading(true);
+        setIsPreparingAudio(false);
         source.start(0);
       }
-    } catch (e) { setIsReading(false); }
+    } catch (e) { 
+      setIsPreparingAudio(false); 
+      addToast("Le Griot est fatigué, réessayez plus tard.", "info");
+    }
   };
 
   const handleShare = async () => {
@@ -341,6 +348,28 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
               <p className="text-[7px] font-black uppercase tracking-widest text-gray-300 mt-1.5">{getRelativeTime(post.created_at)} • {post.circle_type}</p>
             </div>
           </div>
+          
+          {/* BOUTON GRIOT AMÉLIORÉ - TRÈS VISIBLE */}
+          <button 
+            onClick={handleListen}
+            disabled={isPreparingAudio}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm ${
+              isReading 
+                ? 'bg-amber-600 text-white animate-pulse' 
+                : isPreparingAudio 
+                  ? 'bg-amber-50 text-amber-400' 
+                  : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:scale-105'
+            }`}
+          >
+            {isPreparingAudio ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : isReading ? (
+              <Waves className="w-3.5 h-3.5" />
+            ) : (
+              <Mic2 className="w-3.5 h-3.5" />
+            )}
+            {isPreparingAudio ? "Préparation..." : isReading ? "Arrêter la voix" : "Écouter l'Onde"}
+          </button>
         </div>
 
         {isEditing ? (
@@ -371,7 +400,6 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
 
         <div className="flex flex-wrap items-center justify-between pt-4 border-t border-gray-50 gap-y-3">
           <div className="flex gap-1 items-center">
-            {/* RÉACTIONS CITOYENNES SOUVERAINES */}
             <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 gap-1 mr-2">
               <button 
                 onClick={() => handleReaction('useful')}
@@ -413,13 +441,9 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
                 <button onClick={handleDelete} className="flex items-center gap-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all"><Trash2 size={13} /></button>
               </div>
             )}
-            <button onClick={handleListen} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[7px] uppercase transition-all ${isReading ? 'bg-amber-100 text-amber-600 shadow-inner' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
-              <Volume2 size={12} /> {isReading ? "LECTURE..." : "ÉCOUTER"}
-            </button>
           </div>
         </div>
 
-        {/* SECTION COMMENTAIRES DÉPLOYABLE */}
         {showComments && (
           <div className="mt-6 pt-6 border-t border-gray-50 animate-in slide-in-from-top-4 duration-300">
              <div className="space-y-4 mb-6 max-h-60 overflow-y-auto no-scrollbar pr-2">
