@@ -5,13 +5,13 @@ import { User, Role } from '../types.ts';
 import { 
   LogOut, Loader2, Save, Pencil, Crown, AtSign, ShieldCheck, Zap, Camera, 
   Flame, Heart, Sparkles, Medal, Shield, UserPlus, UserCheck, MessageSquare, 
-  Lock, Eye, EyeOff, ChevronLeft
+  Lock, Eye, EyeOff, ChevronLeft, Award
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
 import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
 
-const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick }) => {
+const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void; isGuardian?: boolean }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick, isGuardian }) => {
   const [error, setError] = useState(false);
   const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : "??";
   
@@ -33,6 +33,11 @@ const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; class
   return (
     <div className="relative group cursor-pointer" onClick={isEditing ? onUploadClick : undefined}>
       {displayContent()}
+      {isGuardian && (
+        <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-3 rounded-2xl border-4 border-white shadow-lg animate-in zoom-in duration-700">
+           <Crown size={20} />
+        </div>
+      )}
       {isEditing && (
         <div className="absolute inset-0 bg-black/40 rounded-[2.5rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white border-8 border-white/20">
           <Camera size={32} />
@@ -45,10 +50,15 @@ const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; class
 
 const Badge: React.FC<{ icon: React.ReactNode, label: string, color: string, description: string }> = ({ icon, label, color, description }) => (
   <div className="group relative flex flex-col items-center">
-    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all border-4 border-white shadow-lg ${color} group-hover:scale-110`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2 border-white shadow-sm ${color} group-hover:scale-110 group-hover:shadow-md`}>
       {icon}
     </div>
-    <span className="text-[8px] font-black uppercase tracking-widest mt-3 text-gray-400 group-hover:text-gray-900 text-center">{label}</span>
+    <span className="text-[7px] font-black uppercase tracking-widest mt-2 text-gray-400 group-hover:text-gray-900 text-center leading-tight">{label}</span>
+    
+    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-32 p-3 bg-gray-900 text-white text-[8px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl text-center font-medium">
+      {description}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+    </div>
   </div>
 );
 
@@ -137,6 +147,21 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const isGuardian = profile?.role === Role.SUPER_ADMIN;
   const impactScoreValue = profile?.id === ADMIN_ID ? 19740 : (profile?.impact_score || 0);
 
+  const renderBadges = () => {
+    const badges = [];
+    badges.push({ icon: <Award size={20} />, label: "Graine", color: "bg-blue-50 text-blue-500", description: "Membre vérifié de la Nation numérique." });
+    if (impactScoreValue > 100) badges.push({ icon: <MessageSquare size={20} />, label: "Agora", color: "bg-indigo-50 text-indigo-500", description: "Citoyen dont la parole porte au sein des Cercles." });
+    if (impactScoreValue > 500) badges.push({ icon: <ShieldCheck size={20} />, label: "Sentinelle", color: "bg-emerald-50 text-emerald-500", description: "Contributeur actif à la protection du territoire." });
+    if (impactScoreValue > 5000) badges.push({ icon: <Zap size={20} />, label: "Pilier", color: "bg-orange-50 text-orange-500", description: "Soutien majeur de l'infrastructure souveraine." });
+    if (isGuardian) badges.push({ icon: <Crown size={20} />, label: "Gardien", color: "bg-amber-100 text-amber-600", description: "Garant du Sceau et de la cohésion nationale." });
+
+    return (
+      <div className="flex flex-wrap gap-4 mt-6">
+        {badges.map((b, i) => <Badge key={i} {...b} />)}
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
       <div className="mb-8">
@@ -145,7 +170,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         </Link>
       </div>
 
-      <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
+      <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50/50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
         <input type="file" ref={fileInputRef} onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) {
@@ -162,7 +187,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         <div className="px-10 pb-12 -mt-24 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-8 text-center md:text-left">
-              <CitizenAvatar url={isEditing ? editData.avatar : (profile.avatar || profile.avatar_url)} name={profile.name} isEditing={isEditing} onUploadClick={() => fileInputRef.current?.click()} className={`ring-8 ring-white ${isGuardian ? 'shadow-amber-200/50' : ''}`} />
+              <CitizenAvatar url={isEditing ? editData.avatar : (profile.avatar || profile.avatar_url)} name={profile.name} isEditing={isEditing} onUploadClick={() => fileInputRef.current?.click()} isGuardian={isGuardian} className={`ring-8 ring-white ${isGuardian ? 'shadow-amber-200/50' : ''}`} />
               <div className="pb-4 flex-1">
                 {isEditing ? (
                   <div className="space-y-4 max-w-sm">
@@ -173,9 +198,10 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                   <>
                     <div className="flex items-center gap-3">
                       <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
-                      {profile.isVerifiedEntity && <ShieldCheck size={24} className="text-blue-500" />}
+                      {isGuardian && <ShieldCheck size={24} className="text-amber-600" />}
                     </div>
-                    <p className="text-gray-400 font-bold flex items-center justify-center md:justify-start gap-2"><AtSign size={16} /> {profile.pseudonym}</p>
+                    <p className="text-gray-400 font-bold flex items-center justify-center md:justify-start gap-2 mb-4"><AtSign size={16} /> {profile.pseudonym}</p>
+                    {renderBadges()}
                   </>
                 )}
               </div>

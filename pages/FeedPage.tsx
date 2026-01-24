@@ -9,7 +9,7 @@ import {
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
-  Image as ImageIcon, Zap, BookText, Waves, Square
+  Image as ImageIcon, Zap, BookText, Waves, Square, Award
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -63,6 +63,21 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; acti
     <span className={active ? color : "text-gray-400"}>{icon}</span> {label}
   </Link>
 );
+
+const ImpactBadgeRow: React.FC<{ score: number, role: Role }> = ({ score, role }) => {
+  const badges = [];
+  if (role === Role.SUPER_ADMIN) badges.push(<Crown size={12} className="text-amber-500" key="c" />);
+  if (score > 5000) badges.push(<Zap size={12} className="text-orange-500" key="z" />);
+  if (score > 500) badges.push(<ShieldCheck size={12} className="text-emerald-500" key="s" />);
+  if (score > 100) badges.push(<MessageCircle size={12} className="text-blue-500" key="m" />);
+  if (badges.length === 0) badges.push(<Award size={12} className="text-gray-300" key="a" />);
+
+  return (
+    <div className="flex gap-1 items-center ml-2 opacity-60 hover:opacity-100 transition-opacity">
+      {badges}
+    </div>
+  );
+};
 
 const PublishModal: React.FC<{ user: User, isOpen: boolean, onClose: () => void, onPublish: (post: any) => void }> = ({ user, isOpen, onClose, onPublish }) => {
   const [content, setContent] = useState('');
@@ -186,18 +201,18 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   useEffect(() => {
     const fetchAuthor = async () => {
       if (post.author_id === ADMIN_ID) {
-        setAuthor({ name: "Kouassi G. Ouréga", pseudonym: "Gardien", avatar: 'https://picsum.photos/seed/admin/200/200', role: Role.SUPER_ADMIN });
+        setAuthor({ name: "Kouassi G. Ouréga", pseudonym: "Gardien", avatar: 'https://picsum.photos/seed/admin/200/200', role: Role.SUPER_ADMIN, impact_score: 19740 });
         return;
       }
       if (isRealSupabase && supabase) {
         try {
           const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).maybeSingle();
-          setAuthor(data ? { ...data, avatar: data.avatar_url || data.avatar } : { name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+          setAuthor(data ? { ...data, avatar: data.avatar_url || data.avatar, impact_score: data.impact_score || 0 } : { name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER, impact_score: 0 });
         } catch (e) {
-          setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+          setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER, impact_score: 0 });
         }
       } else {
-        setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER });
+        setAuthor({ name: "Citoyen", avatar: `https://picsum.photos/seed/${post.author_id}/150/150`, role: Role.MEMBER, impact_score: 0 });
       }
     };
     fetchAuthor();
@@ -332,24 +347,23 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
   const displayContent = isExpanded || !shouldTruncate ? post.content : post.content.slice(0, TRUNCATE_LIMIT).trim() + "...";
 
   return (
-    <article className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm mb-6 overflow-hidden animate-in fade-in duration-500">
+    <article className={`bg-white rounded-[1.5rem] border border-gray-100 shadow-sm mb-6 overflow-hidden animate-in fade-in duration-500 transition-all ${isMajestic ? 'bg-amber-50/10' : ''}`}>
       <div className="p-5 md:p-8">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <Link to={`/profile/${post.author_id}`} className="relative shrink-0">
-              <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm" alt="" />
-              {isMajestic && <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-1 rounded-lg border-2 border-white shadow-sm"><Crown size={8} /></div>}
+              <img src={author.avatar} className="w-10 h-10 rounded-xl object-cover shadow-sm ring-1 ring-gray-100" alt="" />
+              {isMajestic && <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white p-1 rounded-lg border-2 border-white shadow-md"><Crown size={12} /></div>}
             </Link>
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center">
                 <Link to={`/profile/${post.author_id}`} className="font-bold text-gray-900 text-[13px] hover:text-blue-600 transition-colors">{author.name}</Link>
-                {author.role === Role.SUPER_ADMIN && <ShieldCheck size={12} className="text-amber-600" />}
+                <ImpactBadgeRow score={author.impact_score} role={author.role} />
               </div>
               <p className="text-[7px] font-black uppercase tracking-widest text-gray-300 mt-1.5">{getRelativeTime(post.created_at)} • {post.circle_type}</p>
             </div>
           </div>
           
-          {/* BOUTON GRIOT AMÉLIORÉ - TRÈS VISIBLE */}
           <button 
             onClick={handleListen}
             disabled={isPreparingAudio}
@@ -382,7 +396,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User | null, onUpdate: () =>
           </div>
         ) : (
           <>
-            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif italic border-l-2 border-amber-100 pl-5 mb-5' : 'text-[14px] font-medium mb-4'}`}>
+            <div className={`text-gray-800 leading-relaxed whitespace-pre-wrap transition-all duration-300 ${isMajestic ? 'text-lg md:text-xl font-serif italic border-l-2 border-amber-200 pl-5 mb-5' : 'text-[14px] font-medium mb-4'}`}>
               {formatContent(displayContent)}
             </div>
             {(post.image_url || post.clean_vision_url) && (
