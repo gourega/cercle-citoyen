@@ -142,7 +142,10 @@ CREATE TABLE IF NOT EXISTS public.posts (
     is_majestic BOOLEAN DEFAULT false
 );
 
--- SÉCURITÉ : ACTIVER RLS SUR TOUT
+-- ==========================================
+-- SÉCURITÉ : ROW LEVEL SECURITY (RLS)
+-- ==========================================
+
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
@@ -154,21 +157,37 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
--- POLITIQUES DE LECTURE (TOUT LE MONDE)
+-- POLITIQUES SUR LES PROFILS (CRUCIAL)
 DROP POLICY IF EXISTS "Lecture publique" ON public.profiles;
 CREATE POLICY "Lecture publique" ON public.profiles FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Lecture publique" ON public.edicts;
-CREATE POLICY "Lecture publique" ON public.edicts FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Lecture publique" ON public.posts;
-CREATE POLICY "Lecture publique" ON public.posts FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Lecture publique" ON public.waste_reports;
-CREATE POLICY "Lecture publique" ON public.waste_reports FOR SELECT USING (true);
 
--- POLITIQUES D'ÉCRITURE (AUTHENTIFIÉS)
-DROP POLICY IF EXISTS "Modif Profil" ON public.profiles;
-CREATE POLICY "Modif Profil" ON public.profiles FOR UPDATE WITH CHECK (auth.uid() = id);
-DROP POLICY IF EXISTS "Insertion Ondes" ON public.posts;
-CREATE POLICY "Insertion Ondes" ON public.posts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);`;
+DROP POLICY IF EXISTS "Auto-création" ON public.profiles;
+CREATE POLICY "Auto-création" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Auto-modification" ON public.profiles;
+CREATE POLICY "Auto-modification" ON public.profiles FOR UPDATE WITH CHECK (auth.uid() = id);
+
+-- POLITIQUES SUR LES ONDES (POSTS)
+DROP POLICY IF EXISTS "Lecture ondes" ON public.posts;
+CREATE POLICY "Lecture ondes" ON public.posts FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Insertion ondes" ON public.posts;
+CREATE POLICY "Insertion ondes" ON public.posts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- POLITIQUES SUR LA SENTINELLE
+DROP POLICY IF EXISTS "Lecture signalements" ON public.waste_reports;
+CREATE POLICY "Lecture signalements" ON public.waste_reports FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Insertion signalements" ON public.waste_reports;
+CREATE POLICY "Insertion signalements" ON public.waste_reports FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- POLITIQUES SUR LE RIC
+DROP POLICY IF EXISTS "Lecture edicts" ON public.edicts;
+CREATE POLICY "Lecture edicts" ON public.edicts FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Vote souverain" ON public.votes;
+CREATE POLICY "Vote souverain" ON public.votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+`;
 
 const AdminDashboard: React.FC = () => {
   const { addToast } = useToast();
@@ -308,7 +327,7 @@ const AdminDashboard: React.FC = () => {
               <div className="absolute top-0 right-0 p-10 opacity-10"><Database size={120} /></div>
               <h3 className="text-3xl font-serif font-bold mb-4">Restauration de la Cité</h3>
               <p className="text-blue-100 max-w-2xl font-medium leading-relaxed mb-8">
-                Ce script complet crée l'intégralité des infrastructures nécessaires : Profils, RIC, Sentinelle, Quêtes, Messagerie et Archivage. Exécutez-le dans l'éditeur SQL de Supabase pour une souveraineté totale.
+                Ce script complet crée l'intégralité des infrastructures nécessaires : Profils (avec politiques d'auto-création), RIC, Sentinelle, Quêtes, Messagerie et Archivage. Exécutez-le dans l'éditeur SQL de Supabase pour une souveraineté totale.
               </p>
               <button onClick={copySql} className="bg-white text-blue-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-blue-50 transition-all">
                 <Copy size={18} /> Copier le script intégral
