@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { User, Role } from '../types.ts';
 import { 
   LogOut, Loader2, Save, Pencil, Crown, AtSign, ShieldCheck, Zap, Camera, 
   Flame, Heart, Sparkles, Medal, Shield, UserPlus, UserCheck, MessageSquare, 
-  Lock, Eye, EyeOff, ChevronLeft, Award
+  Lock, Eye, EyeOff, ChevronLeft, Video, Gavel, Compass, LayoutGrid, PenTool,
+  ArrowRight
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
-import { ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
+import { ADMIN_ID } from '../lib/mocks.ts';
 
 const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void; isGuardian?: boolean }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick, isGuardian }) => {
   const [error, setError] = useState(false);
@@ -48,27 +49,23 @@ const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; class
   );
 };
 
-const Badge: React.FC<{ icon: React.ReactNode, label: string, color: string, description: string }> = ({ icon, label, color, description }) => (
-  <div className="group relative flex flex-col items-center">
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all border-2 border-white shadow-sm ${color} group-hover:scale-110 group-hover:shadow-md`}>
+const ToolCard: React.FC<{ to: string; icon: React.ReactNode; label: string; desc: string; color: string }> = ({ to, icon, label, desc, color }) => (
+  <Link to={to} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col items-center text-center">
+    <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center mb-4 text-white shadow-lg group-hover:scale-110 transition-transform`}>
       {icon}
     </div>
-    <span className="text-[7px] font-black uppercase tracking-widest mt-2 text-gray-400 group-hover:text-gray-900 text-center leading-tight">{label}</span>
-    
-    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-32 p-3 bg-gray-900 text-white text-[8px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl text-center font-medium">
-      {description}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-    </div>
-  </div>
+    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-900 mb-1">{label}</h4>
+    <p className="text-[9px] text-gray-400 font-medium leading-tight">{desc}</p>
+  </Link>
 );
 
 const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; onProfileUpdate?: (updates: Partial<User>) => void }> = ({ currentUser, onLogout, onProfileUpdate }) => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   
   const [showPwdFields, setShowPwdFields] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -94,19 +91,9 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           if (targetId === currentUser.id) {
             setEditData({ name: fetchedProfile.name, pseudonym: fetchedProfile.pseudonym, bio: fetchedProfile.bio, avatar: fetchedProfile.avatar });
           }
-        } else handleMockFallback(targetId);
-      } else handleMockFallback(targetId);
-    } catch (e) { handleMockFallback(targetId); } finally { setLoading(false); }
-  };
-
-  const handleMockFallback = (targetId: string) => {
-    const mockUser = MOCK_USERS[targetId] || (targetId === currentUser.id ? currentUser : null);
-    if (mockUser) {
-      setProfile({ ...mockUser, impact_score: mockUser.impact_score ?? 120 });
-      if (targetId === currentUser.id) {
-        setEditData({ name: mockUser.name, pseudonym: mockUser.pseudonym, bio: mockUser.bio, avatar: mockUser.avatar });
+        }
       }
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const handleSave = async () => {
@@ -124,7 +111,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
 
   const handleUpdatePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      addToast("Mot de passe trop court (min. 6).", "error");
+      addToast("Mot de passe trop court.", "error");
       return;
     }
     setPwdLoading(true);
@@ -136,31 +123,17 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         setNewPassword('');
         setShowPwdFields(false);
       }
-    } catch (e: any) { addToast("Échec de la mise à jour.", "error"); } finally { setPwdLoading(false); }
+    } catch (e) { addToast("Échec.", "error"); } finally { setPwdLoading(false); }
   };
 
   useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
 
   if (loading && !profile) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>;
+  if (!profile) return <div className="text-center py-20 text-gray-400">Profil introuvable.</div>;
 
   const isOwnProfile = profile?.id === currentUser.id;
   const isGuardian = profile?.role === Role.SUPER_ADMIN;
   const impactScoreValue = profile?.id === ADMIN_ID ? 19740 : (profile?.impact_score || 0);
-
-  const renderBadges = () => {
-    const badges = [];
-    badges.push({ icon: <Award size={20} />, label: "Graine", color: "bg-blue-50 text-blue-500", description: "Membre vérifié de la Nation numérique." });
-    if (impactScoreValue > 100) badges.push({ icon: <MessageSquare size={20} />, label: "Agora", color: "bg-indigo-50 text-indigo-500", description: "Citoyen dont la parole porte au sein des Cercles." });
-    if (impactScoreValue > 500) badges.push({ icon: <ShieldCheck size={20} />, label: "Sentinelle", color: "bg-emerald-50 text-emerald-500", description: "Contributeur actif à la protection du territoire." });
-    if (impactScoreValue > 5000) badges.push({ icon: <Zap size={20} />, label: "Pilier", color: "bg-orange-50 text-orange-500", description: "Soutien majeur de l'infrastructure souveraine." });
-    if (isGuardian) badges.push({ icon: <Crown size={20} />, label: "Gardien", color: "bg-amber-100 text-amber-600", description: "Garant du Sceau et de la cohésion nationale." });
-
-    return (
-      <div className="flex flex-wrap gap-4 mt-6">
-        {badges.map((b, i) => <Badge key={i} {...b} />)}
-      </div>
-    );
-  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 lg:py-16 animate-in fade-in duration-700">
@@ -184,7 +157,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>
         </div>
 
-        <div className="px-10 pb-12 -mt-24 relative z-10">
+        <div className="px-6 md:px-10 pb-12 -mt-24 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-8 text-center md:text-left">
               <CitizenAvatar url={isEditing ? editData.avatar : (profile.avatar || profile.avatar_url)} name={profile.name} isEditing={isEditing} onUploadClick={() => fileInputRef.current?.click()} isGuardian={isGuardian} className={`ring-8 ring-white ${isGuardian ? 'shadow-amber-200/50' : ''}`} />
@@ -201,7 +174,6 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                       {isGuardian && <ShieldCheck size={24} className="text-amber-600" />}
                     </div>
                     <p className="text-gray-400 font-bold flex items-center justify-center md:justify-start gap-2 mb-4"><AtSign size={16} /> {profile.pseudonym}</p>
-                    {renderBadges()}
                   </>
                 )}
               </div>
@@ -212,36 +184,30 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                 isEditing ? (
                   <><button onClick={handleSave} disabled={syncing} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-xl">{syncing ? <Loader2 className="animate-spin" /> : <Save size={16} />} Enregistrer</button><button onClick={() => setIsEditing(false)} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Annuler</button></>
                 ) : <><button onClick={() => setIsEditing(true)} className="px-6 py-4 bg-gray-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"><Pencil size={16} /> Modifier</button><button onClick={onLogout} className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all border border-rose-100"><LogOut size={16} /></button></>
-              ) : (
-                <button onClick={() => setIsFollowing(!isFollowing)} className={`px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl ${isFollowing ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{isFollowing ? <><UserCheck size={18} /> Soutenu</> : <><UserPlus size={18} /> Soutenir</>}</button>
-              )}
+              ) : null}
             </div>
           </div>
 
           <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 lg:grid-cols-3 gap-16">
             <div className="lg:col-span-2 space-y-12">
-                <section>
-                  <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6">Présentation</h3>
-                  {isEditing ? <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all shadow-inner" /> : <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-10 rounded-[3rem] border border-gray-100/50 min-h-[300px] shadow-sm">{profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}</p>}
-                </section>
-
                 {isOwnProfile && (
-                  <section className="bg-gray-50 rounded-[3rem] p-10 border border-gray-100">
-                    <div className="flex items-center justify-between mb-8">
-                       <h3 className="font-serif font-bold text-2xl text-gray-900 flex items-center gap-3"><Lock size={20} className="text-blue-600" /> Sécurité</h3>
-                       <button onClick={() => setShowPwdFields(!showPwdFields)} className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">{showPwdFields ? "Réduire" : "Changer mot de passe"}</button>
+                  <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-8 flex items-center gap-3">
+                      <LayoutGrid size={14} className="text-blue-600" /> Mes Outils Souverains
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                       <ToolCard to="/griot" icon={<Video size={20} />} label="Studio Griot" desc="Générer des vidéos IA" color="bg-amber-500" />
+                       <ToolCard to="/studio" icon={<PenTool size={20} />} label="Impact Studio" desc="Visuels de projets" color="bg-blue-600" />
+                       <ToolCard to="/compass" icon={<Compass size={20} />} label="Boussole" desc="Décrypter les lois" color="bg-slate-600" />
+                       <ToolCard to="/governance" icon={<Gavel size={20} />} label="RIC" desc="Proposer un édit" color="bg-orange-500" />
                     </div>
-                    {showPwdFields && (
-                      <div className="space-y-6">
-                        <div className="relative">
-                          <input type={showPwd ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" className="w-full bg-white py-6 pl-6 pr-16 rounded-2xl outline-none shadow-sm focus:ring-4 focus:ring-blue-100 font-bold" />
-                          <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300">{showPwd ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-                        </div>
-                        <button onClick={handleUpdatePassword} disabled={pwdLoading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3">{pwdLoading ? <Loader2 className="animate-spin" /> : <Shield size={16} />} Confirmer</button>
-                      </div>
-                    )}
                   </section>
                 )}
+
+                <section>
+                  <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-gray-400 mb-6">Présentation</h3>
+                  {isEditing ? <textarea value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full h-48 text-xl leading-relaxed font-medium text-gray-700 bg-gray-50 p-8 rounded-[2.5rem] border-2 border-blue-100 outline-none focus:bg-white transition-all shadow-inner" /> : <p className="text-xl leading-relaxed font-medium text-gray-700 whitespace-pre-wrap bg-gray-50/50 p-8 md:p-10 rounded-[3rem] border border-gray-100/50 min-h-[200px] shadow-sm">{profile.bio || "Ce citoyen n'a pas encore rédigé sa présentation."}</p>}
+                </section>
             </div>
 
             <aside className="lg:sticky lg:top-24 space-y-10 self-start">

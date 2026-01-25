@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment, CitizenNotification } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
-import { MOCK_POSTS, ADMIN_ID, MOCK_USERS } from '../lib/mocks.ts';
+import { MOCK_POSTS, ADMIN_ID } from '../lib/mocks.ts';
 import { useToast } from '../ToastContext.tsx';
 import { getGriotReading, decode, decodeAudioData } from '../lib/gemini.ts';
 import Logo from '../Logo.tsx';
@@ -70,7 +70,7 @@ const VisionStory: React.FC<{ user: any }> = ({ user }) => (
   <div className="flex flex-col items-center gap-2 shrink-0 group cursor-pointer">
     <div className="relative p-1 rounded-[1.8rem] bg-gradient-to-tr from-amber-400 via-rose-500 to-blue-500 group-hover:scale-105 transition-transform">
       <div className="p-0.5 bg-white rounded-[1.6rem]">
-        <img src={user.avatar} className="w-16 h-16 rounded-[1.5rem] object-cover" alt="" />
+        <img src={user.avatar_url || user.avatar} className="w-16 h-16 rounded-[1.5rem] object-cover" alt="" />
       </div>
       {user.role === Role.SUPER_ADMIN && (
         <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white p-1 rounded-lg border-2 border-white">
@@ -84,8 +84,18 @@ const VisionStory: React.FC<{ user: any }> = ({ user }) => (
 
 const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }> = ({ post, currentUser, onUpdate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const author = MOCK_USERS[post.author_id] || { name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' };
+  const [author, setAuthor] = useState<any>({ name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' });
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    const fetchAuthor = async () => {
+      if (isRealSupabase && supabase) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', post.author_id).single();
+        if (data) setAuthor({ ...data, avatar: data.avatar_url });
+      }
+    };
+    fetchAuthor();
+  }, [post.author_id]);
 
   const playAudio = async () => {
     if (isPlaying) return;
@@ -138,6 +148,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
+  const [realCitizens, setRealCitizens] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
@@ -145,21 +156,24 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<CitizenNotification[]>([
     { id: '1', type: 'drum_call', title: 'Nouvel Édit', message: 'Un RIC sur la santé vient d\'être lancé.', timestamp: 'Il y a 5m', isRead: false },
-    { id: '2', type: 'award', title: 'Impact atteint !', message: 'Vous avez gagné 50 XP pour votre action à Yopougon.', timestamp: 'Il y a 1h', isRead: false }
+    { id: '2', type: 'award', title: 'Impact atteint !', message: 'Vous avez gagné 50 XP pour votre action.', timestamp: 'Il y a 1h', isRead: false }
   ]);
 
   const isGuardian = user.role === Role.SUPER_ADMIN;
 
-  const fetchPosts = async () => {
+  const fetchData = async () => {
     try {
       if (isRealSupabase && supabase) {
-        const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-        if (data) setPosts(data); else setPosts(MOCK_POSTS);
-      } else setPosts(MOCK_POSTS);
-    } catch (e) { setPosts(MOCK_POSTS); } finally { setLoading(false); }
+        const { data: postsData } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (postsData) setPosts(postsData);
+        
+        const { data: citizensData } = await supabase.from('profiles').select('*').limit(5);
+        if (citizensData) setRealCitizens(citizensData);
+      }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchPosts(); }, []);
+  useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
     let result = posts;
@@ -241,7 +255,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
               </div>
               <span className="text-[9px] font-black uppercase text-gray-400">Ma Vision</span>
             </div>
-            {Object.values(MOCK_USERS).map(u => <VisionStory key={u.id} user={u} />)}
+            {realCitizens.map(u => <VisionStory key={u.id} user={u} />)}
           </div>
 
           <div className="mb-10 flex gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -262,7 +276,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
 
           <div className="space-y-6">
             {loading ? <PostSkeleton /> : filteredPosts.length > 0 ? filteredPosts.map((post) => (
-              <PostCard key={post.id} post={post} currentUser={user} onUpdate={fetchPosts} />
+              <PostCard key={post.id} post={post} currentUser={user} onUpdate={fetchData} />
             )) : (
               <div className="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-50">
                  <Waves className="w-16 h-16 text-gray-100 mx-auto mb-6" />
@@ -279,14 +293,7 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                 <Landmark size={14} className="text-orange-600" /> Référendums Actifs
               </h3>
               <div className="space-y-6">
-                 <Link to="/governance" className="block p-4 bg-orange-50 rounded-2xl border border-orange-100 hover:shadow-md transition-all group/ric">
-                    <p className="text-[10px] font-black text-orange-600 uppercase mb-2">RIC National</p>
-                    <p className="text-xs font-bold text-gray-900 leading-tight mb-3">Gratuité de la CNI pour les jeunes de 18 ans.</p>
-                    <div className="w-full bg-orange-200 h-1.5 rounded-full overflow-hidden">
-                       <div className="bg-orange-600 h-full w-[45%]"></div>
-                    </div>
-                 </Link>
-                 <Link to="/governance" className="text-[9px] font-black uppercase text-gray-400 hover:text-orange-600 flex items-center justify-center gap-2">Voir tous les édits <ArrowRight size={12} /></Link>
+                 <Link to="/governance" className="text-[9px] font-black uppercase text-gray-400 hover:text-orange-600 flex items-center justify-center gap-2">Consulter les édits <ArrowRight size={12} /></Link>
               </div>
            </div>
 
@@ -296,17 +303,15 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                 <Users size={14} className="text-blue-600" /> Citoyens de Référence
               </h3>
               <div className="space-y-6">
-                 {Object.values(MOCK_USERS).slice(0, 3).map(u => (
+                 {realCitizens.map(u => (
                    <Link key={u.id} to={`/profile/${u.id}`} className="flex items-center gap-4 group/item">
                       <div className="relative">
-                        <img src={u.avatar} className="w-12 h-12 rounded-2xl object-cover group-hover/item:ring-4 ring-blue-50 transition-all"/>
+                        <img src={u.avatar_url} className="w-12 h-12 rounded-2xl object-cover group-hover/item:ring-4 ring-blue-50 transition-all"/>
                         {u.role === Role.SUPER_ADMIN && <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-1 rounded-lg border-2 border-white"><Crown size={10} /></div>}
                       </div>
                       <div className="flex-1 min-w-0">
                          <p className="text-sm font-bold text-gray-900 truncate">{u.name}</p>
-                         <div className="flex items-center gap-2">
-                            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{u.impactScore} XP</p>
-                         </div>
+                         <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{u.impact_score || 0} XP</p>
                       </div>
                       <ArrowRight size={14} className="text-gray-200 group-hover/item:text-blue-500 group-hover/item:translate-x-1 transition-all"/>
                    </Link>

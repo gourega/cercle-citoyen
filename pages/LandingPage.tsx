@@ -4,7 +4,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Shield, Lock, Mail, Loader2, Sparkles, ArrowRight, 
   Target, Camera, Gavel, Video, Heart, ChevronDown,
-  ShieldCheck, Globe, Zap, FileText, LayoutGrid, Info
+  ShieldCheck, Globe, Zap, FileText, LayoutGrid, Info,
+  Eye, EyeOff
 } from 'lucide-react';
 import { User, Role, UserCategory } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
@@ -29,6 +30,7 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const { addToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,7 +48,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         });
 
         if (!authError && authData.user) {
-          // Récupération du profil associé
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
@@ -78,7 +79,7 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
       }
     }
 
-    // 2. LOGIQUE DE SECOURS / DÉMO (Gardien ou Comptes Spéciaux)
+    // 2. LOGIQUE DU GARDIEN (Point d'ancrage)
     if (lowerEmail === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
       setTimeout(() => {
         onLogin({
@@ -89,14 +90,13 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
           role: Role.SUPER_ADMIN,
           category: UserCategory.CITIZEN,
           interests: ['Souveraineté', 'Gouvernance'],
-          avatar: 'https://picsum.photos/seed/admin/200/200',
+          avatar: 'https://nfsskgcpqbccnwacsplc.supabase.co/storage/v1/object/public/Logo-cercle-citoyen/logo-cercle-citoyen.png',
           impactScore: 19740
         });
         addToast("Bienvenue, Gardien. La cité est sous votre veille.", "success");
         navigate('/feed');
       }, 1000);
     } else {
-      // Échec final
       setTimeout(() => {
         addToast("ACCÈS REFUSÉ - VÉRIFIEZ VOS CODES", "error");
         setLoading(false);
@@ -106,7 +106,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-gray-900 selection:bg-blue-100">
-      {/* HEADER ELEGANT */}
       <header className="absolute top-0 inset-x-0 z-50 p-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center bg-white/70 backdrop-blur-xl border border-white/20 px-8 py-4 rounded-3xl shadow-sm">
           <Logo size={32} showText variant="blue" />
@@ -118,7 +117,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         </div>
       </header>
 
-      {/* HERO SECTION */}
       <section className="pt-40 pb-20 px-6 overflow-hidden relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-50 rounded-full blur-[120px] -z-10 opacity-60"></div>
         <div className="max-w-5xl mx-auto text-center">
@@ -143,7 +141,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         </div>
       </section>
 
-      {/* FEATURES GRID */}
       <section id="features" className="py-24 px-6 bg-gray-50/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
@@ -173,7 +170,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         </div>
       </section>
 
-      {/* LOGIN SECTION */}
       <section id="login" className="py-24 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
            <div>
@@ -184,12 +180,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
               <p className="text-lg text-gray-500 font-medium leading-relaxed mb-10">
                 Votre identité citoyenne est le socle de notre unité. Connectez-vous pour rejoindre l'Agora et contribuer au bien commun.
               </p>
-              <div className="flex items-center gap-6">
-                <div className="flex -space-x-3">
-                   {[1,2,3,4].map(i => <img key={i} src={`https://picsum.photos/seed/user${i}/100/100`} className="w-12 h-12 rounded-full border-4 border-white shadow-sm" />)}
-                </div>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">+12k Citoyens engagés</p>
-              </div>
            </div>
 
            <div className="bg-white border border-gray-100 rounded-[3.5rem] p-10 md:p-14 shadow-2xl relative overflow-hidden group">
@@ -214,12 +204,19 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
                   <div className="relative group/input">
                     <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within/input:text-blue-600 transition-colors" size={20} />
                     <input 
-                      type="password" 
+                      type={showPassword ? "text" : "password"} 
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••" 
-                      className="w-full bg-gray-50 border-2 border-transparent py-6 pl-16 pr-6 rounded-[1.5rem] outline-none focus:border-blue-100 focus:bg-white text-gray-900 font-bold transition-all"
+                      className="w-full bg-gray-50 border-2 border-transparent py-6 pl-16 pr-16 rounded-[1.5rem] outline-none focus:border-blue-100 focus:bg-white text-gray-900 font-bold transition-all"
                     />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-blue-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
                   </div>
                 </div>
 
@@ -239,7 +236,6 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
         </div>
       </section>
 
-      {/* FOOTER CTA & FORMAL FOOTER */}
       <section className="bg-gray-950 text-white py-24 px-6 text-center border-b border-white/5">
          <h2 className="text-4xl font-serif font-bold mb-8">Penser. Relier. Agir.</h2>
          <p className="text-gray-400 mb-12 max-w-xl mx-auto font-medium">Le destin de notre Nation est entre les mains de ses citoyens conscients.</p>
