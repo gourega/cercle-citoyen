@@ -4,10 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Shield, Lock, Mail, Loader2, Sparkles, ArrowRight, 
   Target, Camera, Gavel, Video, Heart, ChevronDown,
-  ShieldCheck, Globe, Zap
+  ShieldCheck, Globe, Zap, FileText, LayoutGrid, Info
 } from 'lucide-react';
 import { User, Role, UserCategory } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
+import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import Logo from '../Logo.tsx';
 import Footer from '../components/Footer.tsx';
 
@@ -30,27 +31,72 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    if (email === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
+    const lowerEmail = email.toLowerCase().trim();
+
+    // 1. TENTATIVE DE CONNEXION RÉELLE VIA SUPABASE
+    if (isRealSupabase && supabase) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: lowerEmail,
+          password: password,
+        });
+
+        if (!authError && authData.user) {
+          // Récupération du profil associé
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+          if (!profileError && profile) {
+            const loggedUser: User = {
+              id: profile.id,
+              name: profile.name,
+              pseudonym: profile.pseudonym,
+              email: profile.email,
+              bio: profile.bio || "",
+              role: profile.role as Role,
+              category: profile.category as UserCategory,
+              interests: profile.interests || [],
+              avatar: profile.avatar_url || `https://picsum.photos/seed/${profile.id}/200/200`,
+              impactScore: profile.impact_score || 0
+            };
+            
+            onLogin(loggedUser);
+            addToast(`Heureux de vous revoir, ${profile.pseudonym}.`, "success");
+            navigate('/feed');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Erreur auth:", err);
+      }
+    }
+
+    // 2. LOGIQUE DE SECOURS / DÉMO (Gardien ou Comptes Spéciaux)
+    if (lowerEmail === 'cerclecitoyenci@gmail.com' && password === 'sagesse225') {
       setTimeout(() => {
         onLogin({
           id: GUARDIAN_UUID,
-          name: 'Kouassi G. Ouréga',
+          name: 'Le Gardien',
           pseudonym: 'Gardien',
-          bio: 'Fondateur du Cercle V4. Garant de la cohésion et de la souveraineté numérique.',
+          bio: 'Garant de la cohésion et de la souveraineté numérique du Cercle.',
           role: Role.SUPER_ADMIN,
           category: UserCategory.CITIZEN,
-          interests: ['Souveraineté', 'Gouvernance', 'Impact'],
+          interests: ['Souveraineté', 'Gouvernance'],
           avatar: 'https://picsum.photos/seed/admin/200/200',
           impactScore: 19740
         });
-        addToast("Bienvenue, Gardien. La cité est stable.", "success");
+        addToast("Bienvenue, Gardien. La cité est sous votre veille.", "success");
         navigate('/feed');
       }, 1000);
     } else {
+      // Échec final
       setTimeout(() => {
         addToast("ACCÈS REFUSÉ - VÉRIFIEZ VOS CODES", "error");
         setLoading(false);
@@ -197,9 +243,11 @@ const LandingPage = ({ onLogin }: { onLogin: (user: User) => void }) => {
       <section className="bg-gray-950 text-white py-24 px-6 text-center border-b border-white/5">
          <h2 className="text-4xl font-serif font-bold mb-8">Penser. Relier. Agir.</h2>
          <p className="text-gray-400 mb-12 max-w-xl mx-auto font-medium">Le destin de notre Nation est entre les mains de ses citoyens conscients.</p>
-         <Link to="/manifesto" className="text-blue-400 font-black text-[10px] uppercase tracking-[0.4em] hover:text-blue-300 transition-all flex items-center justify-center gap-2">
-            Consulter le Manifeste <ArrowRight size={14} />
-         </Link>
+         <div className="flex flex-col md:flex-row justify-center gap-8 items-center">
+           <Link to="/manifesto" className="text-blue-400 font-black text-[10px] uppercase tracking-[0.4em] hover:text-blue-300 transition-all flex items-center justify-center gap-2">
+              Consulter le Manifeste <ArrowRight size={14} />
+           </Link>
+         </div>
       </section>
       
       <Footer />
