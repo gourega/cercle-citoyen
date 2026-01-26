@@ -173,7 +173,12 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
                       <h1 className="text-4xl font-serif font-bold text-gray-900 mb-1">{profile.name}</h1>
                       {isGuardian && <ShieldCheck size={24} className="text-amber-600" />}
                     </div>
-                    <p className="text-gray-400 font-bold flex items-center justify-center md:justify-start gap-2 mb-4"><AtSign size={16} /> {profile.pseudonym}</p>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
+                      <p className="text-gray-400 font-bold flex items-center gap-2"><AtSign size={16} /> {profile.pseudonym}</p>
+                      <div className={`px-4 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm ${isGuardian ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                        <Zap size={12} fill="currentColor" /> {impactScoreValue.toLocaleString()} XP
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
