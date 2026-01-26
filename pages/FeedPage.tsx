@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ThumbsUp, Lightbulb, Loader2, Send, Sparkles, 
@@ -9,13 +10,14 @@ import {
   Menu, X, Plus, MoreVertical, Map as MapIcon, Rocket, 
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
-  Image as ImageIcon, Zap, BookText, Waves, Square, BarChart2, Users, Search as SearchIcon, 
+  ImageIcon, Zap, BookText, Waves, Square, BarChart2, Users, Search as SearchIcon, 
   Filter, Bell, Heart, Flame, PenLine, Award, MessageSquare, Scale, Database
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment, CitizenNotification } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { MOCK_POSTS, ADMIN_ID } from '../lib/mocks.ts';
 import { useToast } from '../ToastContext.tsx';
+import { getGriotReading, decode, decodeAudioData } from '../lib/gemini.ts';
 import Logo from '../Logo.tsx';
 import Footer from '../components/Footer.tsx';
 import NotificationDrawer from '../components/NotificationDrawer.tsx';
@@ -66,7 +68,7 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string; acti
 );
 
 const VisionStory: React.FC<{ user: any }> = ({ user }) => (
-  <div className="flex flex-col items-center gap-2 shrink-0 group cursor-pointer">
+  <Link to={`/profile/${user.id}`} className="flex flex-col items-center gap-2 shrink-0 group cursor-pointer">
     <div className="relative p-1 rounded-[1.8rem] bg-gradient-to-tr from-amber-400 via-rose-500 to-blue-500 group-hover:scale-105 transition-transform">
       <div className="p-0.5 bg-white rounded-[1.6rem]">
         <img src={user.avatar_url || user.avatar} className="w-16 h-16 rounded-[1.5rem] object-cover" alt="" />
@@ -78,7 +80,7 @@ const VisionStory: React.FC<{ user: any }> = ({ user }) => (
       )}
     </div>
     <span className="text-[9px] font-black uppercase text-gray-500 truncate w-16 text-center">{user.pseudonym}</span>
-  </div>
+  </Link>
 );
 
 const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () => void }> = ({ user, onClose, onSuccess }) => {
@@ -211,6 +213,7 @@ const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () =>
 const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }> = ({ post, currentUser, onUpdate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [author, setAuthor] = useState<any>({ name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' });
+  const audioContextRef = useRef<AudioContext | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -246,52 +249,51 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
     }
   };
 
-  /**
-   * Utilisation de la Web Speech API pour une fiabilité maximale.
-   * Supprime la dépendance à l'API Gemini TTS pour l'écoute instantanée.
-   */
-  const playAudioNative = () => {
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-      return;
-    }
-
-    if (!window.speechSynthesis) {
-      addToast("Votre navigateur ne supporte pas la voix du Griot.", "error");
-      return;
-    }
-
+  const playAudio = async () => {
+    if (isPlaying) return;
     setIsPlaying(true);
-    // Nettoyer le contenu pour la lecture (retrait des Markdown simples)
-    const cleanText = post.content.replace(/\*|_/g, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'fr-FR';
-    utterance.pitch = 0.85; // Ton un peu plus grave pour l'effet sagesse
-    utterance.rate = 0.9;  // Débit plus posé
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      }
+      
+      // Assurer que le contexte est actif (politique navigateur)
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
 
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => {
+      const audioData = await getGriotReading(post.content);
+      if (audioData) {
+        const bytes = decode(audioData);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current, 24000, 1);
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContextRef.current.destination);
+        source.onended = () => setIsPlaying(false);
+        source.start(0);
+      } else { 
+        setIsPlaying(false);
+        addToast("Impossible de charger la voix du Griot.", "error");
+      }
+    } catch (e) { 
       setIsPlaying(false);
-      addToast("Erreur de narration native.", "error");
-    };
-
-    window.speechSynthesis.speak(utterance);
+      addToast("Erreur lors de la lecture audio.", "error");
+    }
   };
 
   return (
     <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm mb-6 hover:shadow-md transition-all">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <img src={author.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm" alt="" />
+        <Link to={`/profile/${post.author_id}`} className="flex items-center gap-3 group/author">
+          <img src={author.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm group-hover/author:ring-2 ring-blue-100 transition-all" alt="" />
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-bold text-gray-900 text-sm">{author.name}</h4>
+              <h4 className="font-bold text-gray-900 text-sm group-hover/author:text-blue-600 transition-colors">{author.name}</h4>
               {post.is_majestic && <Crown className="w-3 h-3 text-amber-500" />}
             </div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getRelativeTime(post.created_at)} • {post.circle_type}</p>
           </div>
-        </div>
+        </Link>
         <button className="p-2 text-gray-300 hover:text-gray-900 transition-colors"><MoreVertical size={16} /></button>
       </div>
       <div className="mb-4 text-[15px] leading-relaxed text-gray-700">{formatContent(post.content)}</div>
@@ -301,7 +303,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
           <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 transition-colors text-[10px] font-black uppercase"><ThumbsUp size={16} /> {post.reactions.useful}</button>
           <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-gray-400 hover:text-amber-600 transition-colors text-[10px] font-black uppercase"><Lightbulb size={16} /> {post.reactions.relevant}</button>
           <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-gray-400 hover:text-rose-600 transition-colors text-[10px] font-black uppercase"><Heart size={16} /> {post.reactions.inspiring}</button>
-          <button onClick={playAudioNative} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse font-black' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Sagesse en cours...' : 'Écouter'}</button>
+          <button onClick={playAudio} disabled={isPlaying} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Lecture...' : 'Écouter'}</button>
         </div>
         <button className="text-gray-400 hover:text-gray-900 transition-colors"><Share2 size={16} /></button>
       </div>
