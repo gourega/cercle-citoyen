@@ -4,7 +4,7 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 // Récupération dynamique pour éviter le remplacement statique au build
 const getAI = () => {
-  const key = (window as any).process?.env?.['API_KEY'] || (process as any)["env"]?.['API_KEY'];
+  const key = (window as any).process?.env?.['API_KEY'] || (process as any)["env"]?.['API_KEY'] || process.env.API_KEY;
   if (!key) return null;
   return new GoogleGenAI({ apiKey: key });
 };
@@ -50,7 +50,7 @@ export async function analyzePollutionImage(base64Image: string) {
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
-          { text: "Tu es le système expert 'Sentinelle Verte'. Analyse cette image de dégradation urbaine. ATTENTION : Si l'image est un gros plan (macro) sur un caniveau, des ordures ou des eaux usées, c'est VALIDÉ. N'échoue pas par manque de contexte géographique. Si tu ne vois pas la rue ou la ville, utilise 'Localité à préciser' et 'Quartier à identifier'. Identifie précisément la nuisance (ex: Caniveau bouché par des déchets plastiques, stagnation d'eaux usées, épave encombrante). Propose un plan d'action de 3 points. Réponds UNIQUEMENT en JSON valide." }
+          { text: "Tu es le système expert 'Sentinelle Verte'. Analyse cette image de dégradation urbaine. ATTENTION : Si l'image est un gros plan (macro) on un caniveau, des ordures ou des eaux usées, c'est VALIDÉ. N'échoue pas par manque de contexte géographique. Si tu ne vois pas la rue ou la ville, utilise 'Localité à préciser' et 'Quartier à identifier'. Identifie précisément la nuisance (ex: Caniveau bouché par des déchets plastiques, stagnation d'eaux usées, épave encombrante). Propose un plan d'action de 3 points. Réponds UNIQUEMENT en JSON valide." }
         ]
       },
       config: { 
@@ -110,22 +110,43 @@ export async function generateCleanVision(base64Image: string) {
   } catch (e) { return null; }
 }
 
-export async function getGriotReading(content: string) {
-  try {
-    const ai = getAI();
-    if (!ai) return null;
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: `Lis avec sagesse : ${content}`,
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+/**
+ * Lit un contenu textuel avec une voix de Griot.
+ * Ajoute une logique de retry pour pallier l'instabilité du modèle Preview.
+ */
+export async function getGriotReading(content: string, retryCount: number = 2) {
+  const ai = getAI();
+  if (!ai) return null;
+
+  for (let i = 0; i <= retryCount; i++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text: `Lis avec la sagesse d'un ancien conteur africain : ${content.slice(0, 1000)}` }] }],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: { 
+              prebuiltVoiceConfig: { voiceName: 'Kore' } 
+            },
+          },
         },
-      },
-    });
-    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  } catch (e) { return null; }
+      });
+
+      const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (audioData) return audioData;
+      
+      // Si on n'a pas de data mais pas d'erreur jetée, on attend un peu avant de re-tenter
+      if (i < retryCount) await new Promise(r => setTimeout(r, 1000));
+
+    } catch (e) {
+      console.warn(`Tentative TTS ${i + 1} échouée:`, e);
+      if (i === retryCount) return null;
+      // Pause exponentielle légère
+      await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  return null;
 }
 
 export async function summarizeCircleDiscussions(circleType: string, posts: string[]) {
