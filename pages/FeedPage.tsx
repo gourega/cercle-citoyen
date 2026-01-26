@@ -82,7 +82,6 @@ const VisionStory: React.FC<{ user: any }> = ({ user }) => (
   </div>
 );
 
-// --- COMPOSANT : PUBLISH MODAL ---
 const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () => void }> = ({ user, onClose, onSuccess }) => {
   const [content, setContent] = useState('');
   const [circle, setCircle] = useState<CircleType>(CircleType.URBAN);
@@ -101,7 +100,6 @@ const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () =>
     const selectedText = content.substring(start, end);
     const newContent = content.substring(0, start) + before + selectedText + after + content.substring(end);
     setContent(newContent);
-    // Repositionner le focus
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + before.length, end + before.length);
@@ -199,7 +197,7 @@ const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () =>
             <button 
               onClick={handlePublish}
               disabled={loading || !content.trim()}
-              className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-3"
+              className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
             >
               {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={16} />}
               Sceller l'Onde
@@ -215,6 +213,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
   const [isPlaying, setIsPlaying] = useState(false);
   const [author, setAuthor] = useState<any>({ name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' });
   const audioContextRef = useRef<AudioContext | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -226,22 +225,59 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
     fetchAuthor();
   }, [post.author_id]);
 
+  const handleReaction = async (type: keyof Post['reactions']) => {
+    if (!isRealSupabase || !supabase) {
+      addToast("Mode démo : Réaction enregistrée.", "info");
+      return;
+    }
+    
+    try {
+      const newReactions = { 
+        ...post.reactions, 
+        [type]: (post.reactions[type] || 0) + 1 
+      };
+      const { error } = await supabase
+        .from('posts')
+        .update({ reactions: newReactions })
+        .eq('id', post.id);
+        
+      if (error) throw error;
+      onUpdate();
+    } catch (e) {
+      addToast("Erreur de vote.", "error");
+    }
+  };
+
   const playAudio = async () => {
     if (isPlaying) return;
     setIsPlaying(true);
     try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      }
+      
+      // Assurer que le contexte est actif (politique navigateur)
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
       const audioData = await getGriotReading(post.content);
       if (audioData) {
-        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         const bytes = decode(audioData);
-        const buffer = await decodeAudioData(bytes, audioContextRef.current);
+        const buffer = await decodeAudioData(bytes, audioContextRef.current, 24000, 1);
         const source = audioContextRef.current.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContextRef.current.destination);
         source.onended = () => setIsPlaying(false);
         source.start(0);
-      } else { setIsPlaying(false); }
-    } catch (e) { setIsPlaying(false); }
+      } else { 
+        setIsPlaying(false);
+        addToast("Impossible de charger la voix du Griot.", "error");
+      }
+    } catch (e) { 
+      setIsPlaying(false);
+      addToast("Erreur lors de la lecture audio.", "error");
+    }
   };
 
   return (
@@ -263,8 +299,9 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
       {post.image_url && <div className="mb-4 rounded-2xl overflow-hidden border border-gray-50"><img src={post.image_url} className="w-full object-cover max-h-96" alt="" /></div>}
       <div className="flex items-center justify-between pt-4 border-t border-gray-50">
         <div className="flex items-center gap-6">
-          <button className="flex items-center gap-2 text-gray-400 hover:text-blue-600 transition-colors text-[10px] font-black uppercase"><ThumbsUp size={16} /> {post.reactions.useful}</button>
-          <button className="flex items-center gap-2 text-gray-400 hover:text-amber-600 transition-colors text-[10px] font-black uppercase"><Lightbulb size={16} /> {post.reactions.relevant}</button>
+          <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 transition-colors text-[10px] font-black uppercase"><ThumbsUp size={16} /> {post.reactions.useful}</button>
+          <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-gray-400 hover:text-amber-600 transition-colors text-[10px] font-black uppercase"><Lightbulb size={16} /> {post.reactions.relevant}</button>
+          <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-gray-400 hover:text-rose-600 transition-colors text-[10px] font-black uppercase"><Heart size={16} /> {post.reactions.inspiring}</button>
           <button onClick={playAudio} disabled={isPlaying} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Lecture...' : 'Écouter'}</button>
         </div>
         <button className="text-gray-400 hover:text-gray-900 transition-colors"><Share2 size={16} /></button>
@@ -349,7 +386,6 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
 
       {isNotifOpen && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={markNotifRead} />}
       
-      {/* AFFICHAGE DE LA MODALE SI OUVERTE */}
       {isPublishModalOpen && <PublishModal user={user} onClose={() => setIsPublishModalOpen(false)} onSuccess={fetchData} />}
 
       <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12 flex flex-col lg:flex-row gap-8">
