@@ -82,6 +82,135 @@ const VisionStory: React.FC<{ user: any }> = ({ user }) => (
   </div>
 );
 
+// --- COMPOSANT : PUBLISH MODAL ---
+const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () => void }> = ({ user, onClose, onSuccess }) => {
+  const [content, setContent] = useState('');
+  const [circle, setCircle] = useState<CircleType>(CircleType.URBAN);
+  const [loading, setLoading] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
+  const { addToast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const emojis = ["🇨🇮", "🤝", "✊🏾", "✨", "🛡️", "🔥", "🌍", "🏗️", "🌱", "💡", "📢", "🗳️"];
+
+  const insertText = (before: string, after: string = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const newContent = content.substring(0, start) + before + selectedText + after + content.substring(end);
+    setContent(newContent);
+    // Repositionner le focus
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }, 10);
+  };
+
+  const handlePublish = async () => {
+    if (!content.trim()) return;
+    setLoading(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').insert([{
+          author_id: user.id,
+          circle_type: circle,
+          content: content,
+          reactions: { useful: 0, relevant: 0, inspiring: 0 }
+        }]);
+        if (error) throw error;
+        addToast("Onde diffusée avec succès !", "success");
+        onSuccess();
+        onClose();
+      }
+    } catch (e) {
+      addToast("Erreur lors de la diffusion.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xl animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <PenLine size={20} />
+             </div>
+             <div>
+                <h3 className="font-serif font-bold text-gray-900">Émettre une Onde</h3>
+                <p className="text-[8px] font-black uppercase tracking-widest text-blue-500">Dialogue & Action</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-3 text-gray-300 hover:text-gray-900 hover:bg-white rounded-2xl transition-all"><X size={24}/></button>
+        </div>
+
+        <div className="p-8 space-y-6 overflow-y-auto no-scrollbar flex-1">
+          <div className="flex items-center gap-4 mb-4">
+             <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm" alt=""/>
+             <div>
+                <p className="text-sm font-bold text-gray-900">{user.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                   <select 
+                     value={circle} 
+                     onChange={e => setCircle(e.target.value as CircleType)}
+                     className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                   >
+                     {Object.values(CircleType).map(t => <option key={t} value={t}>{t}</option>)}
+                   </select>
+                </div>
+             </div>
+          </div>
+
+          <div className="relative group">
+            <textarea 
+              ref={textareaRef}
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              placeholder="Exprimez votre vision pour la Nation..."
+              className="w-full h-48 bg-[#fdfdfd] p-6 rounded-[2rem] text-lg text-gray-800 outline-none border-2 border-transparent focus:border-blue-100 focus:bg-white transition-all resize-none shadow-inner"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-50">
+            <div className="flex items-center gap-2">
+              <button onClick={() => insertText('**', '**')} className="p-3 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all" title="Gras"><Bold size={20}/></button>
+              <button onClick={() => insertText('*', '*')} className="p-3 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all" title="Italique"><Italic size={20}/></button>
+              <button onClick={() => insertText('\n- ')} className="p-3 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all" title="Liste"><List size={20}/></button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowEmojis(!showEmojis)}
+                  className={`p-3 rounded-xl transition-all ${showEmojis ? 'bg-amber-100 text-amber-600' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}
+                >
+                  <Smile size={20}/>
+                </button>
+                {showEmojis && (
+                  <div className="absolute bottom-full left-0 mb-4 bg-white p-4 rounded-3xl shadow-2xl border border-gray-100 grid grid-cols-4 gap-2 animate-in slide-in-from-bottom-2 duration-200">
+                    {emojis.map(e => (
+                      <button key={e} onClick={() => { insertText(e); setShowEmojis(false); }} className="text-xl p-2 hover:bg-gray-50 rounded-xl transition-all">{e}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button 
+              onClick={handlePublish}
+              disabled={loading || !content.trim()}
+              className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-3"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={16} />}
+              Sceller l'Onde
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }> = ({ post, currentUser, onUpdate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [author, setAuthor] = useState<any>({ name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' });
@@ -219,6 +348,9 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
       </header>
 
       {isNotifOpen && <NotificationDrawer notifications={notifications} onClose={() => setIsNotifOpen(false)} onMarkRead={markNotifRead} />}
+      
+      {/* AFFICHAGE DE LA MODALE SI OUVERTE */}
+      {isPublishModalOpen && <PublishModal user={user} onClose={() => setIsPublishModalOpen(false)} onSuccess={fetchData} />}
 
       <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12 flex flex-col lg:flex-row gap-8">
         <aside className="hidden lg:block lg:w-64 space-y-6 sticky top-28 self-start">
