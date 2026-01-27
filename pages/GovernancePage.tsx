@@ -32,7 +32,10 @@ import {
   ListOrdered,
   Lightbulb,
   Info,
-  Type
+  Type,
+  Bold,
+  Italic,
+  List as ListIcon
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { Edict, User } from '../types.ts';
@@ -201,16 +204,18 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
     }
   };
 
-  const insertTemplate = (template: string) => {
+  const applyFormat = (prefix: string, suffix: string = "") => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newText = description.substring(0, start) + template + description.substring(end);
+    const selectedText = description.substring(start, end);
+    const newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
     setDescription(newText);
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + template.length, start + template.length);
+      const newPos = start + prefix.length + selectedText.length + suffix.length;
+      textarea.setSelectionRange(newPos, newPos);
     }, 10);
   };
 
@@ -293,17 +298,27 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
                   className="w-full bg-gray-50 p-6 rounded-2xl text-xl font-serif font-bold outline-none border-2 border-transparent focus:border-amber-100 focus:bg-white transition-all shadow-inner"
                 />
 
-                <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 rounded-2xl">
-                   <button onClick={() => insertTemplate("\nOBJET : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><Type size={14} /> Objet</button>
-                   <button onClick={() => insertTemplate("\nARTICLE 1 : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><ListOrdered size={14} /> Article</button>
-                   <button onClick={() => insertTemplate("\nIMPACT ATTENDU : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><Lightbulb size={14} /> Impact</button>
+                <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                   <div className="flex items-center gap-1">
+                      <button onClick={() => applyFormat("**", "**")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Gras"><Bold size={16} /></button>
+                      <button onClick={() => applyFormat("*", "*")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Italique"><Italic size={16} /></button>
+                      <button onClick={() => applyFormat("\n- ")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Liste"><ListIcon size={16} /></button>
+                   </div>
+                   
+                   <div className="h-6 w-px bg-gray-200 mx-2 hidden sm:block"></div>
+
+                   <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                      <button onClick={() => applyFormat("\nOBJET : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-orange-600 transition-all flex items-center gap-2 shadow-sm"><Type size={14} /> Objet</button>
+                      <button onClick={() => applyFormat("\nARTICLE 1 : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-orange-600 transition-all flex items-center gap-2 shadow-sm"><ListOrdered size={14} /> Article</button>
+                      <button onClick={() => applyFormat("\nIMPACT ATTENDU : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-orange-600 transition-all flex items-center gap-2 shadow-sm"><Lightbulb size={14} /> Impact</button>
+                   </div>
                 </div>
 
                 <textarea 
                   ref={textareaRef}
                   value={description} 
                   onChange={e => setDescription(e.target.value)} 
-                  placeholder="Rédigez ici le corps de votre édit. Utilisez les outils ci-dessus pour structurer votre proposition..." 
+                  placeholder="Rédigez ici le corps de votre édit. Utilisez les outils ci-dessus pour structurer et mettre en forme votre proposition..." 
                   className="w-full h-96 bg-[#fdfaf5] p-8 rounded-[2.5rem] text-lg outline-none border-2 border-transparent focus:border-amber-100 focus:bg-white transition-all shadow-inner resize-none" 
                 />
                 
