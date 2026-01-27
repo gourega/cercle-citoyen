@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ShieldCheck, Lock, FileText, Mail, Phone, Globe, Scale } from 'lucide-react';
 import Logo from '../Logo';
@@ -59,7 +60,7 @@ const LegalPage: React.FC = () => {
               <p>Tout utilisateur s'engage à ne pas diffuser de contenus haineux, discriminatoires ou incitant à la violence. L'intelligence artificielle "L'Esprit du Gardien" assure une médiation automatique. En cas de non-respect répété, l'accès au Cercle pourra être suspendu.</p>
               
               <h4 className="text-gray-900 font-bold mt-8 mb-4">2. Propriété des Idées</h4>
-              <p>Les idées partagées dans la "Banque des Idées" restent la propriété intellectuelle de leurs auteurs, mais leur partage sur le Cercle implique une volonté de collaboration pour le bien commun.</p>
+              <p>Les idées partagées dans la "Banque des Idées" restent la propriété intellectuelle de leurs auteurs, mais leur partage on le Cercle implique une volonté de collaboration pour le bien commun.</p>
               
               <h4 className="text-gray-900 font-bold mt-8 mb-4">3. Vérification des Faits</h4>
               <p>Le Cercle lutte activement contre la désinformation. Les publications identifiées comme fausses par nos outils de Fact-Check seront signalées ou supprimées.</p>
@@ -75,9 +76,7 @@ const LegalPage: React.FC = () => {
               <p>Nous collectons uniquement les données nécessaires à votre identification citoyenne (nom, email, pseudonyme) et à la mesure de votre impact (scores, badges). Nous ne collectons aucune donnée de navigation à des fins publicitaires.</p>
               
               <h4 className="text-gray-900 font-bold mt-8 mb-4">2. Non-Revente des Données</h4>
-              <p className="p-6 bg-blue-50 rounded-2xl border border-blue-100 font-bold text-blue-900 italic">
-                Engagement Souverain : Le Cercle Citoyen s'interdid formellement de vendre, louer ou céder vos données personnelles à des tiers, qu'ils soient commerciaux ou politiques.
-              </p>
+              <p>Le Cercle Citoyen s'interdit formellement de vendre, louer ou céder vos données personnelles à des tiers, qu'ils soient commerciaux ou politiques.</p>
               
               <h4 className="text-gray-900 font-bold mt-8 mb-4">3. Sécurité</h4>
               <p>Vos données sont sécurisées via l'infrastructure Supabase avec un chiffrement de bout en bout pour vos accès.</p>
@@ -99,7 +98,7 @@ const LegalPage: React.FC = () => {
                   <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
                     <Mail className="w-5 h-5 text-blue-600 mb-3" />
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Contact Email</h4>
-                    <p className="font-bold text-gray-900">cerclecitoyenci@gmail.com</p>
+                    <p className="font-bold text-gray-900">teletechnologyci@gmail.com</p>
                   </div>
                   <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
                     <Phone className="w-5 h-5 text-emerald-600 mb-3" />

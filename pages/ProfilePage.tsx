@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { User, Role } from '../types.ts';
 import { 
@@ -11,6 +12,46 @@ import {
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { useToast } from '../ToastContext.tsx';
 import { ADMIN_ID } from '../lib/mocks.ts';
+
+const compressImage = (file: File, maxWidth: number = 400, maxHeight: number = 400, quality: number = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Impossible d'obtenir le contexte canvas"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+};
 
 const CitizenAvatar: React.FC<{ url?: string; name: string; size?: string; className?: string; isEditing?: boolean; onUploadClick?: () => void; isGuardian?: boolean }> = ({ url, name, size = "w-40 h-40", className = "", isEditing, onUploadClick, isGuardian }) => {
   const [error, setError] = useState(false);
@@ -100,13 +141,19 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     setSyncing(true);
     try {
       const updates = { name: editData.name, pseudonym: editData.pseudonym, bio: editData.bio, avatar_url: editData.avatar };
-      if (isRealSupabase && supabase) await supabase.from('profiles').update(updates).eq('id', profile.id);
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
+        if (error) throw error;
+      }
       const updatedProfile = { ...profile, ...updates, avatar: editData.avatar };
       setProfile(updatedProfile);
       if (profile.id === currentUser.id && onProfileUpdate) onProfileUpdate(updatedProfile);
       addToast("Profil mis à jour !", "success");
       setIsEditing(false);
-    } catch (e: any) { addToast("Erreur de sauvegarde", "error"); } finally { setSyncing(false); }
+    } catch (e: any) { 
+      console.error(e);
+      addToast("Erreur de sauvegarde. L'image est peut-être encore trop lourde.", "error"); 
+    } finally { setSyncing(false); }
   };
 
   const handleUpdatePassword = async () => {
@@ -124,6 +171,21 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
         setShowPwdFields(false);
       }
     } catch (e) { addToast("Échec.", "error"); } finally { setPwdLoading(false); }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        addToast("Compression de l'image...", "info");
+        const compressedBase64 = await compressImage(file, 400, 400, 0.7);
+        setEditData({ ...editData, avatar: compressedBase64 });
+        addToast("Image prête.", "success");
+      } catch (err) {
+        console.error(err);
+        addToast("Échec de la compression.", "error");
+      }
+    }
   };
 
   useEffect(() => { fetchProfile(); }, [id, currentUser.id]);
@@ -144,14 +206,13 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
       </div>
 
       <div className={`bg-white rounded-[4rem] border ${isGuardian ? 'border-amber-200 shadow-2xl shadow-amber-50/50' : 'border-gray-100 shadow-sm'} overflow-hidden relative`}>
-        <input type="file" ref={fileInputRef} onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setEditData({ ...editData, avatar: reader.result as string });
-            reader.readAsDataURL(file);
-          }
-        }} className="hidden" accept="image/*" />
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          className="hidden" 
+          accept="image/*" 
+        />
         
         <div className={`h-64 relative overflow-hidden ${isGuardian ? 'bg-gradient-to-r from-amber-600 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/shattered.png')]"></div>

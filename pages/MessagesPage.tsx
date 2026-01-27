@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Send, Search, ChevronLeft, MoreVertical, User as UserIcon, Loader2, Sparkles, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';

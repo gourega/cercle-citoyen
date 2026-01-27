@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Volume2, ChevronLeft, Fingerprint, Crown, X, Sparkles, Loader2 } from 'lucide-react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { User as UserType, Message } from '../types';
-// Fix: Use correct function names exported from lib/gemini.ts
-import { mediateChat, getConsensusSummary, getGriotReading, decode, decodeAudioData } from '../lib/gemini';
+import { mediateChat, getConsensusSummary, speakAsGriot } from '../lib/gemini';
 
 const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
   const [messages, setMessages] = useState<Message[]>([
@@ -22,7 +22,6 @@ const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
   const [isMediating, setIsMediating] = useState(false);
   const [consensus, setConsensus] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,28 +61,14 @@ const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
     } catch (e) { console.error(e); } finally { setIsMediating(false); }
   };
 
-  const playAudio = async (text: string) => {
-    try {
-      const base64Audio = await getGriotReading(text);
-      if (base64Audio) {
-        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        // Fix: Use correct function names exported from lib/gemini.ts
-        const bytes = decode(base64Audio);
-        const buffer = await decodeAudioData(bytes, audioContextRef.current);
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.start(0);
-      }
-    } catch (e) { console.error(e); }
+  const playAudio = (text: string) => {
+    speakAsGriot(text);
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] max-w-5xl mx-auto bg-white shadow-2xl rounded-[3rem] my-4 overflow-hidden border border-gray-100 relative">
-      {/* Background Pattern - Super Low Opacity for Readability */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/woven.png')] z-0"></div>
 
-      {/* Header */}
       <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md relative z-20">
         <div className="flex items-center gap-4">
           <Link to="/feed" className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-amber-600"><ChevronLeft /></Link>
@@ -109,7 +94,6 @@ const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
         </button>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-12 relative z-10">
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}>
@@ -157,7 +141,6 @@ const ChatPage: React.FC<{ user: UserType }> = ({ user }) => {
         <div ref={scrollRef} />
       </div>
 
-      {/* Input */}
       <div className="p-8 border-t border-gray-100 bg-white relative z-20">
         <div className="flex gap-4 items-center bg-gray-50 p-2.5 rounded-[2rem] border border-gray-100 focus-within:border-blue-200 focus-within:bg-white focus-within:shadow-2xl transition-all">
           <input 

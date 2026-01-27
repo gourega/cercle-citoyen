@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+// @ts-ignore
 import { useNavigate } from 'react-router-dom';
 import { 
   Camera, 
@@ -389,7 +390,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
           </div>
           <div className="bg-white p-12 md:p-16 rounded-[4.5rem] shadow-sm space-y-12 flex flex-col border border-gray-100 relative">
             <div className="absolute top-10 right-10"><div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 shadow-inner"><ShieldCheck size={32} /></div></div>
-            <div><label className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.3em] mb-3 block opacity-60">Nature de l'Anomalie</label><input value={analysis?.nature} onChange={(e) => setAnalysis({...analysis, nature: e.target.value})} className="text-4xl font-serif font-bold text-gray-950 bg-transparent outline-none w-full border-b-2 border-emerald-100 pb-3 focus:border-emerald-500 transition-all" /></div>
+            <div><label className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.3em] mb-3 block opacity-60">Nature de l'Anomalie</label><input value={analysis?.nature} onChange={(e) => setAnalysis({...analysis, nature: e.target.value})} className="text-4xl font-serif font-bold text-gray-900 bg-transparent outline-none w-full border-b-2 border-emerald-100 pb-3 focus:border-emerald-500 transition-all" /></div>
             <div className="grid grid-cols-2 gap-6">
               <div><label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Ville</label><input value={analysis?.city} onChange={(e) => setAnalysis({...analysis, city: e.target.value})} className="w-full bg-gray-50 p-4 rounded-xl font-bold outline-none border border-gray-100 focus:border-emerald-500 focus:bg-white transition-all" /></div>
               <div><label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Quartier</label><input value={analysis?.sector} onChange={(e) => setAnalysis({...analysis, sector: e.target.value})} className="w-full bg-gray-50 p-4 rounded-xl font-bold outline-none border border-gray-100 focus:border-emerald-500 focus:bg-white transition-all" /></div>
@@ -406,7 +407,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 text-center animate-in zoom-in duration-500">
          <div className="w-32 h-32 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-8 shadow-2xl shadow-emerald-50 animate-bounce"><CheckCircle2 size={64} /></div>
-         <h2 className="text-4xl font-serif font-bold text-gray-950 mb-4">Signalement Scellé</h2>
+         <h2 className="text-4xl font-serif font-bold text-gray-900 mb-4">Signalement Scellé</h2>
          <p className="text-gray-500 max-w-sm mx-auto text-lg mb-12">Votre onde souveraine a été diffusée et l'empreinte territoriale est désormais visible par tous.</p>
          <button onClick={() => { setView('hub'); fetchMyReports(); }} className="px-12 py-6 bg-gray-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl">Retour aux Archives</button>
       </div>
@@ -453,7 +454,7 @@ const SentinelPage: React.FC<{ user: User }> = ({ user }) => {
                     </div>
                     <div className="p-10">
                        <div className="flex items-center gap-3 mb-2"><MapPin size={14} className="text-blue-500" /><p className="text-[11px] font-black uppercase text-blue-500 tracking-[0.25em]">{r.sector}</p></div>
-                       <h4 className="font-serif font-bold text-3xl text-gray-950 mb-4">{r.city}</h4>
+                       <h4 className="font-serif font-bold text-3xl text-gray-900 mb-4">{r.city}</h4>
                        <p className="text-gray-500 text-sm line-clamp-3 leading-relaxed font-medium mb-8">"{r.description}"</p>
                        <div className="flex justify-between items-center pt-8 border-t border-gray-50">
                           <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">Scellé</span>

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { 
   Gavel, 

@@ -1,5 +1,6 @@
 
 import React from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { CIRCLES_CONFIG } from '../constants';
 import { ChevronRight, Sparkles, Users, ArrowUpRight } from 'lucide-react';

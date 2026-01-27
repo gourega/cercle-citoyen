@@ -1,5 +1,6 @@
 
 import React from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { Mail, Phone, ShieldCheck } from 'lucide-react';
 import Logo from '../Logo';
@@ -24,17 +25,17 @@ const Footer: React.FC = () => {
               <span className="w-4 h-px bg-blue-600"></span> CONTACT & SUPPORT
             </h3>
             <div className="space-y-4">
-              <a href="mailto:cerclecitoyenci@gmail.com" className="flex items-center gap-3 group">
+              <a href="mailto:support@citoyen.ci" className="flex items-center gap-3 group">
                 <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                   <Mail size={16} />
                 </div>
-                <span className="text-xs font-bold text-gray-500 group-hover:text-gray-900 transition-colors">cerclecitoyenci@gmail.com</span>
+                <span className="text-xs font-bold text-gray-500 group-hover:text-gray-900 transition-colors">support@citoyen.ci</span>
               </a>
               <a href="tel:+2252522001239" className="flex items-center gap-3 group">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
                   <Phone size={16} />
                 </div>
-                <span className="text-xs font-bold text-gray-500 group-hover:text-gray-900 transition-colors">+225 2522001239</span>
+                <span className="text-xs font-bold text-gray-500 group-hover:text-gray-900 transition-colors">+225 25 22 00 12 39</span>
               </a>
             </div>
           </div>
@@ -54,7 +55,7 @@ const Footer: React.FC = () => {
 
         </div>
 
-        {/* Ligne de Copyright - Ultra compacte */}
+        {/* Copyright */}
         <div className="pt-8 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
           <div className="flex items-center gap-2 text-blue-600/30">
             <ShieldCheck size={14} />

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { Handshake, Plus, Search, Loader2, Package, Sparkles, Heart, ArrowRight, X, CheckCircle2, ShoppingBag, ChevronLeft, ShieldCheck, Zap } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';

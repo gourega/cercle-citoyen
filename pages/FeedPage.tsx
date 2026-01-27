@@ -17,7 +17,7 @@ import { User, CircleType, Role, Post, Comment, CitizenNotification } from '../t
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { MOCK_POSTS, ADMIN_ID } from '../lib/mocks.ts';
 import { useToast } from '../ToastContext.tsx';
-import { getGriotReading, decode, decodeAudioData } from '../lib/gemini.ts';
+import { speakAsGriot } from '../lib/gemini.ts';
 import Logo from '../Logo.tsx';
 import Footer from '../components/Footer.tsx';
 import NotificationDrawer from '../components/NotificationDrawer.tsx';
@@ -213,7 +213,6 @@ const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () =>
 const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }> = ({ post, currentUser, onUpdate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [author, setAuthor] = useState<any>({ name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' });
-  const audioContextRef = useRef<AudioContext | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -249,36 +248,11 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
     }
   };
 
-  const playAudio = async () => {
-    if (isPlaying) return;
+  const handlePlayAudio = () => {
     setIsPlaying(true);
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      }
-      
-      // Assurer que le contexte est actif (politique navigateur)
-      if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
-
-      const audioData = await getGriotReading(post.content);
-      if (audioData) {
-        const bytes = decode(audioData);
-        const buffer = await decodeAudioData(bytes, audioContextRef.current, 24000, 1);
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.onended = () => setIsPlaying(false);
-        source.start(0);
-      } else { 
-        setIsPlaying(false);
-        addToast("Impossible de charger la voix du Griot.", "error");
-      }
-    } catch (e) { 
-      setIsPlaying(false);
-      addToast("Erreur lors de la lecture audio.", "error");
-    }
+    speakAsGriot(post.content);
+    // On simule la fin de l'audio pour réinitialiser l'état du bouton (ou on utilise onend si dispo)
+    setTimeout(() => setIsPlaying(false), post.content.length * 80); 
   };
 
   return (
@@ -303,7 +277,7 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
           <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 transition-colors text-[10px] font-black uppercase"><ThumbsUp size={16} /> {post.reactions.useful}</button>
           <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-gray-400 hover:text-amber-600 transition-colors text-[10px] font-black uppercase"><Lightbulb size={16} /> {post.reactions.relevant}</button>
           <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-gray-400 hover:text-rose-600 transition-colors text-[10px] font-black uppercase"><Heart size={16} /> {post.reactions.inspiring}</button>
-          <button onClick={playAudio} disabled={isPlaying} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Lecture...' : 'Écouter'}</button>
+          <button onClick={handlePlayAudio} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Lecture...' : 'Écouter'}</button>
         </div>
         <button className="text-gray-400 hover:text-gray-900 transition-colors"><Share2 size={16} /></button>
       </div>

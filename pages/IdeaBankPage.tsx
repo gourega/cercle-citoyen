@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { Lightbulb, Sparkles, Handshake, Loader2, Plus, Zap, ShieldCheck, X, ChevronLeft, Rocket, MessageSquare, Target } from 'lucide-react';
 import { Idea, CircleType, User } from '../types';
