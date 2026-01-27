@@ -10,7 +10,7 @@ const getAI = () => {
 
 /**
  * Fonction Griot utilisant la synthèse vocale native du navigateur.
- * Plus rapide, gratuite et stable.
+ * Nettoie les balises Markdown pour éviter la lecture des symboles (*, #, etc).
  */
 export function speakAsGriot(content: string) {
   if (!('speechSynthesis' in window)) {
@@ -18,10 +18,19 @@ export function speakAsGriot(content: string) {
     return;
   }
 
+  // Nettoyage du Markdown pour le lecteur vocal
+  // Retire les astérisques, les dièses et les tirets de liste
+  const cleanContent = content
+    .replace(/\*\*(.*?)\*\*/g, '$1') // Retire le gras **
+    .replace(/\*(.*?)\*/g, '$1')     // Retire l'italique *
+    .replace(/#/g, '')               // Retire les dièses
+    .replace(/^- /gm, '')            // Retire les tirets de liste
+    .replace(/\n/g, ' ');            // Remplace les sauts de ligne par des espaces pour plus de fluidité
+
   // Annuler toute lecture en cours
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(content);
+  const utterance = new SpeechSynthesisUtterance(cleanContent);
   utterance.lang = 'fr-FR';
   
   // Ajustements pour donner un ton de "Griot" (plus posé et sage)
