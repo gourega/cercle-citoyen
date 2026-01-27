@@ -351,10 +351,19 @@ const FeedPage: React.FC<{ user: User, onLogout: () => Promise<void> }> = ({ use
                 <Bell size={20} />
                 {notifications.some(n => !n.isRead) && <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full"></span>}
              </button>
-             <Link to="/profile" className="flex items-center gap-3 p-1.5 bg-gray-50 pr-4 rounded-2xl hover:bg-gray-100 transition-all">
-                <img src={user.avatar} className="w-8 h-8 rounded-xl object-cover shadow-sm" alt="" />
-                <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest text-gray-500">{user.pseudonym}</span>
-             </Link>
+             <div className="flex items-center gap-2">
+                <Link to="/profile" className="flex items-center gap-3 p-1.5 bg-gray-50 pr-4 rounded-2xl hover:bg-gray-100 transition-all">
+                   <img src={user.avatar} className="w-8 h-8 rounded-xl object-cover shadow-sm" alt="" />
+                   <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest text-gray-500">{user.pseudonym}</span>
+                </Link>
+                <button 
+                  onClick={onLogout}
+                  className="p-3 bg-gray-50 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"
+                  title="Déconnexion"
+                >
+                  <LogOut size={20} />
+                </button>
+             </div>
           </div>
         </div>
       </header>
