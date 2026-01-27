@@ -14,7 +14,7 @@ import { useToast } from '../ToastContext.tsx';
 import { Role, UserCategory } from '../types.ts';
 
 const REPAIR_SQL = `-- ==========================================
--- SCRIPT DE RESTAURATION TOTALE DU CERCLE
+-- SCRIPT DE RESTAURATION TOTALE DU CERCLE (V5)
 -- ==========================================
 
 -- 1. PROFILS & IDENTITÉS
@@ -32,7 +32,20 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     status TEXT DEFAULT 'active'
 );
 
--- 2. ÉDITS & RÉFÉRENDUMS (RIC)
+-- 2. FIL D'ACTUALITÉ (POSTS)
+CREATE TABLE IF NOT EXISTS public.posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    circle_type TEXT,
+    image_url TEXT,
+    clean_vision_url TEXT,
+    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
+    is_majestic BOOLEAN DEFAULT false
+);
+
+-- 3. ÉDITS & RÉFÉRENDUMS (RIC)
 CREATE TABLE IF NOT EXISTS public.edicts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -47,7 +60,7 @@ CREATE TABLE IF NOT EXISTS public.edicts (
     image_url TEXT
 );
 
--- 3. VITES ET SIGNATURES
+-- 4. VOTES & SIGNATURES
 CREATE TABLE IF NOT EXISTS public.votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -56,28 +69,81 @@ CREATE TABLE IF NOT EXISTS public.votes (
     UNIQUE(user_id, edict_id)
 );
 
--- 4. ROW LEVEL SECURITY (RLS)
+-- 5. BANQUE DES IDÉES
+CREATE TABLE IF NOT EXISTS public.ideas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    circle_type TEXT,
+    vouch_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'spark'
+);
+
+-- 6. MISSIONS & SENTIERS D'IMPACT
+CREATE TABLE IF NOT EXISTS public.quests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    proposer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    circle_type TEXT,
+    difficulty TEXT,
+    reward_xp INTEGER DEFAULT 100,
+    target_goal INTEGER DEFAULT 100,
+    location TEXT,
+    status TEXT DEFAULT 'pending'
+);
+
+-- 7. MESSAGERIE SOUVERAINE
+CREATE TABLE IF NOT EXISTS public.conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    participant_ids UUID[] NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    content TEXT NOT NULL
+);
+
+-- 8. FONCTIONS SPÉCIALES (RPC)
+-- Fonction pour incrémenter les votes d'un RIC
+CREATE OR REPLACE FUNCTION increment_edict_votes(row_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.edicts
+  SET votes_count = votes_count + 1
+  WHERE id = row_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 9. RÉGLAGES DE SÉCURITÉ (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Lecture publique" ON public.profiles;
-CREATE POLICY "Lecture publique" ON public.profiles FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Auto-création" ON public.profiles;
-CREATE POLICY "Auto-création" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-DROP POLICY IF EXISTS "Auto-modification" ON public.profiles;
-CREATE POLICY "Auto-modification" ON public.profiles FOR UPDATE WITH CHECK (auth.uid() = id);
+CREATE POLICY "Lecture publique profiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Modif propre profil" ON public.profiles FOR UPDATE WITH CHECK (auth.uid() = id);
+
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique posts" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Insertion posts auth" ON public.posts FOR INSERT WITH CHECK (auth.uid() = author_id);
 
 ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Lecture RIC" ON public.edicts;
-CREATE POLICY "Lecture RIC" ON public.edicts FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Insertion RIC" ON public.edicts;
-CREATE POLICY "Insertion RIC" ON public.edicts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Lecture publique edicts" ON public.edicts FOR SELECT USING (true);
+CREATE POLICY "Insertion edicts auth" ON public.edicts FOR INSERT WITH CHECK (auth.uid() = proposer_id);
 
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Lecture votes" ON public.votes;
-CREATE POLICY "Lecture votes" ON public.votes FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Insertion votes" ON public.votes;
-CREATE POLICY "Insertion votes" ON public.votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Lecture publique votes" ON public.votes FOR SELECT USING (true);
+CREATE POLICY "Insertion vote unique" ON public.votes FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Fin du script de base
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Acces messages participants" ON public.messages FOR SELECT 
+USING (EXISTS (SELECT 1 FROM public.conversations WHERE id = conversation_id AND auth.uid() = ANY(participant_ids)));
+
+-- Fin du script de Restauration Totale
 `;
 
 const AdminDashboard: React.FC = () => {
@@ -116,7 +182,7 @@ const AdminDashboard: React.FC = () => {
 
   const copySql = () => {
     navigator.clipboard.writeText(REPAIR_SQL);
-    addToast("Script SQL de restauration corrigé et copié !", "success");
+    addToast("Script de Restauration Totale copié !", "success");
   };
 
   const displayCitizens = profiles.filter(p => 
@@ -147,7 +213,7 @@ const AdminDashboard: React.FC = () => {
           {[
             { id: 'stats', label: 'Impact', icon: Zap },
             { id: 'citizens', label: 'Membres', icon: Users },
-            { id: 'sql', label: 'Sagesse SQL', icon: Database },
+            { id: 'sql', label: 'Restauration', icon: Database },
             { id: 'system', label: 'Système', icon: Wifi }
           ].map(tab => (
             <button 
@@ -165,19 +231,20 @@ const AdminDashboard: React.FC = () => {
 
       {activeTab === 'sql' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-           <div className="bg-blue-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
+           <div className="bg-amber-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-10 opacity-10"><Database size={120} /></div>
-              <h3 className="text-3xl font-serif font-bold mb-4">Correctif d'Inscription & RIC</h3>
-              <p className="text-blue-100 max-w-2xl font-medium leading-relaxed mb-8">
-                Ce script réinitialise les tables cruciales (profiles, edicts, votes) avec les bons champs (dont image_url). Exécutez-le dans l'éditeur SQL de Supabase pour débloquer les signalements.
+              <h3 className="text-3xl font-serif font-bold mb-4">Sceau de la Cité : Restauration Totale</h3>
+              <p className="text-amber-50 max-w-2xl font-medium leading-relaxed mb-8">
+                Ce script est indispensable. Il crée toutes les tables manquantes (posts, edicts, ideas, messages) et installe la fonction de vote (RPC). 
+                Exécutez-le dans l'éditeur SQL de Supabase pour débloquer toutes les fonctionnalités.
               </p>
-              <button onClick={copySql} className="bg-white text-blue-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-blue-50 transition-all">
-                <Copy size={18} /> Copier le script de restauration
+              <button onClick={copySql} className="bg-white text-amber-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-amber-50 transition-all">
+                <Copy size={18} /> Copier le script total
               </button>
            </div>
 
            <div className="bg-slate-900 rounded-[3rem] p-8 md:p-12 shadow-2xl">
-              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-blue-300 leading-relaxed overflow-x-auto max-h-[400px]">
+              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-amber-300 leading-relaxed overflow-x-auto max-h-[400px]">
                  <pre>{REPAIR_SQL}</pre>
               </div>
            </div>
