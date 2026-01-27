@@ -415,7 +415,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
         </div>
       </section>
 
-      <diva className="space-y-12">
+      <div className="space-y-12">
         <div className="flex items-center gap-4 mb-12 px-6">
            <Landmark className="text-blue-600" size={24} />
            <h2 className="text-3xl font-serif font-bold text-gray-900">Le Palais des Référendums</h2>
