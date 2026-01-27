@@ -27,12 +27,16 @@ import {
   Check,
   ImageIcon,
   Camera,
-  Trash2
+  Trash2,
+  BookOpen,
+  ListOrdered,
+  Lightbulb,
+  Info,
+  Type
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { Edict, User } from '../types.ts';
 import { useToast } from '../ToastContext.tsx';
-import { GoogleGenAI, Type } from "@google/genai";
 
 interface RIC extends Edict {
   category: 'internal' | 'national';
@@ -161,16 +165,16 @@ const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, 
 const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const [rics, setRics] = useState<RIC[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
   const [newRicType, setNewRicType] = useState<'internal' | 'national'>('national');
-  const [rawContent, setRawContent] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isRewriting, setIsRewriting] = useState(false);
-  const [suggestion, setSuggestion] = useState<{title: string, content: string} | null>(null);
 
   const fetchRics = async () => {
     setLoading(true);
@@ -197,49 +201,52 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
     }
   };
 
-  const handleGuardianRewrite = async () => {
-    if (!rawContent.trim() || isRewriting) return;
-    setIsRewriting(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      const contents: any = { parts: [] };
-      if (selectedImage) {
-        contents.parts.push({
-          inlineData: { mimeType: 'image/jpeg', data: selectedImage.split(',')[1] }
-        });
-      }
-      contents.parts.push({ 
-        text: `Tu es le Gardien du Cercle Citoyen. Analyse ma proposition et l'image éventuelle pour rédiger un RIC solennel et structuré. Ma proposition brute : "${rawContent}". Réponds uniquement en JSON {title, content}.`
-      });
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: { title: { type: Type.STRING }, content: { type: Type.STRING } },
-            required: ['title', 'content']
-          }
-        }
-      });
-      setSuggestion(JSON.parse(response.text || '{}'));
-      addToast("Le Gardien a visionné votre demande.", "success");
-    } catch (e) { addToast("Erreur IA.", "error"); } finally { setIsRewriting(false); }
+  const insertTemplate = (template: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = description.substring(0, start) + template + description.substring(end);
+    setDescription(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + template.length, start + template.length);
+    }, 10);
   };
 
-  const handleSubmitRic = async (finalTitle: string, finalContent: string) => {
-    if (submitting || !isRealSupabase) return;
+  // Calcul de la "Force de l'Édit"
+  const calculateStrength = () => {
+    let score = 0;
+    if (title.length > 10) score += 20;
+    if (description.length > 100) score += 30;
+    if (description.includes('ARTICLE')) score += 15;
+    if (description.includes('IMPACT')) score += 15;
+    if (selectedImage) score += 20;
+    return score;
+  };
+
+  const strength = calculateStrength();
+
+  const getRecommendations = () => {
+    const recs = [];
+    if (!title) recs.push("Donnez un titre clair à votre vision.");
+    if (description.length < 50) recs.push("Détaillez davantage votre proposition.");
+    if (!description.includes('ARTICLE')) recs.push("Structurez en 'ARTICLES' pour plus de poids.");
+    if (!description.includes('IMPACT')) recs.push("Précisez l'IMPACT ATTENDU pour les citoyens.");
+    if (!selectedImage) recs.push("Une image illustre mieux le besoin réel.");
+    return recs;
+  };
+
+  const handleSubmitRic = async () => {
+    if (submitting || !isRealSupabase || !title || !description) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('edicts').insert([{
-        title: finalTitle,
-        description: finalContent,
+        title,
+        description,
         proposer_id: user.id,
         category: newRicType,
-        image_url: selectedImage, // Stockage base64 pour la démo, idéalement URL de Bucket
+        image_url: selectedImage,
         status: 'voting',
         votes_count: 0,
         threshold: newRicType === 'internal' ? 1000 : 10000,
@@ -247,9 +254,9 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
       }]);
       if (error) throw error;
       addToast("Référendum scellé avec succès !", "success");
-      setRawContent('');
+      setTitle('');
+      setDescription('');
       setSelectedImage(null);
-      setSuggestion(null);
       fetchRics();
     } catch (e) { addToast("Erreur de scellage.", "error"); } finally { setSubmitting(false); }
   };
@@ -277,13 +284,27 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
              <PenLine className="text-orange-500" /> Forge de l'Initiative
            </h2>
            
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative z-10">
-              <div className="space-y-6">
+           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10">
+              <div className="lg:col-span-8 space-y-6">
+                <input 
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Titre de votre édit citoyen..."
+                  className="w-full bg-gray-50 p-6 rounded-2xl text-xl font-serif font-bold outline-none border-2 border-transparent focus:border-amber-100 focus:bg-white transition-all shadow-inner"
+                />
+
+                <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 rounded-2xl">
+                   <button onClick={() => insertTemplate("\nOBJET : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><Type size={14} /> Objet</button>
+                   <button onClick={() => insertTemplate("\nARTICLE 1 : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><ListOrdered size={14} /> Article</button>
+                   <button onClick={() => insertTemplate("\nIMPACT ATTENDU : ")} className="px-4 py-2 bg-white rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 hover:text-blue-600 transition-all flex items-center gap-2 shadow-sm"><Lightbulb size={14} /> Impact</button>
+                </div>
+
                 <textarea 
-                  value={rawContent} 
-                  onChange={e => setRawContent(e.target.value)} 
-                  placeholder="Décrivez votre proposition (ex: Amélioration du réseau de gbakas à Yopougon)..." 
-                  className="w-full h-72 bg-[#fdfaf5] p-8 rounded-[2.5rem] text-lg outline-none border-2 border-transparent focus:border-amber-100 focus:bg-white transition-all shadow-inner resize-none" 
+                  ref={textareaRef}
+                  value={description} 
+                  onChange={e => setDescription(e.target.value)} 
+                  placeholder="Rédigez ici le corps de votre édit. Utilisez les outils ci-dessus pour structurer votre proposition..." 
+                  className="w-full h-96 bg-[#fdfaf5] p-8 rounded-[2.5rem] text-lg outline-none border-2 border-transparent focus:border-amber-100 focus:bg-white transition-all shadow-inner resize-none" 
                 />
                 
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -312,33 +333,51 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
                 </div>
               </div>
 
-              <div className="flex flex-col justify-center gap-8">
-                {suggestion ? (
-                  <div className="p-8 md:p-10 border-2 border-amber-100 bg-amber-50/20 rounded-[3rem] animate-in zoom-in duration-500 relative">
-                    <div className="absolute -top-4 -left-4 w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg text-orange-500 border border-amber-100"><ShieldCheck /></div>
-                    <h3 className="font-serif font-bold text-xl mb-4 text-gray-900">{suggestion.title}</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed mb-8 line-clamp-4 italic">"{suggestion.content}"</p>
-                    <div className="flex gap-3">
-                      <button onClick={() => handleSubmitRic(suggestion.title, suggestion.content)} className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"><Check size={16} /> Sceller et Lancer</button>
-                      <button onClick={() => setSuggestion(null)} className="px-6 py-5 bg-white text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all"><X size={16} /></button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center space-y-8">
-                    <div className="flex flex-col items-center gap-4 text-gray-400 px-10">
-                       <BrainCircuit size={48} className="opacity-20" />
-                       <p className="text-xs font-medium leading-relaxed italic">"Le Gardien peut structurer votre vision brute en un édit formel et impactant."</p>
-                    </div>
-                    <button 
-                      onClick={handleGuardianRewrite} 
-                      disabled={isRewriting || !rawContent.trim()}
-                      className="w-full bg-gray-950 text-white py-8 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-black transition-all shadow-3xl disabled:opacity-30 active:scale-95 group"
-                    >
-                      {isRewriting ? <Loader2 className="animate-spin" /> : <BrainCircuit className="group-hover:scale-110 transition-transform" />} 
-                      Invoquer la Sagesse IA
-                    </button>
-                  </div>
-                )}
+              <div className="lg:col-span-4 space-y-8">
+                <div className="bg-gray-950 text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
+                   <div className="absolute top-0 right-0 p-8 opacity-10"><PenTool size={100} /></div>
+                   <h3 className="text-[10px] font-black uppercase text-orange-400 tracking-[0.3em] mb-6">Guide du Rédacteur</h3>
+                   
+                   <div className="space-y-6 mb-10">
+                      <div className="flex justify-between items-end text-[10px] font-black uppercase mb-2">
+                        <span>Force de l'Édit</span>
+                        <span>{strength}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                         <div className={`h-full transition-all duration-700 ${strength > 70 ? 'bg-emerald-500' : strength > 40 ? 'bg-orange-500' : 'bg-rose-500'}`} style={{ width: `${strength}%` }}></div>
+                      </div>
+                   </div>
+
+                   <div className="space-y-4">
+                      {getRecommendations().map((rec, i) => (
+                        <div key={i} className="flex gap-3 text-xs text-gray-400 font-medium">
+                           <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
+                           {rec}
+                        </div>
+                      ))}
+                      {getRecommendations().length === 0 && (
+                        <div className="flex gap-3 text-xs text-emerald-400 font-medium italic">
+                           <CheckCircle2 size={16} /> Votre édit est prêt à être scellé.
+                        </div>
+                      )}
+                   </div>
+                </div>
+
+                <div className="p-8 bg-amber-50 rounded-[2.5rem] border border-amber-100">
+                   <h4 className="font-serif font-bold text-lg text-gray-900 mb-4 flex items-center gap-2"><BookOpen className="text-orange-500" size={20} /> Rappel du Sceau</h4>
+                   <p className="text-xs text-gray-600 leading-relaxed font-medium italic">
+                     "Tout citoyen qui propose un RIC s'engage sur l'honneur à servir le bien commun. Votre vision doit être constructive, inclusive et réalisable."
+                   </p>
+                </div>
+
+                <button 
+                  onClick={handleSubmitRic} 
+                  disabled={submitting || !title || !description}
+                  className="w-full bg-orange-600 text-white py-8 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-orange-700 transition-all shadow-3xl disabled:opacity-30 active:scale-95 group"
+                >
+                  {submitting ? <Loader2 className="animate-spin" /> : <ShieldCheck className="group-hover:scale-110 transition-transform" />} 
+                  Sceller l'Initiative
+                </button>
               </div>
            </div>
         </div>
@@ -347,7 +386,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
       <div className="space-y-12">
         <div className="flex items-center gap-4 mb-12 px-6">
            <Landmark className="text-blue-600" size={24} />
-           <h2 className="text-3xl font-serif font-bold text-gray-950">Le Palais des Référendums</h2>
+           <h2 className="text-3xl font-serif font-bold text-gray-900">Le Palais des Référendums</h2>
         </div>
         {loading ? (
           <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>
