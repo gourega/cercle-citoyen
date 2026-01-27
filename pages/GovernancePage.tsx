@@ -73,6 +73,23 @@ const compressImage = (file: File, maxWidth: number = 800, maxHeight: number = 8
   });
 };
 
+// Processeur de contenu Markdown pour les édits
+const formatContent = (text: string) => {
+  if (!text) return text;
+  return text.split('\n').map((line, i) => {
+    let formattedLine = line
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-gray-900">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="italic text-gray-800">$1</em>');
+    
+    // Support simple pour les listes
+    if (formattedLine.trim().startsWith('- ')) {
+      formattedLine = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"></span>` + formattedLine.replace('- ', '');
+    }
+
+    return <span key={i} className="block mb-1" dangerouslySetInnerHTML={{ __html: formattedLine }} />;
+  });
+};
+
 const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, user, onVote }) => {
   const { addToast } = useToast();
   const [hasVoted, setHasVoted] = useState(false);
@@ -129,9 +146,9 @@ const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, 
           </span>
         </div>
         
-        {/* Corps : Description */}
-        <div className="text-gray-600 leading-relaxed mb-10 font-medium text-base md:text-lg whitespace-pre-wrap max-w-4xl">
-          {ric.description}
+        {/* Corps : Description avec rendu Markdown */}
+        <div className="text-gray-600 leading-relaxed mb-10 font-medium text-base md:text-lg max-w-4xl">
+          {formatContent(ric.description)}
         </div>
 
         {/* Illustration : PLACÉE JUSTE SOUS LE TEXTE */}
