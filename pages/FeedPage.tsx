@@ -11,7 +11,8 @@ import {
   Video, User as UserIcon, LogOut, Gavel, Compass, Mic2, 
   Bold, Italic, List, Smile, Type, ChevronDown, ChevronUp, ArrowRight, Smartphone, Save,
   ImageIcon, Zap, BookText, Waves, Square, BarChart2, Users, Search as SearchIcon, 
-  Filter, Bell, Heart, Flame, PenLine, Award, MessageSquare, Scale, Database
+  Filter, Bell, Heart, Flame, PenLine, Award, MessageSquare, Scale, Database,
+  Edit2, Check
 } from 'lucide-react';
 import { User, CircleType, Role, Post, Comment, CitizenNotification } from '../types.ts';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
@@ -212,8 +213,13 @@ const PublishModal: React.FC<{ user: User, onClose: () => void, onSuccess: () =>
 
 const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }> = ({ post, currentUser, onUpdate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [isSaving, setIsSaving] = useState(false);
   const [author, setAuthor] = useState<any>({ name: 'Citoyen', avatar: 'https://picsum.photos/seed/default/100/100', pseudonym: 'citoyen' });
   const { addToast } = useToast();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAuthor = async () => {
@@ -224,6 +230,16 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
     };
     fetchAuthor();
   }, [post.author_id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
 
   const handleReaction = async (type: keyof Post['reactions']) => {
     if (!isRealSupabase || !supabase) {
@@ -251,12 +267,51 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
   const handlePlayAudio = () => {
     setIsPlaying(true);
     speakAsGriot(post.content);
-    // On simule la fin de l'audio pour réinitialiser l'état du bouton (ou on utilise onend si dispo)
     setTimeout(() => setIsPlaying(false), post.content.length * 80); 
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm("Voulez-vous vraiment supprimer cette onde ?")) return;
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').delete().eq('id', post.id);
+        if (error) throw error;
+        addToast("Onde retirée de l'Agora.", "success");
+        onUpdate();
+      }
+    } catch (e) {
+      addToast("Erreur de suppression.", "error");
+    } finally {
+      setIsMenuOpen(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editContent.trim() || editContent === post.content) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      if (isRealSupabase && supabase) {
+        const { error } = await supabase.from('posts').update({ content: editContent }).eq('id', post.id);
+        if (error) throw error;
+        addToast("Onde modifiée avec succès.", "success");
+        onUpdate();
+      }
+    } catch (e) {
+      addToast("Erreur lors de la modification.", "error");
+    } finally {
+      setIsSaving(false);
+      setIsEditing(false);
+    }
+  };
+
+  const isAuthor = currentUser.id === post.author_id;
+  const isGuardian = currentUser.role === Role.SUPER_ADMIN;
+
   return (
-    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm mb-6 hover:shadow-md transition-all">
+    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm mb-6 hover:shadow-md transition-all relative">
       <div className="flex items-center justify-between mb-4">
         <Link to={`/profile/${post.author_id}`} className="flex items-center gap-3 group/author">
           <img src={author.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-sm group-hover/author:ring-2 ring-blue-100 transition-all" alt="" />
@@ -268,19 +323,86 @@ const PostCard: React.FC<{ post: Post, currentUser: User, onUpdate: () => void }
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getRelativeTime(post.created_at)} • {post.circle_type}</p>
           </div>
         </Link>
-        <button className="p-2 text-gray-300 hover:text-gray-900 transition-colors"><MoreVertical size={16} /></button>
-      </div>
-      <div className="mb-4 text-[15px] leading-relaxed text-gray-700">{formatContent(post.content)}</div>
-      {post.image_url && <div className="mb-4 rounded-2xl overflow-hidden border border-gray-50"><img src={post.image_url} className="w-full object-cover max-h-96" alt="" /></div>}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-        <div className="flex items-center gap-6">
-          <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 transition-colors text-[10px] font-black uppercase"><ThumbsUp size={16} /> {post.reactions.useful}</button>
-          <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-gray-400 hover:text-amber-600 transition-colors text-[10px] font-black uppercase"><Lightbulb size={16} /> {post.reactions.relevant}</button>
-          <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-gray-400 hover:text-rose-600 transition-colors text-[10px] font-black uppercase"><Heart size={16} /> {post.reactions.inspiring}</button>
-          <button onClick={handlePlayAudio} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Lecture...' : 'Écouter'}</button>
+        
+        <div className="relative" ref={menuRef}>
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className={`p-2 rounded-xl transition-all ${isMenuOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}
+          >
+            <MoreVertical size={18} />
+          </button>
+          
+          {isMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[60] animate-in fade-in zoom-in duration-200">
+               {isAuthor && (
+                 <button 
+                  onClick={() => { setIsEditing(true); setIsMenuOpen(false); }}
+                  className="w-full px-5 py-3 text-left flex items-center gap-3 text-[10px] font-black uppercase text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-all"
+                 >
+                   <Edit2 size={14} /> Modifier
+                 </button>
+               )}
+               {(isAuthor || isGuardian) && (
+                 <button 
+                   onClick={handleDelete}
+                   className="w-full px-5 py-3 text-left flex items-center gap-3 text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-all"
+                 >
+                   <Trash2 size={14} /> Supprimer
+                 </button>
+               )}
+               {!isAuthor && !isGuardian && (
+                 <button className="w-full px-5 py-3 text-left flex items-center gap-3 text-[10px] font-black uppercase text-gray-400 hover:bg-gray-50 transition-all">
+                    Signaler
+                 </button>
+               )}
+            </div>
+          )}
         </div>
-        <button className="text-gray-400 hover:text-gray-900 transition-colors"><Share2 size={16} /></button>
       </div>
+
+      <div className="mb-4">
+        {isEditing ? (
+          <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+            <textarea 
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full p-4 bg-gray-50 border-2 border-blue-100 rounded-2xl text-sm text-gray-800 outline-none focus:bg-white focus:border-blue-300 transition-all resize-none min-h-[120px]"
+            />
+            <div className="flex gap-2">
+              <button 
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100"
+              >
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                Enregistrer
+              </button>
+              <button 
+                onClick={() => { setIsEditing(false); setEditContent(post.content); }}
+                className="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-[15px] leading-relaxed text-gray-700">{formatContent(post.content)}</div>
+        )}
+      </div>
+
+      {post.image_url && <div className="mb-4 rounded-2xl overflow-hidden border border-gray-50"><img src={post.image_url} className="w-full object-cover max-h-96" alt="" /></div>}
+      
+      {!isEditing && (
+        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+          <div className="flex items-center gap-6">
+            <button onClick={() => handleReaction('useful')} className="flex items-center gap-2 text-gray-400 hover:text-blue-600 transition-colors text-[10px] font-black uppercase"><ThumbsUp size={16} /> {post.reactions.useful}</button>
+            <button onClick={() => handleReaction('relevant')} className="flex items-center gap-2 text-gray-400 hover:text-amber-600 transition-colors text-[10px] font-black uppercase"><Lightbulb size={16} /> {post.reactions.relevant}</button>
+            <button onClick={() => handleReaction('inspiring')} className="flex items-center gap-2 text-gray-400 hover:text-rose-600 transition-colors text-[10px] font-black uppercase"><Heart size={16} /> {post.reactions.inspiring}</button>
+            <button onClick={handlePlayAudio} className={`flex items-center gap-2 transition-colors text-[10px] font-black uppercase ${isPlaying ? 'text-blue-600 animate-pulse' : 'text-gray-400 hover:text-gray-900'}`}><Volume2 size={16} /> {isPlaying ? 'Lecture...' : 'Écouter'}</button>
+          </div>
+          <button className="text-gray-400 hover:text-gray-900 transition-colors"><Share2 size={16} /></button>
+        </div>
+      )}
     </div>
   );
 };
