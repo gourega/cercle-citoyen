@@ -2,12 +2,6 @@
 // @google/genai utility functions for CERCLE CITOYEN
 import { GoogleGenAI, Type } from "@google/genai";
 
-const getAI = () => {
-  const key = (window as any).process?.env?.['API_KEY'] || (process as any)["env"]?.['API_KEY'] || process.env.API_KEY;
-  if (!key) return null;
-  return new GoogleGenAI({ apiKey: key });
-};
-
 /**
  * Fonction Griot utilisant la synthèse vocale native du navigateur.
  * Nettoie les balises Markdown pour éviter la lecture des symboles (*, #, etc).
@@ -18,26 +12,20 @@ export function speakAsGriot(content: string) {
     return;
   }
 
-  // Nettoyage du Markdown pour le lecteur vocal
-  // Retire les astérisques, les dièses et les tirets de liste
   const cleanContent = content
-    .replace(/\*\*(.*?)\*\*/g, '$1') // Retire le gras **
-    .replace(/\*(.*?)\*/g, '$1')     // Retire l'italique *
-    .replace(/#/g, '')               // Retire les dièses
-    .replace(/^- /gm, '')            // Retire les tirets de liste
-    .replace(/\n/g, ' ');            // Remplace les sauts de ligne par des espaces pour plus de fluidité
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#/g, '')
+    .replace(/^- /gm, '')
+    .replace(/\n/g, ' ');
 
-  // Annuler toute lecture en cours
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(cleanContent);
   utterance.lang = 'fr-FR';
-  
-  // Ajustements pour donner un ton de "Griot" (plus posé et sage)
-  utterance.pitch = 0.85; // Un peu plus grave
-  utterance.rate = 0.9;   // Un peu plus lent et solennel
+  utterance.pitch = 0.85;
+  utterance.rate = 0.9;
 
-  // Sélection d'une voix masculine si disponible
   const voices = window.speechSynthesis.getVoices();
   const maleVoice = voices.find(v => v.lang.startsWith('fr') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('dani') || v.name.toLowerCase().includes('thomas')));
   if (maleVoice) utterance.voice = maleVoice;
@@ -47,15 +35,14 @@ export function speakAsGriot(content: string) {
 
 export async function analyzePollutionImage(base64Image: string) {
   try {
-    const ai = getAI();
-    if (!ai) throw new Error("Client IA non configuré");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const dataOnly = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: dataOnly } },
-          { text: "Tu es le système expert 'Sentinelle Verte'. Analyse cette image de dégradation urbaine. ATTENTION : Si l'image est un gros plan (macro) on un caniveau, des ordures ou des eaux usées, c'est VALIDÉ. N'échoue pas par manque de contexte géographique. Si tu ne vois pas la rue ou la ville, utilise 'Localité à préciser' et 'Quartier à identifier'. Identifie précisément la nuisance. Propose un plan d'action de 3 points. Réponds UNIQUEMENT en JSON valide." }
+          { text: "Tu es le système expert 'Sentinelle Verte'. Analyse cette image de dégradation urbaine. Identifie précisément la nuisance. Propose un plan d'action de 3 points. Réponds UNIQUEMENT en JSON valide." }
         ]
       },
       config: { 
@@ -83,8 +70,7 @@ export async function analyzePollutionImage(base64Image: string) {
 
 export async function generateCleanVision(base64Image: string) {
   try {
-    const ai = getAI();
-    if (!ai) return null;
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const dataOnly = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -102,8 +88,7 @@ export async function generateCleanVision(base64Image: string) {
 
 export async function summarizeCircleDiscussions(circleType: string, posts: string[]) {
   try {
-    const ai = getAI();
-    if (!ai) return "Intelligence indisponible.";
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Synthétise les discussions du cercle ${circleType} : ${posts.join('\n')}`,
@@ -114,8 +99,7 @@ export async function summarizeCircleDiscussions(circleType: string, posts: stri
 
 export async function findInitiatives(query: string, lat?: number, lng?: number) {
   try {
-    const ai = getAI();
-    if (!ai) return { text: "Recherche indisponible.", places: [] };
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const config: any = { tools: [{ googleMaps: {} }] };
     if (lat && lng) config.toolConfig = { retrievalConfig: { latLng: { latitude: lat, longitude: lng } } };
     const response = await ai.models.generateContent({
@@ -129,8 +113,7 @@ export async function findInitiatives(query: string, lat?: number, lng?: number)
 
 export async function analyzeIdeaImpact(title: string, description: string) {
   try {
-    const ai = getAI();
-    if (!ai) return { potentialImpact: "Inconnu", neededExpertises: [] };
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Analyse l'impact de l'idée : ${title} - ${description}`,
@@ -152,8 +135,7 @@ export async function analyzeIdeaImpact(title: string, description: string) {
 
 export async function analyzeCommunityReputation(entityName: string, vouches: string[]) {
   try {
-    const ai = getAI();
-    if (!ai) return { score: 50, summary: "Indisponible", strengths: [] };
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Analyse réputation de ${entityName} basée sur : ${vouches.join(' | ')}`,
@@ -176,20 +158,18 @@ export async function analyzeCommunityReputation(entityName: string, vouches: st
 
 export async function mediateChat(messages: {sender: string, text: string}[]) {
   try {
-    const ai = getAI();
-    if (!ai) return "Médiation hors-ligne.";
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Agis en médiateur sage pour cette discussion : ${messages.map(m => `${m.sender}: ${m.text}`).join('\n')}`,
     });
     return response.text;
-  } catch (e) { return "Médiation indisponible."; }
+  } catch (e) { return "Médiation hors-ligne."; }
 }
 
 export async function getConsensusSummary(messages: {sender: string, text: string}[]) {
   try {
-    const ai = getAI();
-    if (!ai) return "Consensus indisponible.";
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Quel consensus se dégage de ces échanges ? ${messages.map(m => m.text).join('\n')}`,
@@ -200,8 +180,7 @@ export async function getConsensusSummary(messages: {sender: string, text: strin
 
 export async function simplifyLegalText(text: string) {
   try {
-    const ai = getAI();
-    if (!ai) return { summary: "Indisponible", impacts: [], alerts: [] };
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Simplifie ce texte législatif ou administratif pour un citoyen ivoirien : ${text}`,
@@ -223,8 +202,7 @@ export async function simplifyLegalText(text: string) {
 }
 
 export async function generateImpactVisual(prompt: string) {
-  const ai = getAI();
-  if (!ai) throw new Error("IA indisponible");
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: { parts: [{ text: `High quality visual for an Ivorian civic project: ${prompt}` }] },
