@@ -43,34 +43,41 @@ CREATE TABLE IF NOT EXISTS public.edicts (
     status TEXT CHECK (status IN ('voting', 'enacted')) DEFAULT 'voting',
     votes_count INTEGER DEFAULT 0,
     threshold INTEGER DEFAULT 1000,
-    ends_at TIMESTAMPTZ NOT NULL
+    ends_at TIMESTAMPTZ NOT NULL,
+    image_url TEXT
 );
 
--- 3. ROW LEVEL SECURITY (RLS) - NETTOYAGE & RÉINSTALLATION
--- Cette section corrige l'erreur "already exists" et active l'inscription
+-- 3. VITES ET SIGNATURES
+CREATE TABLE IF NOT EXISTS public.votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    edict_id UUID REFERENCES public.edicts(id) ON DELETE CASCADE,
+    UNIQUE(user_id, edict_id)
+);
 
+-- 4. ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- Politiques Profils
 DROP POLICY IF EXISTS "Lecture publique" ON public.profiles;
 CREATE POLICY "Lecture publique" ON public.profiles FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Auto-création" ON public.profiles;
 CREATE POLICY "Auto-création" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-
 DROP POLICY IF EXISTS "Auto-modification" ON public.profiles;
 CREATE POLICY "Auto-modification" ON public.profiles FOR UPDATE WITH CHECK (auth.uid() = id);
 
--- Politiques Contenus
-ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Lecture ondes" ON public.posts;
-CREATE POLICY "Lecture ondes" ON public.posts FOR SELECT USING (true);
+ALTER TABLE public.edicts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture RIC" ON public.edicts;
+CREATE POLICY "Lecture RIC" ON public.edicts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Insertion RIC" ON public.edicts;
+CREATE POLICY "Insertion RIC" ON public.edicts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
-DROP POLICY IF EXISTS "Insertion ondes" ON public.posts;
-CREATE POLICY "Insertion ondes" ON public.posts FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture votes" ON public.votes;
+CREATE POLICY "Lecture votes" ON public.votes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Insertion votes" ON public.votes;
+CREATE POLICY "Insertion votes" ON public.votes FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Fin du script de base
--- Exécutez ce script pour débloquer les inscriptions immédiates.
 `;
 
 const AdminDashboard: React.FC = () => {
@@ -109,7 +116,7 @@ const AdminDashboard: React.FC = () => {
 
   const copySql = () => {
     navigator.clipboard.writeText(REPAIR_SQL);
-    addToast("Script SQL de restauration (avec correctif RLS) copié !", "success");
+    addToast("Script SQL de restauration corrigé et copié !", "success");
   };
 
   const displayCitizens = profiles.filter(p => 
@@ -160,12 +167,12 @@ const AdminDashboard: React.FC = () => {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
            <div className="bg-blue-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-10 opacity-10"><Database size={120} /></div>
-              <h3 className="text-3xl font-serif font-bold mb-4">Correctif d'Inscription</h3>
+              <h3 className="text-3xl font-serif font-bold mb-4">Correctif d'Inscription & RIC</h3>
               <p className="text-blue-100 max-w-2xl font-medium leading-relaxed mb-8">
-                Si les citoyens reçoivent une erreur lors de la création de leur compte, ce script réinitialise les permissions RLS. Il inclut désormais le nettoyage des anciennes règles pour éviter les erreurs de doublons.
+                Ce script réinitialise les tables cruciales (profiles, edicts, votes) avec les bons champs (dont image_url). Exécutez-le dans l'éditeur SQL de Supabase pour débloquer les signalements.
               </p>
               <button onClick={copySql} className="bg-white text-blue-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-blue-50 transition-all">
-                <Copy size={18} /> Copier le script de réparation
+                <Copy size={18} /> Copier le script de restauration
               </button>
            </div>
 

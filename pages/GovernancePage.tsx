@@ -35,7 +35,8 @@ import {
   Type,
   Bold,
   Italic,
-  List as ListIcon
+  List as ListIcon,
+  Quote
 } from 'lucide-react';
 import { supabase, isRealSupabase } from '../lib/supabase.ts';
 import { Edict, User } from '../types.ts';
@@ -133,7 +134,7 @@ const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, 
             </span>
           </div>
           
-          <p className="text-gray-600 leading-relaxed mb-10 font-medium text-sm md:text-base">
+          <p className="text-gray-600 leading-relaxed mb-10 font-medium text-sm md:text-base whitespace-pre-wrap">
             {ric.description}
           </p>
 
@@ -210,11 +211,23 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = description.substring(start, end);
-    const newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
+    
+    // Si c'est un formatage de bloc comme une liste ou un article
+    let newText;
+    let newPos;
+    
+    if (prefix.startsWith('\n')) {
+      newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
+      newPos = start + prefix.length + selectedText.length + suffix.length;
+    } else {
+      // Formatage en ligne (gras, italique)
+      newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
+      newPos = start + prefix.length + selectedText.length + suffix.length;
+    }
+
     setDescription(newText);
     setTimeout(() => {
       textarea.focus();
-      const newPos = start + prefix.length + selectedText.length + suffix.length;
       textarea.setSelectionRange(newPos, newPos);
     }, 10);
   };
@@ -227,7 +240,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
     if (description.includes('ARTICLE')) score += 15;
     if (description.includes('IMPACT')) score += 15;
     if (selectedImage) score += 20;
-    return score;
+    return Math.min(score, 100);
   };
 
   const strength = calculateStrength();
@@ -263,7 +276,10 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
       setDescription('');
       setSelectedImage(null);
       fetchRics();
-    } catch (e) { addToast("Erreur de scellage.", "error"); } finally { setSubmitting(false); }
+    } catch (e: any) { 
+      console.error(e);
+      addToast("Erreur de scellage : Vérifiez le script SQL du Conseil.", "error"); 
+    } finally { setSubmitting(false); }
   };
 
   return (
@@ -303,6 +319,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
                       <button onClick={() => applyFormat("**", "**")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Gras"><Bold size={16} /></button>
                       <button onClick={() => applyFormat("*", "*")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Italique"><Italic size={16} /></button>
                       <button onClick={() => applyFormat("\n- ")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Liste"><ListIcon size={16} /></button>
+                      <button onClick={() => applyFormat("\n> ")} className="p-3 bg-white rounded-xl text-gray-500 hover:text-blue-600 transition-all shadow-sm border border-gray-100" title="Citation"><Quote size={16} /></button>
                    </div>
                    
                    <div className="h-6 w-px bg-gray-200 mx-2 hidden sm:block"></div>
@@ -329,12 +346,12 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
                       onClick={() => fileInputRef.current?.click()}
                       className="flex-1 py-5 bg-gray-50 text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-dashed border-gray-200 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-all flex items-center justify-center gap-3"
                     >
-                      <Camera size={18} /> Illustrer ma demande
+                      <Camera size={18} /> Illustrer l'Initiative
                     </button>
                   ) : (
                     <div className="flex-1 relative h-20 rounded-2xl overflow-hidden border-2 border-orange-200">
                        <img src={selectedImage} className="w-full h-full object-cover" alt="" />
-                       <button onClick={() => setSelectedImage(null)} className="absolute top-2 right-2 bg-rose-500 text-white p-1 rounded-lg"><X size={12} /></button>
+                       <button onClick={() => setSelectedImage(null)} className="absolute top-2 right-2 bg-rose-500 text-white p-1 rounded-lg shadow-lg"><X size={12} /></button>
                     </div>
                   )}
                   <select 
@@ -359,19 +376,19 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
                         <span>{strength}%</span>
                       </div>
                       <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                         <div className={`h-full transition-all duration-700 ${strength > 70 ? 'bg-emerald-500' : strength > 40 ? 'bg-orange-500' : 'bg-rose-500'}`} style={{ width: `${strength}%` }}></div>
+                         <div className={`h-full transition-all duration-700 ${strength > 70 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : strength > 40 ? 'bg-orange-500' : 'bg-rose-500'}`} style={{ width: `${strength}%` }}></div>
                       </div>
                    </div>
 
                    <div className="space-y-4">
                       {getRecommendations().map((rec, i) => (
-                        <div key={i} className="flex gap-3 text-xs text-gray-400 font-medium">
+                        <div key={i} className="flex gap-3 text-xs text-gray-400 font-medium animate-in slide-in-from-left duration-300" style={{ animationDelay: `${i * 100}ms` }}>
                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></div>
                            {rec}
                         </div>
                       ))}
                       {getRecommendations().length === 0 && (
-                        <div className="flex gap-3 text-xs text-emerald-400 font-medium italic">
+                        <div className="flex gap-3 text-xs text-emerald-400 font-medium italic animate-in zoom-in">
                            <CheckCircle2 size={16} /> Votre édit est prêt à être scellé.
                         </div>
                       )}
@@ -398,7 +415,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
         </div>
       </section>
 
-      <div className="space-y-12">
+      <diva className="space-y-12">
         <div className="flex items-center gap-4 mb-12 px-6">
            <Landmark className="text-blue-600" size={24} />
            <h2 className="text-3xl font-serif font-bold text-gray-900">Le Palais des Référendums</h2>
@@ -406,7 +423,9 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
         {loading ? (
           <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>
         ) : rics.length > 0 ? (
-          rics.map(ric => <RICCard key={ric.id} ric={ric} user={user} onVote={fetchRics} />)
+          <div className="space-y-8 animate-in fade-in duration-500">
+            {rics.map(ric => <RICCard key={ric.id} ric={ric} user={user} onVote={fetchRics} />)}
+          </div>
         ) : (
           <div className="text-center py-32 bg-white rounded-[4rem] border-2 border-dashed border-gray-50 shadow-sm">
              <AlertCircle className="w-16 h-16 text-gray-100 mx-auto mb-6" />
