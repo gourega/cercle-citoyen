@@ -106,60 +106,74 @@ const RICCard: React.FC<{ ric: RIC, user: User, onVote: () => void }> = ({ ric, 
   };
 
   return (
-    <div className={`bg-white border-2 rounded-[3.5rem] overflow-hidden transition-all ${ric.status === 'enacted' ? 'border-emerald-100 bg-emerald-50/10' : 'border-gray-100 hover:border-blue-100 shadow-sm'}`}>
-      <div className="grid grid-cols-1 lg:grid-cols-12">
+    <div className={`bg-white border-2 rounded-[3.5rem] overflow-hidden transition-all duration-500 group ${ric.status === 'enacted' ? 'border-emerald-100 bg-emerald-50/10 shadow-emerald-50' : 'border-gray-100 hover:border-blue-100 shadow-sm hover:shadow-xl'}`}>
+      <div className="p-8 md:p-12 flex flex-col">
+        {/* Header : Titre & Catégorie */}
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-3">
+               {ric.category === 'internal' ? (
+                 <span className="bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1">
+                   <Shield size={10} /> RIC Interne
+                 </span>
+               ) : (
+                 <span className="bg-orange-50 text-orange-600 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-orange-100 flex items-center gap-1">
+                   <Landmark size={10} /> RIC National
+                 </span>
+               )}
+            </div>
+            <h3 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 leading-tight tracking-tight">{ric.title}</h3>
+          </div>
+          <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shrink-0 shadow-sm border ${ric.status === 'voting' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+            {ric.status === 'voting' ? 'En Récolte' : 'Adopté'}
+          </span>
+        </div>
+        
+        {/* Corps : Description */}
+        <div className="text-gray-600 leading-relaxed mb-10 font-medium text-base md:text-lg whitespace-pre-wrap max-w-4xl">
+          {ric.description}
+        </div>
+
+        {/* Illustration : PLACÉE JUSTE SOUS LE TEXTE */}
         {ric.image_url && (
-          <div className="lg:col-span-4 h-64 lg:h-auto overflow-hidden bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-100">
-            <img src={ric.image_url} className="w-full h-full object-cover" alt="Illustration" />
+          <div className="mb-12 rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-100 shadow-inner group/img relative aspect-[21/9]">
+            <img 
+              src={ric.image_url} 
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+              alt="Illustration de l'initiative" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
           </div>
         )}
-        <div className={`${ric.image_url ? 'lg:col-span-8' : 'lg:col-span-12'} p-8 md:p-10 flex flex-col`}>
-          <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-3">
-                 {ric.category === 'internal' ? (
-                   <span className="bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1">
-                     <Shield size={10} /> RIC Interne
-                   </span>
-                 ) : (
-                   <span className="bg-orange-50 text-orange-600 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-orange-100 flex items-center gap-1">
-                     <Landmark size={10} /> RIC National
-                   </span>
-                 )}
-              </div>
-              <h3 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 leading-tight">{ric.title}</h3>
-            </div>
-            <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shrink-0 ${ric.status === 'voting' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
-              {ric.status === 'voting' ? 'En Récolte' : 'Adopté'}
-            </span>
-          </div>
-          
-          <p className="text-gray-600 leading-relaxed mb-10 font-medium text-sm md:text-base whitespace-pre-wrap">
-            {ric.description}
-          </p>
 
-          <div className="mt-auto space-y-6">
-            <div className="space-y-3">
-              <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                <span className="flex items-center gap-2"><Users size={14} className="text-blue-500" /> {ric.votes_count.toLocaleString()} signatures</span>
-                <span>Objectif : {ric.threshold.toLocaleString()}</span>
-              </div>
-              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
-                <div className={`h-full transition-all duration-1000 ${ric.status === 'enacted' ? 'bg-emerald-500' : 'bg-blue-600'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
-              </div>
+        {/* Footer : Stats & Vote */}
+        <div className="mt-auto space-y-8 bg-gray-50/50 -mx-8 -mb-12 p-8 md:p-12 border-t border-gray-100">
+          <div className="space-y-4">
+            <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest px-1">
+              <span className="flex items-center gap-2">
+                <Users size={16} className="text-blue-600" /> 
+                <span className="text-gray-900">{ric.votes_count.toLocaleString()}</span> citoyens engagés
+              </span>
+              <span>Objectif : <span className="text-gray-900">{ric.threshold.toLocaleString()}</span></span>
             </div>
-
-            {ric.status === 'voting' && (
-              <button 
-                onClick={handleVote}
-                disabled={hasVoted || voting}
-                className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${hasVoted ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-lg' : 'bg-gray-900 text-white hover:bg-black shadow-xl active:scale-95'}`}
-              >
-                {voting ? <Loader2 className="animate-spin" /> : hasVoted ? <CheckCircle2 className="w-5 h-5" /> : <PenTool className="w-5 h-5 text-amber-500" />}
-                {hasVoted ? 'Signature Apposée' : 'Signer le Référendum'}
-              </button>
-            )}
+            <div className="h-4 w-full bg-white rounded-full overflow-hidden shadow-inner border border-gray-100 p-0.5">
+              <div 
+                className={`h-full rounded-full transition-all duration-1000 ease-out ${ric.status === 'enacted' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.3)]'}`} 
+                style={{ width: `${Math.min(progress, 100)}%` }}
+              ></div>
+            </div>
           </div>
+
+          {ric.status === 'voting' && (
+            <button 
+              onClick={handleVote}
+              disabled={hasVoted || voting}
+              className={`w-full py-6 rounded-2xl font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 ${hasVoted ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-inner' : 'bg-gray-900 text-white hover:bg-black hover:shadow-2xl shadow-xl active:scale-[0.98]'}`}
+            >
+              {voting ? <Loader2 className="animate-spin" /> : hasVoted ? <CheckCircle2 className="w-6 h-6" /> : <PenTool className="w-6 h-6 text-amber-500" />}
+              {hasVoted ? 'SIGNATURE APPOSÉE' : 'SCELLER MON SOUTIEN'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -421,7 +435,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
         {loading ? (
           <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-blue-600 w-12 h-12" /></div>
         ) : rics.length > 0 ? (
-          <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="space-y-12 animate-in fade-in duration-500">
             {rics.map(ric => <RICCard key={ric.id} ric={ric} user={user} onVote={fetchRics} />)}
           </div>
         ) : (
