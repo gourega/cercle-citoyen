@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+// @ts-ignore
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage.tsx';
 import AuthPage from './pages/AuthPage.tsx';
@@ -54,10 +56,17 @@ const App: React.FC = () => {
     localStorage.removeItem('cercle_user_v4');
   };
 
+  const handleProfileUpdate = (updates: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      localStorage.setItem('cercle_user_v4', JSON.stringify(updatedUser));
+    }
+  };
+
   return (
     <ToastProvider>
       <Router>
-        {/* Changement radical du thème global ici : bg-[#fcfcfc] et texte foncé */}
         <div className="min-h-screen bg-[#fcfcfc] text-gray-900 transition-colors duration-500">
           <Routes>
             <Route path="/" element={<LandingPage onLogin={handleLogin} />} />
@@ -66,8 +75,8 @@ const App: React.FC = () => {
             <Route path="/welcome" element={user ? <WelcomePage /> : <Navigate to="/" />} />
             
             <Route path="/feed" element={user ? <FeedPage user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
-            <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
-            <Route path="/profile/:id" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
+            <Route path="/profile" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} onProfileUpdate={handleProfileUpdate} /> : <Navigate to="/" />} />
+            <Route path="/profile/:id" element={user ? <ProfilePage currentUser={user} onLogout={handleLogout} onProfileUpdate={handleProfileUpdate} /> : <Navigate to="/" />} />
             
             <Route path="/sentinel" element={user ? <SentinelPage user={user} /> : <Navigate to="/" />} />
             <Route path="/circles" element={user ? <CirclesDiscoveryPage /> : <Navigate to="/" />} />

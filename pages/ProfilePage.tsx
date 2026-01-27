@@ -130,7 +130,7 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
           const fetchedProfile = { ...data, avatar: data.avatar_url || data.avatar, impact_score: score };
           setProfile(fetchedProfile);
           if (targetId === currentUser.id) {
-            setEditData({ name: fetchedProfile.name, pseudonym: fetchedProfile.pseudonym, bio: fetchedProfile.bio, avatar: fetchedProfile.avatar });
+            setEditData({ name: fetchedProfile.name, pseudonym: fetchedProfile.pseudonym, bio: fetchedProfile.bio || '', avatar: fetchedProfile.avatar });
           }
         }
       }
@@ -140,19 +140,36 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
   const handleSave = async () => {
     setSyncing(true);
     try {
-      const updates = { name: editData.name, pseudonym: editData.pseudonym, bio: editData.bio, avatar_url: editData.avatar };
+      const updates = { 
+        name: editData.name, 
+        pseudonym: editData.pseudonym, 
+        bio: editData.bio, 
+        avatar_url: editData.avatar 
+      };
+      
       if (isRealSupabase && supabase) {
         const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
         if (error) throw error;
       }
-      const updatedProfile = { ...profile, ...updates, avatar: editData.avatar };
-      setProfile(updatedProfile);
-      if (profile.id === currentUser.id && onProfileUpdate) onProfileUpdate(updatedProfile);
-      addToast("Profil mis à jour !", "success");
+
+      const updatedProfileState = { ...profile, ...updates, avatar: editData.avatar };
+      setProfile(updatedProfileState);
+
+      // CRUCIAL : Mettre à jour l'état global pour que l'avatar change partout (Header, Sidebar, etc)
+      if (profile.id === currentUser.id && onProfileUpdate) {
+        onProfileUpdate({
+          name: editData.name,
+          pseudonym: editData.pseudonym,
+          bio: editData.bio,
+          avatar: editData.avatar
+        });
+      }
+
+      addToast("Profil mis à jour avec succès !", "success");
       setIsEditing(false);
     } catch (e: any) { 
       console.error(e);
-      addToast("Erreur de sauvegarde. L'image est peut-être encore trop lourde.", "error"); 
+      addToast("Erreur lors de la mise à jour.", "error"); 
     } finally { setSyncing(false); }
   };
 
@@ -177,13 +194,13 @@ const ProfilePage: React.FC<{ currentUser: User; onLogout: () => Promise<void>; 
     const file = e.target.files?.[0];
     if (file) {
       try {
-        addToast("Compression de l'image...", "info");
+        addToast("Traitement de l'image...", "info");
         const compressedBase64 = await compressImage(file, 400, 400, 0.7);
         setEditData({ ...editData, avatar: compressedBase64 });
         addToast("Image prête.", "success");
       } catch (err) {
         console.error(err);
-        addToast("Échec de la compression.", "error");
+        addToast("Échec du traitement.", "error");
       }
     }
   };
