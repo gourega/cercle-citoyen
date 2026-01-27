@@ -249,7 +249,9 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
     if (submitting || !isRealSupabase || !title || !description) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('edicts').insert([{
+      console.log("Tentative de scellage avec user ID:", user.id);
+      
+      const { data, error } = await supabase.from('edicts').insert([{
         title,
         description,
         proposer_id: user.id,
@@ -259,21 +261,22 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
         votes_count: 0,
         threshold: newRicType === 'internal' ? 1000 : 10000,
         ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      }]);
+      }]).select();
       
       if (error) {
-        console.error("Supabase error detail:", error);
-        throw error;
+        console.error("ERREUR SUPABASE BRUTE:", error);
+        throw new Error(error.message || "Erreur de base de données");
       }
       
+      console.log("Succès du scellage:", data);
       addToast("Référendum scellé avec succès !", "success");
       setTitle('');
       setDescription('');
       setSelectedImage(null);
       fetchRics();
     } catch (e: any) { 
-      console.error("Catch error:", e);
-      addToast(`Échec du scellage : ${e.message || 'Vérifiez le script V7'}`, "error"); 
+      console.error("CATCH ERROR:", e);
+      addToast(`Échec : ${e.message || 'Vérifiez le script V8'}`, "error"); 
     } finally { setSubmitting(false); }
   };
 

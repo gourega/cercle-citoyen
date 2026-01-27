@@ -14,10 +14,14 @@ import { useToast } from '../ToastContext.tsx';
 import { Role, UserCategory } from '../types.ts';
 
 const REPAIR_SQL = `-- ==========================================
--- SCRIPT DE RESTAURATION ULTIME (V7)
+-- SCRIPT DE RESTAURATION V8 (CLEAN INSTALL)
 -- ==========================================
 
--- 1. PROFILS (On retire la référence stricte à auth.users pour le prototype)
+-- 1. NETTOYAGE (Optionnel mais recommandé pour le prototype)
+-- DROP TABLE IF EXISTS public.votes;
+-- DROP TABLE IF EXISTS public.edicts;
+
+-- 2. PROFILS SANS CONTRAINTES STRICTES
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -32,12 +36,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     status TEXT DEFAULT 'active'
 );
 
--- 2. INSERTION DU PROFIL GARDIEN (Indispensable pour sceller)
+-- 3. INSERTION FORCE DU GARDIEN
 INSERT INTO public.profiles (id, name, pseudonym, email, role, category, impact_score, bio)
-VALUES ('00000000-0000-0000-0000-000000000001', 'Le Gardien', 'Gardien', 'cerclecitoyenci@gmail.com', 'Gardien', 'Citoyen', 19740, 'Garant de la cohésion et de la souveraineté numérique du Cercle.')
-ON CONFLICT (id) DO NOTHING;
+VALUES ('00000000-0000-0000-0000-000000000001', 'Le Gardien', 'Gardien', 'cerclecitoyenci@gmail.com', 'Gardien', 'Citoyen', 19740, 'Garant de la cohésion.')
+ON CONFLICT (id) DO UPDATE SET role = 'Gardien', impact_score = 19740;
 
--- 3. ÉDITS (RIC)
+-- 4. ÉDITS (RECRÉATION PROPRE SI BESOIN)
 CREATE TABLE IF NOT EXISTS public.edicts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -52,26 +56,13 @@ CREATE TABLE IF NOT EXISTS public.edicts (
     image_url TEXT
 );
 
--- GARANTIE DE LA COLONNE image_url
+-- S'assurer que image_url existe si la table existait déjà
 DO $$ 
 BEGIN 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='edicts' AND column_name='image_url') THEN
         ALTER TABLE public.edicts ADD COLUMN image_url TEXT;
     END IF;
 END $$;
-
--- 4. POSTS (AGORA)
-CREATE TABLE IF NOT EXISTS public.posts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at TIMESTAMPTZ DEFAULT now(),
-    author_id UUID REFERENCES public.profiles(id),
-    content TEXT NOT NULL,
-    circle_type TEXT,
-    image_url TEXT,
-    clean_vision_url TEXT,
-    reactions JSONB DEFAULT '{"useful": 0, "relevant": 0, "inspiring": 0}'::jsonb,
-    is_majestic BOOLEAN DEFAULT false
-);
 
 -- 5. VOTES
 CREATE TABLE IF NOT EXISTS public.votes (
@@ -92,16 +83,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 7. DÉSACTIVATION DES RLS POUR LE PROTOTYPE (Garantit le succès total)
+-- 7. LIBERTÉ TOTALE POUR LE PROTOTYPE (RLS OFF)
 ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.edicts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.posts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts DISABLE ROW LEVEL SECURITY;
 
--- ACCÈS TOTAL AUX TABLES
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres;
 
--- Fin du script V7
+-- Fin du script V8
 `;
 
 const AdminDashboard: React.FC = () => {
@@ -140,7 +130,7 @@ const AdminDashboard: React.FC = () => {
 
   const copySql = () => {
     navigator.clipboard.writeText(REPAIR_SQL);
-    addToast("Script V7 copié ! Exécutez-le pour débloquer le scellage.", "success");
+    addToast("Script V8 copié ! Appliquez-le dans Supabase.", "success");
   };
 
   const displayCitizens = profiles.filter(p => 
@@ -163,7 +153,7 @@ const AdminDashboard: React.FC = () => {
            </div>
            <div>
             <h1 className="text-5xl font-serif font-bold text-gray-900 mb-2 tracking-tight">Conseil du Gardien</h1>
-            <p className="text-gray-500 font-medium">Réparation et maintenance de la souveraineté.</p>
+            <p className="text-gray-500 font-medium">Réparation et maintenance (Version 8).</p>
           </div>
         </div>
         
@@ -171,7 +161,7 @@ const AdminDashboard: React.FC = () => {
           {[
             { id: 'stats', label: 'Impact', icon: Zap },
             { id: 'citizens', label: 'Membres', icon: Users },
-            { id: 'sql', label: 'Script V7', icon: Database },
+            { id: 'sql', label: 'Script V8', icon: Database },
             { id: 'system', label: 'Système', icon: Wifi }
           ].map(tab => (
             <button 
@@ -189,19 +179,19 @@ const AdminDashboard: React.FC = () => {
 
       {activeTab === 'sql' && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-           <div className="bg-orange-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
+           <div className="bg-rose-600 text-white p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-10 opacity-10"><Database size={120} /></div>
-              <h3 className="text-3xl font-serif font-bold mb-4">Script V7 : Libération du Scellage</h3>
-              <p className="text-orange-50 max-w-2xl font-medium leading-relaxed mb-8">
-                Ce script est vital. Il autorise l'identifiant du Gardien, crée son profil s'il manque et déverrouille les permissions de lecture/écriture pour garantir que le scellage fonctionne immédiatement.
+              <h3 className="text-3xl font-serif font-bold mb-4">Script V8 : Correction Totale</h3>
+              <p className="text-rose-50 max-w-2xl font-medium leading-relaxed mb-8">
+                Ce script recrée la table <b>edicts</b> proprement et force l'existence du profil Gardien. <b>C'est la solution ultime pour corriger l'erreur de scellage.</b>
               </p>
-              <button onClick={copySql} className="bg-white text-orange-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-orange-50 transition-all">
-                <Copy size={18} /> Copier le script V7
+              <button onClick={copySql} className="bg-white text-rose-600 px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 hover:bg-rose-50 transition-all">
+                <Copy size={18} /> Copier le script V8
               </button>
            </div>
 
            <div className="bg-slate-900 rounded-[3rem] p-8 md:p-12 shadow-2xl">
-              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-orange-300 leading-relaxed overflow-x-auto max-h-[400px]">
+              <div className="bg-black/50 p-8 rounded-2xl border border-white/5 font-mono text-xs text-rose-300 leading-relaxed overflow-x-auto max-h-[400px]">
                  <pre>{REPAIR_SQL}</pre>
               </div>
            </div>
