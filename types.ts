@@ -131,6 +131,7 @@ export interface Edict {
   threshold: number;
   ends_at: string;
   impact_prediction?: string;
+  image_url?: string;
 }
 
 export interface Vote {
@@ -201,6 +202,8 @@ export type WasteNature =
 export interface WasteReport {
   id: string;
   timestamp: string;
+  /** Fix: Ajout de created_at optionnel pour compatibilité avec Supabase et tri dans ActionMap */
+  created_at?: string;
   image: string;
   clean_vision?: string;
   author_id: string;
