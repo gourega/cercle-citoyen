@@ -212,18 +212,8 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
     const end = textarea.selectionEnd;
     const selectedText = description.substring(start, end);
     
-    // Si c'est un formatage de bloc comme une liste ou un article
-    let newText;
-    let newPos;
-    
-    if (prefix.startsWith('\n')) {
-      newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
-      newPos = start + prefix.length + selectedText.length + suffix.length;
-    } else {
-      // Formatage en ligne (gras, italique)
-      newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
-      newPos = start + prefix.length + selectedText.length + suffix.length;
-    }
+    let newText = description.substring(0, start) + prefix + selectedText + suffix + description.substring(end);
+    let newPos = start + prefix.length + selectedText.length + suffix.length;
 
     setDescription(newText);
     setTimeout(() => {
@@ -270,15 +260,20 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
         threshold: newRicType === 'internal' ? 1000 : 10000,
         ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       }]);
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Supabase error detail:", error);
+        throw error;
+      }
+      
       addToast("Référendum scellé avec succès !", "success");
       setTitle('');
       setDescription('');
       setSelectedImage(null);
       fetchRics();
     } catch (e: any) { 
-      console.error(e);
-      addToast("Erreur de scellage : Vérifiez le script SQL du Conseil.", "error"); 
+      console.error("Catch error:", e);
+      addToast(`Échec du scellage : ${e.message || 'Vérifiez le script V7'}`, "error"); 
     } finally { setSubmitting(false); }
   };
 
@@ -301,7 +296,7 @@ const GovernancePage: React.FC<{ user: User }> = ({ user }) => {
       <section className="mb-24">
         <div className="bg-white rounded-[4rem] border border-gray-100 shadow-2xl p-8 md:p-14 overflow-hidden relative group">
            <div className="absolute top-0 right-0 p-12 opacity-[0.02] group-hover:rotate-12 transition-transform"><Scale size={200} /></div>
-           <h2 className="text-3xl font-serif font-bold text-gray-950 mb-10 flex items-center gap-4">
+           <h2 className="text-3xl font-serif font-bold text-gray-900 mb-10 flex items-center gap-4">
              <PenLine className="text-orange-500" /> Forge de l'Initiative
            </h2>
            
